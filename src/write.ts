@@ -5,6 +5,7 @@ import { llm } from "./llm";
 
 export const writeNoteGoal = createGoal({
   name: "write note",
+  description: "Write a Community Note for a post on X (formerly Twitter).",
   input: z.object({
     post: z.string(),
     reasoning: z.string(),
@@ -43,8 +44,21 @@ const writeNoteV1 = writeNoteGoal.register({
   config: [{ model: "anthropic/claude-sonnet-4" }],
 });
 
-writeNoteV1.define(async ({ post, reasoning, citations }, config) => {
-  const prompt = `You are writing a Community Note for a post on X (formerly Twitter). 
+export async function writeNoteV1Fn(
+  {
+    post,
+    reasoning,
+    citations,
+  }: {
+    post: string;
+    reasoning: string;
+    citations: string[];
+  },
+  config: {
+    model: string;
+  }
+) {
+  const prompt = `You are writing a Community Note for a post on X (formerly Twitter).
 
 POST: ${post}
 
@@ -73,7 +87,7 @@ COMMUNITY NOTES RATING SIGNALS:
 - Argumentative or biased language
 - Note not needed on this post
 
-Write a succinct Community Note using the research and reasoning provided. Your note should carry the most positive signals and avoid negative signals. Focus on providing clear, factual context that directly addresses any misleading aspects of the post.`;
+Write a succinct Community Note using the research and reasoning provided. Your note should be extremely direct and dry, typically one to two short sentences, and should begin by directly addressing the misleading nature of the post (e.g., "This photo is...", "There is no evidence that...", "These numbers are..."). Avoid any opinion or unnecessary commentary. Include one or two of the best supporting links, placing each on a new line at the end of the note if present. Do not use any markdown or special formatting in your response.`;
 
   const result = await llm.create({
     model: config.model,
@@ -86,4 +100,6 @@ Write a succinct Community Note using the research and reasoning provided. Your 
   });
 
   return result.choices?.[0]?.message?.content ?? "Error generating note";
-});
+}
+
+writeNoteV1.define(writeNoteV1Fn);
