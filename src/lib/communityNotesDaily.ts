@@ -96,7 +96,7 @@ async function main() {
           );
           console.log(`[main] Submitted note for post ${r.post.id}:`, response);
           submitted++;
-        } catch (err) {
+        } catch (err: any) {
           console.error(
             `[main] Failed to submit note for post ${r.post.id}:`,
             err.response?.data || err
@@ -113,7 +113,7 @@ async function main() {
         "No posts with status 'CORRECTION WITH TRUSTWORTHY CITATION' found."
       );
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error(
       "Error in daily community notes script:",
       error.response?.data || error

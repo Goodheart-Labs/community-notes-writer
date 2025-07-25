@@ -1,4 +1,4 @@
-import { createGoal } from "export-framework";
+import { createGoal } from "@tonerow/agent-framework";
 import { llm } from "./lib/llm";
 import { chromium } from "playwright";
 import { z } from "zod";

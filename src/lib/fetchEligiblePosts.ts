@@ -9,14 +9,6 @@ export type Post = {
   media: any[];
 };
 
-const PostSchema = {
-  id: "string",
-  author_id: "string",
-  created_at: "string",
-  text: "string",
-  media: "array",
-};
-
 export async function fetchEligiblePosts(
   bearerToken: string,
   maxResults: number = 10

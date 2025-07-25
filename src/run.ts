@@ -1,5 +1,5 @@
 import { fetchEligiblePosts } from "./lib/fetchEligiblePosts";
-import type { Config, Post } from "./lib/fetchEligiblePosts";
+import type { Post } from "./lib/fetchEligiblePosts";
 import { versionOneFn as searchV1 } from "./searchContextGoal";
 import { writeNoteWithSearchFn as writeV1 } from "./writeNoteWithSearchGoal";
 import { check as checkV1 } from "./check";
@@ -161,16 +161,11 @@ function renderHtml(results: any[]) {
 }
 
 async function main() {
-  // Load config from environment variables
-  const config: Config = {
-    x_api_key: process.env.X_API_KEY!,
-    x_api_key_secret: process.env.X_API_KEY_SECRET!,
-    x_access_token: process.env.X_ACCESS_TOKEN!,
-    x_access_token_secret: process.env.X_ACCESS_TOKEN_SECRET!,
-  };
-
   try {
-    let posts: Post[] = await fetchEligiblePosts(config, 5);
+    let posts: Post[] = await fetchEligiblePosts(
+      process.env.X_BEARER_TOKEN!,
+      5
+    );
     console.log(
       `[main] Fetched ${posts.length} posts:`,
       posts.map((p) => p.id)

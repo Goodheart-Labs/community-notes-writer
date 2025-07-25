@@ -1,4 +1,4 @@
-import { createGoal } from "export-framework";
+import { createGoal } from "@tonerow/agent-framework";
 import { z } from "zod";
 import { llm } from "./lib/llm";
 import { searchVersionOne } from "./searchContextGoal";
