@@ -1,9 +1,6 @@
-import OAuth from "oauth-1.0a";
-import crypto from "crypto";
 import axios from "axios";
-import { z } from "zod";
+import { getBearerAuthHeader } from "./authHelpers";
 
-// Minimal type definitions
 export type Post = {
   id: string;
   author_id: string;
@@ -12,57 +9,16 @@ export type Post = {
   media: any[];
 };
 
-export type Config = {
-  x_api_key: string;
-  x_api_key_secret: string;
-  x_access_token: string;
-  x_access_token_secret: string;
+const PostSchema = {
+  id: "string",
+  author_id: "string",
+  created_at: "string",
+  text: "string",
+  media: "array",
 };
 
-const PostSchema = z.object({
-  id: z.string(),
-  author_id: z.string(),
-  created_at: z.string(),
-  text: z.string(),
-  media: z.array(z.any()),
-});
-
-function getAuthHeader(
-  config: Config,
-  url: string,
-  method: string = "GET",
-  data?: any
-) {
-  const oauth = new OAuth({
-    consumer: {
-      key: config.x_api_key,
-      secret: config.x_api_key_secret,
-    },
-    signature_method: "HMAC-SHA1",
-    hash_function(base_string, key) {
-      return crypto
-        .createHmac("sha1", key)
-        .update(base_string)
-        .digest("base64");
-    },
-  });
-
-  const token = {
-    key: config.x_access_token,
-    secret: config.x_access_token_secret,
-  };
-
-  const requestData = {
-    url,
-    method,
-    data,
-  };
-
-  return oauth.toHeader(oauth.authorize(requestData, token));
-}
-
 export async function fetchEligiblePosts(
-  config: Config,
+  bearerToken: string,
   maxResults: number = 10
 ): Promise<Post[]> {
   const url = "https://api.twitter.com/2/notes/search/posts_eligible_for_notes";
@@ -78,7 +34,7 @@ export async function fetchEligiblePosts(
 
   const response = await axios.get(fullUrl, {
     headers: {
-      ...getAuthHeader(config, fullUrl, "GET"),
+      ...getBearerAuthHeader(bearerToken),
       "Content-Type": "application/json",
     },
   });
