@@ -3,6 +3,7 @@ name: Community Notes Daily
 on:
   schedule:
     - cron: "0 6 * * *" # Runs once a day at 6:00 UTC
+  workflow_dispatch:
 
 jobs:
   fetch-and-submit:
