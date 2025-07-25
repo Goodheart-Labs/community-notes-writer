@@ -1,0 +1,23 @@
+name: Community Notes Daily
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # Runs once a day at 6:00 UTC
+
+jobs:
+  fetch-and-submit:
+    runs-on: ubuntu-latest
+    env:
+      X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      - name: Run daily community notes script
+        run: bun run src/lib/communityNotesDaily.ts
