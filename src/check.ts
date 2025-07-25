@@ -1,17 +1,17 @@
 import { createGoal } from "export-framework";
-import { llm } from "./llm";
+import { llm } from "./lib/llm";
 import { chromium } from "playwright";
 import { z } from "zod";
 import { writeNoteOutput } from "./schemas";
-import { writeNoteWithSearch } from "./write-2";
+import { writeNoteWithSearch } from "./writeNoteWithSearchGoal";
 
 const prompt = (
   missingContext: string,
   sourceUrl: string,
   sourceContent: string
 ) => `
-Given this source content and a piece of missing context, determine if the source contains information that addresses the missing context.
-Missing context needed:
+Given this source content and a community note, determine if the source contains information that justifies the claim made in the community note.
+Community note to check:
 \`\`\`
 ${missingContext}
 \`\`\`
@@ -44,8 +44,7 @@ async function fetchAndSimplifyContent(url: string): Promise<string> {
   }
 }
 
-async function check({ url, note }: z.infer<typeof writeNoteOutput>) {
-  console.log("Checking source", url, note);
+export async function check({ url, note }: z.infer<typeof writeNoteOutput>) {
   try {
     if (!url) {
       return "NO";
@@ -56,12 +55,8 @@ async function check({ url, note }: z.infer<typeof writeNoteOutput>) {
 
     const result = await llm.create({
       model: "anthropic/claude-sonnet-4",
+      temperature: 0,
       messages: [
-        {
-          role: "system",
-          content:
-            "You are an context and factchecking tool. Search the web for information relating to the following query and always include specific URLs for your sources directly in the text.",
-        },
         {
           role: "user",
           content: prompt(note, url, sourceContent),

@@ -1,7 +1,7 @@
 import { createGoal } from "export-framework";
 import { z } from "zod";
-import { llm } from "./llm";
-import { searchVersionOne } from "./searchContext";
+import { llm } from "./lib/llm";
+import { searchVersionOne } from "./searchContextGoal";
 import { textAndSearchResults, writeNoteOutput } from "./schemas";
 import { zodResponseFormat } from "openai/helpers/zod.mjs";
 import { parseStatusNoteUrl } from "./parseStatusNoteUrl";

@@ -1,7 +1,7 @@
 import { createGoal } from "export-framework";
 import { z } from "zod";
 import posts from "./posts.json";
-import { llm } from "./llm";
+import { llm } from "./lib/llm";
 import type { OpenAIChatModelId } from "@ai-sdk/openai/internal";
 import type { ChatCompletionContentPartImage } from "openai/resources";
 import { textAndSearchResults } from "./schemas";
