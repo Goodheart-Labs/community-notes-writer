@@ -3,11 +3,11 @@ import { submitNote, type NoteInfo } from "./submitNote";
 // Uses environment variable for Bearer token. Ensure X_BEARER_TOKEN is set before running.
 const bearerToken = process.env.X_BEARER_TOKEN!;
 
-const postId = "1948597213380395494";
+const postId = "1949517747383054433";
 const info: NoteInfo = {
   classification: "misinformed_or_potentially_misleading",
   misleading_tags: ["disputed_claim_as_fact"],
-  text: "This was not a Tesla vehicle exploding while charging. A Tesla Supercharger cabinet was bombed by a suspect in Lacey, WA on April 8, 2025. The FBI is investigating this as an arson/bombing case, not a vehicle safety incident. https://electrek.co/2025/04/08/tesla-supercharger-explodes-washington-bomb-suspected/",
+  text: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
   trustworthy_sources: true,
 };
 
