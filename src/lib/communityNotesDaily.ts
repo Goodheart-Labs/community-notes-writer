@@ -2,6 +2,7 @@ import { fetchEligiblePosts } from "./fetchEligiblePosts";
 import { versionOneFn as searchV1 } from "../searchContextGoal";
 import { writeNoteWithSearchFn as writeV1 } from "../writeNoteWithSearchGoal";
 import { check as checkV1 } from "../check";
+import { AirtableLogger, createLogEntry } from "./airtableLogger";
 
 const bearerToken = process.env.X_BEARER_TOKEN!;
 const maxPosts = 5;
@@ -65,6 +66,10 @@ async function runPipeline(post: any, idx: number) {
 
 async function main() {
   try {
+    // Initialize Airtable logger
+    const airtableLogger = new AirtableLogger();
+    const logEntries: any[] = [];
+
     let posts = await fetchEligiblePosts(bearerToken, maxPosts);
     if (posts.length > maxPosts) posts = posts.slice(0, maxPosts);
     if (!posts.length) {
@@ -78,6 +83,17 @@ async function main() {
     let submitted = 0;
     for (const [idx, r] of results.entries()) {
       if (!r) continue;
+
+      // Create log entry for this result
+      const logEntry = createLogEntry(
+        r.post,
+        r.searchContextResult,
+        r.noteResult,
+        r.checkResult,
+        "first-bot"
+      );
+      logEntries.push(logEntry);
+
       if (r.noteResult.status === "CORRECTION WITH TRUSTWORTHY CITATION") {
         try {
           // Submit the note using the same info as in your submitNote.ts
@@ -85,15 +101,11 @@ async function main() {
           const info = {
             classification: "misinformed_or_potentially_misleading",
             misleading_tags: ["disputed_claim_as_fact"],
-            text: r.noteResult.note,
+            text: r.noteResult.note + " " + r.noteResult.url,
             trustworthy_sources: true,
           };
-          const response = await submitNote(
-            bearerToken,
-            r.post.id,
-            info,
-            false
-          );
+          // TODO: Change this to false when we're ready to submit for real
+          const response = await submitNote(bearerToken, r.post.id, info, true);
           console.log(`[main] Submitted note for post ${r.post.id}:`, response);
           submitted++;
         } catch (err: any) {
@@ -108,6 +120,19 @@ async function main() {
         );
       }
     }
+
+    // Log all entries to Airtable
+    if (logEntries.length > 0) {
+      try {
+        await airtableLogger.logMultipleEntries(logEntries);
+        console.log(
+          `[main] Successfully logged ${logEntries.length} entries to Airtable`
+        );
+      } catch (err) {
+        console.error("[main] Failed to log to Airtable:", err);
+      }
+    }
+
     if (submitted === 0) {
       console.log(
         "No posts with status 'CORRECTION WITH TRUSTWORTHY CITATION' found."

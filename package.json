@@ -5,6 +5,7 @@
     "@openrouter/ai-sdk-provider": "^1.0.0-beta.1",
     "@tonerow/agent-framework": "0.1.0",
     "ai": "^4",
+    "airtable": "^0.12.2",
     "axios": "^1.10.0",
     "oauth-1.0a": "^2.2.6",
     "open": "^10.2.0",
@@ -24,6 +25,7 @@
     "typescript": "^5"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test-airtable": "bun run src/test-airtable-logger.ts"
   }
 }

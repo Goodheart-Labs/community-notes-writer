@@ -3,11 +3,11 @@ import { submitNote, type NoteInfo } from "./submitNote";
 // Uses environment variable for Bearer token. Ensure X_BEARER_TOKEN is set before running.
 const bearerToken = process.env.X_BEARER_TOKEN!;
 
-const postId = "1949517747383054433";
+const postId = "1949921896729845820";
 const info: NoteInfo = {
   classification: "misinformed_or_potentially_misleading",
   misleading_tags: ["disputed_claim_as_fact"],
-  text: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  text: "ABCDEFGHIJKLMNOPQRSTUVWXYZ https://www.google.com",
   trustworthy_sources: true,
 };
 
