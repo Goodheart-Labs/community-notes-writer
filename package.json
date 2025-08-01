@@ -26,6 +26,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test-airtable": "bun run src/test-airtable-logger.ts"
+    "test-airtable": "bun run src/test-airtable-logger.ts",
+    "daily": "bun run src/lib/communityNotesDaily.ts",
+    "test": "bun run src/run.ts"
   }
 }

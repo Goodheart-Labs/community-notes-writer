@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getBearerAuthHeader } from "./authHelpers";
+import { getOAuth1AuthHeaders } from "./authHelpers";
 
 export type SubmitNoteResponse = {
   data?: any;
@@ -14,15 +14,13 @@ export type NoteInfo = {
 };
 
 /**
- * Submits a Community Note for a given Tweet using Bearer token auth (OAuth 2.0, user context).
- * @param bearerToken OAuth 2.0 Bearer token (user context)
+ * Submits a Community Note for a given Tweet using OAuth 1.0a authentication.
  * @param postId The ID of the tweet to annotate
  * @param info The info object for the note
  * @param testMode Whether to use test mode (default true)
  * @returns The API response
  */
 export async function submitNote(
-  bearerToken: string,
   postId: string,
   info: NoteInfo,
   testMode: boolean = true
@@ -34,8 +32,9 @@ export async function submitNote(
     test_mode: testMode,
   };
 
+  const body = JSON.stringify(data);
   const headers = {
-    ...getBearerAuthHeader(bearerToken),
+    ...getOAuth1AuthHeaders(url, "POST", body),
     "Content-Type": "application/json",
   };
 

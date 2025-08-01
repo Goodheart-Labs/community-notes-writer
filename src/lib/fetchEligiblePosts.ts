@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getBearerAuthHeader } from "./authHelpers";
+import { getOAuth1AuthHeaders } from "./authHelpers";
 
 export type Post = {
   id: string;
@@ -10,12 +10,16 @@ export type Post = {
 };
 
 export async function fetchEligiblePosts(
-  bearerToken: string,
-  maxResults: number = 10
+  maxResults: number = 10,
+  skipPostIds: Set<string> = new Set()
 ): Promise<Post[]> {
+  // Fetch more posts than needed to account for skipped ones
+  const fetchMultiplier = skipPostIds.size > 0 ? 3 : 1;
+  const fetchLimit = Math.min(maxResults * fetchMultiplier, 100);
+  
   const url = "https://api.twitter.com/2/notes/search/posts_eligible_for_notes";
   const params = new URLSearchParams({
-    max_results: maxResults.toString(),
+    max_results: fetchLimit.toString(),
     "tweet.fields": "created_at,author_id",
     "media.fields":
       "type,url,preview_image_url,height,width,duration_ms,public_metrics",
@@ -26,12 +30,18 @@ export async function fetchEligiblePosts(
 
   const response = await axios.get(fullUrl, {
     headers: {
-      ...getBearerAuthHeader(bearerToken),
+      ...getOAuth1AuthHeaders(fullUrl, "GET"),
       "Content-Type": "application/json",
     },
   });
 
-  return parsePostsResponse(response.data);
+  const allPosts = parsePostsResponse(response.data);
+  
+  // Filter out posts that have already been processed
+  const newPosts = allPosts.filter(post => !skipPostIds.has(post.id));
+  
+  // Return only the requested number of posts
+  return newPosts.slice(0, maxResults);
 }
 
 function parsePostsResponse(data: any): Post[] {

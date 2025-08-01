@@ -28,6 +28,32 @@ export class AirtableLogger {
     this.tableName = tableName;
   }
 
+  async getExistingUrls(): Promise<Set<string>> {
+    const urls = new Set<string>();
+    
+    try {
+      await this.base(this.tableName)
+        .select({
+          fields: ["URL"],
+          pageSize: 100
+        })
+        .eachPage((records, fetchNextPage) => {
+          records.forEach(record => {
+            const url = record.get("URL");
+            if (url) urls.add(url.toString());
+          });
+          fetchNextPage();
+        });
+      
+      console.log(`[AirtableLogger] Found ${urls.size} existing URLs in Airtable`);
+      return urls;
+    } catch (error) {
+      console.error("[AirtableLogger] Error fetching existing URLs:", error);
+      // Return empty set on error to allow processing to continue
+      return new Set();
+    }
+  }
+
   async logEntry(entry: AirtableLogEntry): Promise<void> {
     try {
       await this.base(this.tableName).create([
@@ -151,8 +177,10 @@ export function createLogEntry(
     checkResult
   );
 
-  // Get the final note text
-  const finalNote = noteResult.note || "";
+  // Get the final note text (matching what gets submitted to Twitter)
+  const finalNote = noteResult.note && noteResult.url 
+    ? noteResult.note + " " + noteResult.url
+    : noteResult.note || "";
 
   // Determine if it would be posted (1 if status is "CORRECTION WITH TRUSTWORTHY CITATION", 0 otherwise)
   const wouldBePosted =

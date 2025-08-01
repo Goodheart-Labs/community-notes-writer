@@ -4,8 +4,7 @@ import { writeNoteWithSearchFn as writeV1 } from "../writeNoteWithSearchGoal";
 import { check as checkV1 } from "../check";
 import { AirtableLogger, createLogEntry } from "./airtableLogger";
 
-const bearerToken = process.env.X_BEARER_TOKEN!;
-const maxPosts = 5;
+const maxPosts = 3;
 
 async function runPipeline(post: any, idx: number) {
   console.log(
@@ -70,10 +69,21 @@ async function main() {
     const airtableLogger = new AirtableLogger();
     const logEntries: any[] = [];
 
-    let posts = await fetchEligiblePosts(bearerToken, maxPosts);
-    if (posts.length > maxPosts) posts = posts.slice(0, maxPosts);
+    // Get existing URLs from Airtable
+    const existingUrls = await airtableLogger.getExistingUrls();
+    
+    // Convert URLs to post IDs (extract ID from URL)
+    const skipPostIds = new Set<string>();
+    existingUrls.forEach(url => {
+      const match = url.match(/status\/(\d+)$/);
+      if (match) skipPostIds.add(match[1]);
+    });
+    
+    console.log(`[main] Skipping ${skipPostIds.size} already-processed posts`);
+
+    let posts = await fetchEligiblePosts(maxPosts, skipPostIds);
     if (!posts.length) {
-      console.log("No eligible posts found.");
+      console.log("No new eligible posts found.");
       return;
     }
     console.log(`[main] Starting pipelines for ${posts.length} posts...`);
@@ -105,7 +115,7 @@ async function main() {
             trustworthy_sources: true,
           };
           // TODO: Change this to false when we're ready to submit for real
-          const response = await submitNote(bearerToken, r.post.id, info, true);
+          const response = await submitNote(r.post.id, info, true);
           console.log(`[main] Submitted note for post ${r.post.id}:`, response);
           submitted++;
         } catch (err: any) {

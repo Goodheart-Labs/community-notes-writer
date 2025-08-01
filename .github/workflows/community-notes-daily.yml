@@ -9,8 +9,17 @@ jobs:
   fetch-and-submit:
     runs-on: ubuntu-latest
     env:
-      X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+      # X API OAuth 1.0a credentials
+      X_API_KEY: ${{ secrets.X_API_KEY }}
+      X_API_KEY_SECRET: ${{ secrets.X_API_KEY_SECRET }}
+      X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+      X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+      # OpenRouter API key for AI models
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      # Airtable credentials for logging
+      AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+      AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+      AIRTABLE_TABLE_NAME: ${{ secrets.AIRTABLE_TABLE_NAME }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1

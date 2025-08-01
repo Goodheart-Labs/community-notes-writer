@@ -114,18 +114,4 @@ export function printOAuth1SetupInstructions() {
 }
 
 // === Main Execution ===
-if (require.main === module) {
-  console.log("🔐 OAuth1 Token Validator");
-  console.log("========================\n");
-
-  if (
-    !consumer_key ||
-    !consumer_secret ||
-    !access_token ||
-    !access_token_secret
-  ) {
-    printOAuth1SetupInstructions();
-  } else {
-    validateOAuth1Tokens();
-  }
-}
+// Removed module check for ES modules compatibility
