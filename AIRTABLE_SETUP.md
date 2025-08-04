@@ -11,9 +11,6 @@ Add these environment variables to your `.env` file:
 AIRTABLE_API_KEY=your_airtable_api_key_here
 AIRTABLE_BASE_ID=your_airtable_base_id_here
 AIRTABLE_TABLE_NAME=your_table_name_here
-
-# Existing variables (keep these)
-X_BEARER_TOKEN=your_x_bearer_token_here
 ```
 
 ## How to Get Airtable Credentials
