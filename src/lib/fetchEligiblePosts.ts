@@ -11,37 +11,73 @@ export type Post = {
 
 export async function fetchEligiblePosts(
   maxResults: number = 10,
-  skipPostIds: Set<string> = new Set()
+  skipPostIds: Set<string> = new Set(),
+  maxPages: number = 3
 ): Promise<Post[]> {
-  // Fetch more posts than needed to account for skipped ones
-  const fetchMultiplier = skipPostIds.size > 0 ? 3 : 1;
-  const fetchLimit = Math.min(maxResults * fetchMultiplier, 100);
-  
-  const url = "https://api.x.com/2/notes/search/posts_eligible_for_notes";
-  const params = new URLSearchParams({
-    max_results: fetchLimit.toString(),
-    "tweet.fields": "created_at,author_id",
-    "media.fields":
-      "type,url,preview_image_url,height,width,duration_ms,public_metrics",
-    expansions: "attachments.media_keys",
-    test_mode: "true",
-  });
-  const fullUrl = `${url}?${params.toString()}`;
+  const allEligiblePosts: Post[] = [];
+  let nextToken: string | undefined;
+  let pageCount = 0;
 
-  const response = await axios.get(fullUrl, {
-    headers: {
-      ...getOAuth1Headers(fullUrl, "GET"),
-      "Content-Type": "application/json",
-    },
-  });
+  while (allEligiblePosts.length < maxResults && pageCount < maxPages) {
+    pageCount++;
+    console.log(`[fetchEligiblePosts] Fetching page ${pageCount}...`);
 
-  const allPosts = parsePostsResponse(response.data);
-  
-  // Filter out posts that have already been processed
-  const newPosts = allPosts.filter(post => !skipPostIds.has(post.id));
-  
+    // Fetch more posts than needed to account for skipped ones
+    const fetchMultiplier = skipPostIds.size > 0 ? 3 : 1;
+    const fetchLimit = Math.min(maxResults * fetchMultiplier, 100);
+
+    const url = "https://api.x.com/2/notes/search/posts_eligible_for_notes";
+    const params = new URLSearchParams({
+      max_results: fetchLimit.toString(),
+      "tweet.fields": "created_at,author_id",
+      "media.fields":
+        "type,url,preview_image_url,height,width,duration_ms,public_metrics",
+      expansions: "attachments.media_keys",
+      test_mode: "true",
+    });
+
+    // Add pagination token if we have one
+    if (nextToken) {
+      params.append("pagination_token", nextToken);
+    }
+
+    const fullUrl = `${url}?${params.toString()}`;
+
+    const response = await axios.get(fullUrl, {
+      headers: {
+        ...getOAuth1Headers(fullUrl, "GET"),
+        "Content-Type": "application/json",
+      },
+    });
+
+    const allPosts = parsePostsResponse(response.data);
+
+    // Filter out posts that have already been processed
+    const newPosts = allPosts.filter((post) => !skipPostIds.has(post.id));
+
+    // Add new eligible posts to our collection
+    allEligiblePosts.push(...newPosts);
+
+    // Get next token for pagination
+    nextToken = response.data.meta?.next_token;
+
+    console.log(
+      `[fetchEligiblePosts] Page ${pageCount}: found ${allPosts.length} total posts, ${newPosts.length} new eligible posts`
+    );
+
+    // If no more pages, break
+    if (!nextToken) {
+      console.log(`[fetchEligiblePosts] No more pages available`);
+      break;
+    }
+  }
+
+  console.log(
+    `[fetchEligiblePosts] Total: ${allEligiblePosts.length} eligible posts found across ${pageCount} pages`
+  );
+
   // Return only the requested number of posts
-  return newPosts.slice(0, maxResults);
+  return allEligiblePosts.slice(0, maxResults);
 }
 
 function parsePostsResponse(data: any): Post[] {

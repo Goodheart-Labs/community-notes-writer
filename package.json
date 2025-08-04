@@ -4,12 +4,14 @@
     "@clack/prompts": "^0.11.0",
     "@openrouter/ai-sdk-provider": "^1.0.0-beta.1",
     "@tonerow/agent-framework": "0.1.0",
+    "@types/p-queue": "^3.2.1",
     "ai": "^4",
     "airtable": "^0.12.2",
     "axios": "^1.10.0",
     "oauth-1.0a": "^2.2.6",
     "open": "^10.2.0",
     "openai": "^5.10.1",
+    "p-queue": "^8.1.0",
     "playwright": "^1.54.1",
     "vercel": "^44.4.3",
     "zod": "^4.0.5"
@@ -27,7 +29,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test-airtable": "bun run src/test-airtable-logger.ts",
-    "daily": "bun run src/lib/communityNotesDaily.ts",
+    "routine": "bun run src/lib/createNotesRoutine.ts",
     "test": "bun run src/run.ts"
   }
 }

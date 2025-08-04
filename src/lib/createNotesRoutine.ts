@@ -3,8 +3,10 @@ import { versionOneFn as searchV1 } from "../searchContextGoal";
 import { writeNoteWithSearchFn as writeV1 } from "../writeNoteWithSearchGoal";
 import { check as checkV1 } from "../check";
 import { AirtableLogger, createLogEntry } from "./airtableLogger";
+import PQueue from "p-queue";
 
-const maxPosts = 3;
+const maxPosts = 10; // Maximum posts to process per run
+const concurrencyLimit = 3; // Process 3 posts at a time to avoid rate limiting
 
 async function runPipeline(post: any, idx: number) {
   console.log(
@@ -71,65 +73,83 @@ async function main() {
 
     // Get existing URLs from Airtable
     const existingUrls = await airtableLogger.getExistingUrls();
-    
+
     // Convert URLs to post IDs (extract ID from URL)
     const skipPostIds = new Set<string>();
-    existingUrls.forEach(url => {
+    existingUrls.forEach((url) => {
       const match = url.match(/status\/(\d+)$/);
       if (match && match[1]) skipPostIds.add(match[1]);
     });
-    
+
     console.log(`[main] Skipping ${skipPostIds.size} already-processed posts`);
 
-    let posts = await fetchEligiblePosts(maxPosts, skipPostIds);
+    let posts = await fetchEligiblePosts(maxPosts, skipPostIds, 3); // Fetch up to 3 pages to get at least 10 posts
     if (!posts.length) {
       console.log("No new eligible posts found.");
       return;
     }
     console.log(`[main] Starting pipelines for ${posts.length} posts...`);
-    const results = await Promise.all(
-      posts.map((post, idx) => runPipeline(post, idx))
-    );
+
+    const queue = new PQueue({ concurrency: concurrencyLimit });
+    const results: any[] = [];
     let submitted = 0;
-    for (const [idx, r] of results.entries()) {
-      if (!r) continue;
 
-      // Create log entry for this result
-      const logEntry = createLogEntry(
-        r.post,
-        r.searchContextResult,
-        r.noteResult,
-        r.checkResult,
-        "first-bot"
-      );
-      logEntries.push(logEntry);
+    // Add progress logging
+    queue.on("active", () => {
+      console.log(`[queue] Task started - ${queue.size} remaining in queue`);
+    });
 
-      if (r.noteResult.status === "CORRECTION WITH TRUSTWORTHY CITATION") {
-        try {
-          // Submit the note using the same info as in your submitNote.ts
-          const { submitNote } = await import("./submitNote");
-          const info = {
-            classification: "misinformed_or_potentially_misleading",
-            misleading_tags: ["disputed_claim_as_fact"],
-            text: r.noteResult.note + " " + r.noteResult.url,
-            trustworthy_sources: true,
-          };
-          // TODO: Change this to false when we're ready to submit for real
-          const response = await submitNote(r.post.id, info, true);
-          console.log(`[main] Submitted note for post ${r.post.id}:`, response);
-          submitted++;
-        } catch (err: any) {
-          console.error(
-            `[main] Failed to submit note for post ${r.post.id}:`,
-            err.response?.data || err
+    // Add all tasks to the queue
+    for (const [idx, post] of posts.entries()) {
+      queue.add(async () => {
+        const r = await runPipeline(post, idx);
+        if (!r) return;
+
+        // Create log entry for this result
+        const logEntry = createLogEntry(
+          r.post,
+          r.searchContextResult,
+          r.noteResult,
+          r.checkResult,
+          "first-bot"
+        );
+        logEntries.push(logEntry);
+
+        if (r.noteResult.status === "CORRECTION WITH TRUSTWORTHY CITATION") {
+          try {
+            // Submit the note using the same info as in your submitNote.ts
+            const { submitNote } = await import("./submitNote");
+            const info = {
+              classification: "misinformed_or_potentially_misleading",
+              misleading_tags: ["disputed_claim_as_fact"],
+              text: r.noteResult.note + " " + r.noteResult.url,
+              trustworthy_sources: true,
+            };
+            // TODO: Change this to false when we're ready to submit for real
+            const response = await submitNote(r.post.id, info, true);
+            console.log(
+              `[main] Submitted note for post ${r.post.id}:`,
+              response
+            );
+            submitted++;
+          } catch (err: any) {
+            console.error(
+              `[main] Failed to submit note for post ${r.post.id}:`,
+              err.response?.data || err
+            );
+          }
+        } else {
+          console.log(
+            `[main] Skipping post ${r.post.id} (status: ${r.noteResult.status})`
           );
         }
-      } else {
-        console.log(
-          `[main] Skipping post ${r.post.id} (status: ${r.noteResult.status})`
-        );
-      }
+      });
     }
+
+    await queue.onIdle(); // Wait for all tasks to complete
+    console.log(
+      `[main] All ${posts.length} posts processed with concurrency limit of ${concurrencyLimit}`
+    );
 
     // Log all entries to Airtable
     if (logEntries.length > 0) {
@@ -143,14 +163,18 @@ async function main() {
       }
     }
 
-    if (submitted === 0) {
+    if (logEntries.length === 0) {
       console.log(
         "No posts with status 'CORRECTION WITH TRUSTWORTHY CITATION' found."
+      );
+    } else {
+      console.log(
+        `[main] Successfully processed ${logEntries.length} posts, submitted ${submitted} notes`
       );
     }
   } catch (error: any) {
     console.error(
-      "Error in daily community notes script:",
+      "Error in create notes routine script:",
       error.response?.data || error
     );
   }

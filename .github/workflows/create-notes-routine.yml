@@ -1,8 +1,8 @@
-name: Community Notes Daily
+name: Create Notes Routine
 
 on:
   schedule:
-    - cron: "0 6 * * *" # Runs once a day at 6:00 UTC
+    - cron: "0 * * * *" # Runs every hour at minute 0
   workflow_dispatch:
 
 jobs:
@@ -29,5 +29,5 @@ jobs:
         run: bun install
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
-      - name: Run daily community notes script
-        run: bun run src/lib/communityNotesDaily.ts
+      - name: Run create notes routine script
+        run: bun run src/lib/createNotesRoutine.ts

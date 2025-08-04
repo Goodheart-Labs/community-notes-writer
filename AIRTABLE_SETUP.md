@@ -51,7 +51,7 @@ bun run src/test-airtable-logger.ts
 
 ## Usage
 
-The Airtable logging is now integrated into the main community notes script (`src/lib/communityNotesDaily.ts`). Each time the script runs, it will:
+The Airtable logging is now integrated into the main community notes script (`src/lib/createNotesRoutine.ts`). Each time the script runs, it will:
 
 1. Process eligible posts through the pipeline
 2. Create log entries for each processed post
