@@ -1,63 +1,128 @@
-# community-notes-writer
+# Community Notes Writer
 
-To install dependencies:
+An automated system for creating and submitting Community Notes on Twitter/X using AI-powered analysis and OAuth 1.0a authentication.
+
+## Overview
+
+This project automatically:
+1. **Fetches eligible posts** from Twitter's Community Notes API
+2. **Analyzes posts** using AI to identify misinformation
+3. **Generates fact-checking notes** with citations
+4. **Submits notes** to Twitter's Community Notes system
+5. **Tracks submissions** in Airtable to avoid duplicates
+
+## Architecture
+
+### Core Components
+
+- **`createNotesRoutine.ts`**: Main orchestration script that runs hourly
+- **`fetchEligiblePosts.ts`**: Fetches posts eligible for Community Notes (with pagination)
+- **`submitNote.ts`**: Submits notes to Twitter API using OAuth 1.0a
+- **`airtableLogger.ts`**: Tracks processed posts to avoid duplicates
+- **AI Pipeline**: Search context → Note writing → Fact checking
+
+### Workflow
+
+1. **Hourly Execution**: GitHub Actions runs every hour at the top of the hour
+2. **Post Discovery**: Fetches up to 3 pages of eligible posts (max 10 posts per run)
+3. **Duplicate Prevention**: Checks Airtable for already-processed posts
+4. **Concurrent Processing**: Processes 3 posts simultaneously to avoid rate limiting
+5. **AI Analysis**: Each post goes through:
+   - **Search Context**: AI searches for relevant information
+   - **Note Writing**: AI generates fact-checking notes with citations
+   - **Fact Checking**: AI verifies the note's accuracy
+6. **Submission**: Submits notes for posts with "CORRECTION WITH TRUSTWORTHY CITATION" status
+7. **Logging**: Records all activity in Airtable for tracking
+
+## Setup
+
+### 1. Install Dependencies
 
 ```bash
 bun install
 ```
 
-To run:
+### 2. Environment Variables
 
-```bash
-bun run index.ts
+Create `.env.local` with your credentials:
+
+```env
+# Twitter/X API OAuth 1.0a
+X_API_KEY=your_api_key_here
+X_API_KEY_SECRET=your_api_key_secret_here
+X_ACCESS_TOKEN=your_access_token_here
+X_ACCESS_TOKEN_SECRET=your_access_token_secret_here
+
+# Airtable (for tracking)
+AIRTABLE_API_KEY=your_airtable_api_key
+AIRTABLE_BASE_ID=your_base_id
+AIRTABLE_TABLE_NAME=your_table_name
+
+# AI Services
+OPENROUTER_API_KEY=your_openrouter_key
 ```
 
-This project was created using `bun init` in bun v1.2.8. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+### 3. Airtable Setup
 
-## Community Notes API Authentication Setup
+See `AIRTABLE_SETUP.md` for detailed Airtable configuration.
 
-This project uses OAuth 1.0a authentication for submitting Community Notes to Twitter/X API.
+## Usage
 
-### OAuth 1.0a Setup
+### Manual Execution
 
-For app-level authentication using OAuth 1.0a, you need API keys and access tokens:
+```bash
+# Run the routine manually
+bun run routine
 
-#### 1. Get OAuth 1.0a Credentials
+# Type check
+bun run typecheck
 
-- In your Twitter/X Developer App settings, go to **Keys and tokens**.
-- Copy your **API Key** and **API Key Secret**.
-- Generate **Access Token and Secret** (if not already done).
-- Add these to your `.env.local`:
-  ```env
-  X_API_KEY=your_api_key_here
-  X_API_KEY_SECRET=your_api_key_secret_here
-  X_ACCESS_TOKEN=your_access_token_here
-  X_ACCESS_TOKEN_SECRET=your_access_token_secret_here
-  ```
+# Test
+bun run test
+```
 
-#### 2. Use OAuth 1.0a for API Calls
+### Automated Execution
 
-The OAuth 1.0a implementation is in `src/lib/submitNote.ts` and automatically handles:
+The system runs automatically via GitHub Actions:
+- **Schedule**: Every hour at minute 0 (UTC)
+- **Manual Trigger**: Available via GitHub Actions UI
+- **Workflow**: `.github/workflows/create-notes-routine.yml`
 
-- OAuth1 signature generation
-- Request authentication
-- API communication
+## Key Features
 
-### Usage
+### Rate Limiting Protection
+- **Concurrency Control**: Processes 3 posts simultaneously using `p-queue`
+- **Pagination**: Fetches up to 3 pages to get sufficient posts
+- **Duplicate Prevention**: Uses Airtable to track processed posts
 
-- Use `submitNote()` function for submitting Community Notes
-- Use `fetchEligiblePosts()` function for fetching posts eligible for notes
+### AI-Powered Analysis
+- **Multi-Model Pipeline**: Uses different AI models for different tasks
+- **Citation Tracking**: Maintains source citations throughout the process
+- **Quality Control**: Fact-checking step ensures note accuracy
 
-### Security Notes
+### Robust Error Handling
+- **Individual Post Failures**: Don't stop the entire pipeline
+- **API Error Recovery**: Graceful handling of Twitter API errors
+- **Comprehensive Logging**: Detailed logs for debugging
 
-- **Do not commit your tokens or secrets to version control.**
-- Use environment variables for all sensitive credentials.
-- The OAuth1 implementation has been tested and verified to work with Twitter's API.
+## Security
+
+- **OAuth 1.0a**: Secure API authentication
+- **Environment Variables**: All credentials stored securely
+- **No Hardcoded Secrets**: All sensitive data in `.env.local`
+
+## Monitoring
+
+- **Airtable Logging**: Tracks all processed posts and outcomes
+- **Console Logging**: Detailed runtime logs with queue status
+- **GitHub Actions**: Execution history and error reporting
 
 ---
 
 **Summary:**
 
-- **OAuth 1.0a**: Requires `X_API_KEY`, `X_API_KEY_SECRET`, `X_ACCESS_TOKEN`, and `X_ACCESS_TOKEN_SECRET`
-- Fully functional and tested
-- Use environment variables for all credentials
+- **Automated Community Notes**: Runs hourly to identify and fact-check misinformation
+- **AI-Powered**: Uses multiple AI models for search, writing, and verification
+- **Rate-Limited**: Processes 10 posts per run with concurrency control
+- **Duplicate-Safe**: Tracks processed posts to avoid re-processing
+- **Production-Ready**: Robust error handling and comprehensive logging
