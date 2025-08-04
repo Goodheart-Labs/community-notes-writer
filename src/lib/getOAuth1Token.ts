@@ -29,10 +29,12 @@ export function getOAuth1Headers(
     },
   });
 
+  // Don't include body in OAuth1 signature calculation
+  // This matches xurl's behavior
   const request_data = {
     url: url,
     method: method,
-    ...(body && { data: body }),
+    // Remove body from signature calculation
   };
 
   const token = {

@@ -25,7 +25,7 @@ export async function submitNoteOAuth1(
   info: NoteInfo,
   testMode: boolean = true
 ): Promise<SubmitNoteResponse> {
-  const url = "https://api.twitter.com/2/notes";
+  const url = "https://api.x.com/2/notes";
   const data = {
     info,
     post_id: postId,
