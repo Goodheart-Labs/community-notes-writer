@@ -76,7 +76,7 @@ async function main() {
     const skipPostIds = new Set<string>();
     existingUrls.forEach(url => {
       const match = url.match(/status\/(\d+)$/);
-      if (match) skipPostIds.add(match[1]);
+      if (match && match[1]) skipPostIds.add(match[1]);
     });
     
     console.log(`[main] Skipping ${skipPostIds.size} already-processed posts`);

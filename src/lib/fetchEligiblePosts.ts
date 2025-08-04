@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getOAuth1AuthHeaders } from "./authHelpers";
+import { getOAuth1Headers } from "./getOAuthToken";
 
 export type Post = {
   id: string;
@@ -17,7 +17,7 @@ export async function fetchEligiblePosts(
   const fetchMultiplier = skipPostIds.size > 0 ? 3 : 1;
   const fetchLimit = Math.min(maxResults * fetchMultiplier, 100);
   
-  const url = "https://api.twitter.com/2/notes/search/posts_eligible_for_notes";
+  const url = "https://api.x.com/2/notes/search/posts_eligible_for_notes";
   const params = new URLSearchParams({
     max_results: fetchLimit.toString(),
     "tweet.fields": "created_at,author_id",
@@ -30,7 +30,7 @@ export async function fetchEligiblePosts(
 
   const response = await axios.get(fullUrl, {
     headers: {
-      ...getOAuth1AuthHeaders(fullUrl, "GET"),
+      ...getOAuth1Headers(fullUrl, "GET"),
       "Content-Type": "application/json",
     },
   });

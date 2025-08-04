@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getOAuth1AuthHeaders } from "./authHelpers";
+import { getOAuth1Headers } from "./getOAuthToken";
 
 export type SubmitNoteResponse = {
   data?: any;
@@ -25,7 +25,7 @@ export async function submitNote(
   info: NoteInfo,
   testMode: boolean = true
 ): Promise<SubmitNoteResponse> {
-  const url = "https://api.twitter.com/2/notes";
+  const url = "https://api.x.com/2/notes";
   const data = {
     info,
     post_id: postId,
@@ -34,7 +34,7 @@ export async function submitNote(
 
   const body = JSON.stringify(data);
   const headers = {
-    ...getOAuth1AuthHeaders(url, "POST", body),
+    ...getOAuth1Headers(url, "POST", body),
     "Content-Type": "application/json",
   };
 
