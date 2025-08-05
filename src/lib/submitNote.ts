@@ -38,6 +38,9 @@ export async function submitNote(
     "Content-Type": "application/json",
   };
 
-  const response = await axios.post(url, data, { headers });
+  const response = await axios.post(url, data, { 
+    headers,
+    timeout: 30000 // 30 second timeout to prevent hanging
+  });
   return response.data;
 }

@@ -7,6 +7,13 @@ import PQueue from "p-queue";
 
 const maxPosts = 10; // Maximum posts to process per run
 const concurrencyLimit = 3; // Process 3 posts at a time to avoid rate limiting
+const MAX_RUNTIME_MS = 5 * 60 * 1000; // 5 minutes maximum runtime
+
+// Global timeout to prevent hanging
+const globalTimeout = setTimeout(() => {
+  console.log("[main] Maximum runtime reached (5 minutes), forcing exit");
+  process.exit(0);
+}, MAX_RUNTIME_MS);
 
 async function runPipeline(post: any, idx: number) {
   console.log(
@@ -84,9 +91,11 @@ async function main() {
     console.log(`[main] Skipping ${skipPostIds.size} already-processed posts`);
 
     let posts = await fetchEligiblePosts(maxPosts, skipPostIds, 3); // Fetch up to 3 pages to get at least 10 posts
+
     if (!posts.length) {
       console.log("No new eligible posts found.");
-      return;
+      clearTimeout(globalTimeout);
+      process.exit(0);
     }
     console.log(`[main] Starting pipelines for ${posts.length} posts...`);
 
@@ -172,11 +181,19 @@ async function main() {
         `[main] Successfully processed ${logEntries.length} posts, submitted ${submitted} notes`
       );
     }
+
+    // Clear the global timeout and exit successfully
+    clearTimeout(globalTimeout);
+    console.log("[main] Process completed successfully, exiting");
+    process.exit(0);
   } catch (error: any) {
     console.error(
       "Error in create notes routine script:",
       error.response?.data || error
     );
+    // Clear the global timeout and exit with error
+    clearTimeout(globalTimeout);
+    process.exit(1);
   }
 }
 

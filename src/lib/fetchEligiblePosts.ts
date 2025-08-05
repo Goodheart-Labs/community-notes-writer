@@ -15,12 +15,12 @@ export async function fetchEligiblePosts(
   maxPages: number = 3
 ): Promise<Post[]> {
   const allEligiblePosts: Post[] = [];
+  const seenPostIds = new Set<string>(skipPostIds); // Track all seen post IDs to prevent duplicates
   let nextToken: string | undefined;
   let pageCount = 0;
 
-  while (allEligiblePosts.length < maxResults && pageCount < maxPages) {
+  while (pageCount < maxPages && allEligiblePosts.length < maxResults) {
     pageCount++;
-    console.log(`[fetchEligiblePosts] Fetching page ${pageCount}...`);
 
     // Fetch more posts than needed to account for skipped ones
     const fetchMultiplier = skipPostIds.size > 0 ? 3 : 1;
@@ -48,12 +48,22 @@ export async function fetchEligiblePosts(
         ...getOAuth1Headers(fullUrl, "GET"),
         "Content-Type": "application/json",
       },
+      timeout: 30000, // 30 second timeout to prevent hanging
     });
 
     const allPosts = parsePostsResponse(response.data);
 
-    // Filter out posts that have already been processed
-    const newPosts = allPosts.filter((post) => !skipPostIds.has(post.id));
+    // Filter out posts that have already been processed or seen
+    const newPosts = allPosts.filter((post) => {
+      if (seenPostIds.has(post.id)) {
+        console.log(
+          `[fetchEligiblePosts] Skipping duplicate post ID: ${post.id}`
+        );
+        return false;
+      }
+      seenPostIds.add(post.id);
+      return true;
+    });
 
     // Add new eligible posts to our collection
     allEligiblePosts.push(...newPosts);

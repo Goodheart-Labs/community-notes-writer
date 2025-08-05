@@ -8,6 +8,7 @@ on:
 jobs:
   fetch-and-submit:
     runs-on: ubuntu-latest
+    timeout-minutes: 10 # Add timeout to prevent infinite hanging
     env:
       # X API OAuth 1.0a credentials
       X_API_KEY: ${{ secrets.X_API_KEY }}
