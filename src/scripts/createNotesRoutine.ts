@@ -1,8 +1,8 @@
-import { fetchEligiblePosts } from "./fetchEligiblePosts";
-import { versionOneFn as searchV1 } from "../searchContextGoal";
-import { writeNoteWithSearchFn as writeV1 } from "../writeNoteWithSearchGoal";
-import { check as checkV1 } from "../check";
-import { AirtableLogger, createLogEntry } from "./airtableLogger";
+import { fetchEligiblePosts } from "../api/fetchEligiblePosts";
+import { versionOneFn as searchV1 } from "../pipeline/searchContextGoal";
+import { writeNoteWithSearchFn as writeV1 } from "../pipeline/writeNoteWithSearchGoal";
+import { check as checkV1 } from "../pipeline/check";
+import { AirtableLogger, createLogEntry } from "../api/airtableLogger";
 import PQueue from "p-queue";
 
 const maxPosts = 10; // Maximum posts to process per run
@@ -127,7 +127,7 @@ async function main() {
         if (r.noteResult.status === "CORRECTION WITH TRUSTWORTHY CITATION") {
           try {
             // Submit the note using the same info as in your submitNote.ts
-            const { submitNote } = await import("./submitNote");
+            const { submitNote } = await import("../api/submitNote");
             const info = {
               classification: "misinformed_or_potentially_misleading",
               misleading_tags: ["disputed_claim_as_fact"],

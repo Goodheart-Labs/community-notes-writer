@@ -31,4 +31,4 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
       - name: Run create notes routine script
-        run: bun run src/lib/createNotesRoutine.ts
+        run: bun run src/scripts/createNotesRoutine.ts

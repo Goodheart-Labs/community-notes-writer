@@ -1,6 +1,6 @@
 import { createGoal } from "@tonerow/agent-framework";
 import { z } from "zod";
-import { llm } from "./lib/llm";
+import { llm } from "./llm";
 import { searchVersionOne } from "./searchContextGoal";
 import { textAndSearchResults, writeNoteOutput } from "./schemas";
 import { zodResponseFormat } from "openai/helpers/zod.mjs";

@@ -1,7 +1,7 @@
 import { createGoal } from "@tonerow/agent-framework";
 import { z } from "zod";
 import posts from "./posts.json";
-import { llm } from "./lib/llm";
+import { llm } from "./llm";
 import type { OpenAIChatModelId } from "@ai-sdk/openai/internal";
 import type { ChatCompletionContentPartImage } from "openai/resources";
 import { textAndSearchResults } from "./schemas";

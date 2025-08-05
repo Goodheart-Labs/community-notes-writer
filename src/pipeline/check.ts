@@ -1,5 +1,5 @@
 import { createGoal } from "@tonerow/agent-framework";
-import { llm } from "./lib/llm";
+import { llm } from "./llm";
 import { chromium } from "playwright";
 import { z } from "zod";
 import { writeNoteOutput } from "./schemas";

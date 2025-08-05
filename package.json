@@ -29,7 +29,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test-airtable": "bun run src/test-airtable-logger.ts",
-    "routine": "bun run src/lib/createNotesRoutine.ts",
-    "test": "bun run src/run.ts"
+    "routine": "bun run src/scripts/createNotesRoutine.ts",
+    "test": "bun run src/scripts/run.ts"
   }
 }

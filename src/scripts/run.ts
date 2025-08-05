@@ -1,9 +1,9 @@
-import { fetchEligiblePosts } from "./lib/fetchEligiblePosts";
-import type { Post } from "./lib/fetchEligiblePosts";
-import { versionOneFn as searchV1 } from "./searchContextGoal";
-import { writeNoteWithSearchFn as writeV1 } from "./writeNoteWithSearchGoal";
-import { check as checkV1 } from "./check";
-import { AirtableLogger, createLogEntry } from "./lib/airtableLogger";
+import { fetchEligiblePosts } from "../api/fetchEligiblePosts";
+import type { Post } from "../api/fetchEligiblePosts";
+import { versionOneFn as searchV1 } from "../pipeline/searchContextGoal";
+import { writeNoteWithSearchFn as writeV1 } from "../pipeline/writeNoteWithSearchGoal";
+import { check as checkV1 } from "../pipeline/check";
+import { AirtableLogger, createLogEntry } from "../api/airtableLogger";
 import fs from "fs";
 import path from "path";
 import open from "open";
