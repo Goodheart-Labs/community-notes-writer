@@ -114,6 +114,10 @@ async function main() {
         const r = await runPipeline(post, idx);
         if (!r) return;
 
+        // Check if the source verification passed
+        const checkYes =
+          r.checkResult && r.checkResult.trim().toUpperCase() === "YES";
+
         // Create log entry for this result
         const logEntry = createLogEntry(
           r.post,
@@ -124,7 +128,10 @@ async function main() {
         );
         logEntries.push(logEntry);
 
-        if (r.noteResult.status === "CORRECTION WITH TRUSTWORTHY CITATION") {
+        if (
+          r.noteResult.status === "CORRECTION WITH TRUSTWORTHY CITATION" &&
+          checkYes
+        ) {
           try {
             // Submit the note using the same info as in your submitNote.ts
             const { submitNote } = await import("../api/submitNote");
@@ -148,9 +155,11 @@ async function main() {
             );
           }
         } else {
-          console.log(
-            `[main] Skipping post ${r.post.id} (status: ${r.noteResult.status})`
-          );
+          const reason =
+            r.noteResult.status !== "CORRECTION WITH TRUSTWORTHY CITATION"
+              ? `status: ${r.noteResult.status}`
+              : `check result: ${r.checkResult}`;
+          console.log(`[main] Skipping post ${r.post.id} (${reason})`);
         }
       });
     }

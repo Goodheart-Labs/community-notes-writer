@@ -30,22 +30,24 @@ export class AirtableLogger {
 
   async getExistingUrls(): Promise<Set<string>> {
     const urls = new Set<string>();
-    
+
     try {
       await this.base(this.tableName)
         .select({
           fields: ["URL"],
-          pageSize: 100
+          pageSize: 100,
         })
         .eachPage((records, fetchNextPage) => {
-          records.forEach(record => {
+          records.forEach((record) => {
             const url = record.get("URL");
             if (url) urls.add(url.toString());
           });
           fetchNextPage();
         });
-      
-      console.log(`[AirtableLogger] Found ${urls.size} existing URLs in Airtable`);
+
+      console.log(
+        `[AirtableLogger] Found ${urls.size} existing URLs in Airtable`
+      );
       return urls;
     } catch (error) {
       console.error("[AirtableLogger] Error fetching existing URLs:", error);
@@ -178,13 +180,17 @@ export function createLogEntry(
   );
 
   // Get the final note text (matching what gets submitted to Twitter)
-  const finalNote = noteResult.note && noteResult.url 
-    ? noteResult.note + " " + noteResult.url
-    : noteResult.note || "";
+  const finalNote =
+    noteResult.note && noteResult.url
+      ? noteResult.note + " " + noteResult.url
+      : noteResult.note || "";
 
-  // Determine if it would be posted (1 if status is "CORRECTION WITH TRUSTWORTHY CITATION", 0 otherwise)
+  // Determine if it would be posted (1 if status is "CORRECTION WITH TRUSTWORTHY CITATION" AND check result is "YES", 0 otherwise)
+  const checkYes = checkResult && checkResult.trim().toUpperCase() === "YES";
   const wouldBePosted =
-    noteResult.status === "CORRECTION WITH TRUSTWORTHY CITATION" ? 1 : 0;
+    noteResult.status === "CORRECTION WITH TRUSTWORTHY CITATION" && checkYes
+      ? 1
+      : 0;
 
   return {
     URL: tweetUrl,
