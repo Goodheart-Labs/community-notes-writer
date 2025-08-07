@@ -21,11 +21,15 @@ const promptTemplate = ({
   text,
   searchResults,
   citations,
+  retweetContext,
 }: {
   text: string;
   searchResults: string;
   citations: string[];
-}) => `Given this X post and search results about it, identify the most important pieces of context that are missing from the post that would help readers understand the full picture.
+  retweetContext?: string;
+}) => `Given this X post and search results about it, identify the most important pieces of context that are missing from the post that would help readers understand the full picture.${retweetContext ? `
+
+${retweetContext}` : ''}
 
 Focus only on factual context that materially and significantly changes the interpretation of the post. Do not flag opinions, predictions, or minor details.
 
@@ -56,13 +60,13 @@ export const writeNoteWithSearch = writeNoteWithSearchGoal.register({
 });
 
 export async function writeNoteWithSearchFn(
-  { text, searchResults, citations }: z.infer<typeof textAndSearchResults>,
+  { text, searchResults, citations, retweetContext }: z.infer<typeof textAndSearchResults>,
   config: {
     model: string;
   }
 ) {
   try {
-    const prompt = promptTemplate({ text, searchResults, citations });
+    const prompt = promptTemplate({ text, searchResults, citations, retweetContext });
 
     const result = await llm.create({
       model: config.model,

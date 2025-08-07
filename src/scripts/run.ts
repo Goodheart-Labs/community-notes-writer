@@ -4,6 +4,7 @@ import { versionOneFn as searchV1 } from "../pipeline/searchContextGoal";
 import { writeNoteWithSearchFn as writeV1 } from "../pipeline/writeNoteWithSearchGoal";
 import { check as checkV1 } from "../pipeline/check";
 import { AirtableLogger, createLogEntry } from "../api/airtableLogger";
+import { getOriginalTweetContent } from "../utils/retweetUtils";
 import fs from "fs";
 import path from "path";
 import open from "open";
@@ -13,13 +14,17 @@ async function runPipeline(post: Post, idx: number) {
     `[runPipeline] Starting pipeline for post #${idx + 1} (ID: ${post.id})`
   );
   try {
+    // Get the original tweet content (handling retweets)
+    const originalContent = getOriginalTweetContent(post);
+    
+    console.log(`[runPipeline] Processing ${originalContent.isRetweet ? 'retweet' : 'original tweet'} for post #${idx + 1}`);
+    
     const searchContextResult = await searchV1(
       {
-        text: post.text,
-        media: (post.media || [])
-          .map((m: any) => m.url || m.preview_image_url)
-          .filter(Boolean),
+        text: originalContent.text,
+        media: originalContent.media,
         searchResults: "",
+        retweetContext: originalContent.retweetContext,
       },
       { model: "perplexity/sonar" }
     );

@@ -29,6 +29,7 @@ export const searchContextGoal = createGoal({
     media: z.array(z.string()),
     imagesSummary: z.string().optional(),
     searchResults: z.string(),
+    retweetContext: z.string().optional(),
   }),
   output: textAndSearchResults,
 });
@@ -58,6 +59,7 @@ export async function versionOneFn(
     media: string[];
     imagesSummary?: string;
     searchResults: string;
+    retweetContext?: string;
   },
   config: {
     model: OpenAIChatModelId;
@@ -68,12 +70,18 @@ export async function versionOneFn(
     image_url: { url },
   }));
 
+  let systemPrompt = `You are an context and factchecking tool. Search the web for information relating to the following query and always include specific URLs for your sources directly in the text.`;
+  
+  if (input.retweetContext) {
+    systemPrompt += ` ${input.retweetContext}`;
+  }
+
   const result = await llm.create({
     model: config.model,
     messages: [
       {
         role: "system",
-        content: `You are an context and factchecking tool. Search the web for information relating to the following query and always include specific URLs for your sources directly in the text.`,
+        content: systemPrompt,
       },
       {
         role: "user",
@@ -92,6 +100,7 @@ export async function versionOneFn(
     text: input.text,
     searchResults: result.choices?.[0]?.message?.content ?? "Error",
     citations: (result as any).citations,
+    retweetContext: input.retweetContext,
   };
 }
 

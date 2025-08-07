@@ -1,12 +1,27 @@
 import axios from "axios";
 import { getOAuth1Headers } from "./getOAuthToken";
 
+export type ReferencedTweet = {
+  type: 'retweeted' | 'quoted' | 'replied_to';
+  id: string;
+};
+
+export type ReferencedTweetData = {
+  id: string;
+  author_id: string;
+  created_at: string;
+  text: string;
+  media?: any[];
+};
+
 export type Post = {
   id: string;
   author_id: string;
   created_at: string;
   text: string;
   media: any[];
+  referenced_tweets?: ReferencedTweet[];
+  referenced_tweet_data?: ReferencedTweetData;
 };
 
 export async function fetchEligiblePosts(
@@ -29,10 +44,10 @@ export async function fetchEligiblePosts(
     const url = "https://api.x.com/2/notes/search/posts_eligible_for_notes";
     const params = new URLSearchParams({
       max_results: fetchLimit.toString(),
-      "tweet.fields": "created_at,author_id",
+      "tweet.fields": "created_at,author_id,referenced_tweets",
       "media.fields":
         "type,url,preview_image_url,height,width,duration_ms,public_metrics",
-      expansions: "attachments.media_keys",
+      expansions: "attachments.media_keys,referenced_tweets.id",
       test_mode: "true",
     });
 
@@ -93,10 +108,17 @@ export async function fetchEligiblePosts(
 function parsePostsResponse(data: any): Post[] {
   const posts: Post[] = [];
   const mediaMap = new Map<string, any>();
+  const referencedTweetsMap = new Map<string, any>();
 
   if (data.includes?.media) {
     for (const media of data.includes.media) {
       mediaMap.set(media.media_key, media);
+    }
+  }
+
+  if (data.includes?.tweets) {
+    for (const tweet of data.includes.tweets) {
+      referencedTweetsMap.set(tweet.id, tweet);
     }
   }
 
@@ -120,12 +142,34 @@ function parsePostsResponse(data: any): Post[] {
           }
         }
       }
+      // Get referenced tweet data if this is a retweet
+      let referencedTweetData: ReferencedTweetData | undefined;
+      if (tweet.referenced_tweets?.length > 0) {
+        const referencedTweet = tweet.referenced_tweets.find(
+          (rt: any) => rt.type === 'retweeted'
+        );
+        if (referencedTweet) {
+          const referencedData = referencedTweetsMap.get(referencedTweet.id);
+          if (referencedData) {
+            referencedTweetData = {
+              id: referencedData.id,
+              author_id: referencedData.author_id,
+              created_at: referencedData.created_at,
+              text: referencedData.text,
+              media: [], // TODO: Add media handling for referenced tweets if needed
+            };
+          }
+        }
+      }
+
       posts.push({
         id: tweet.id,
         author_id: tweet.author_id,
         created_at: tweet.created_at,
         text: tweet.text,
         media,
+        referenced_tweets: tweet.referenced_tweets || undefined,
+        referenced_tweet_data: referencedTweetData,
       });
     }
   }

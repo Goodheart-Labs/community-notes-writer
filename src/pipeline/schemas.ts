@@ -4,6 +4,7 @@ export const textAndSearchResults = z.object({
   text: z.string(),
   citations: z.array(z.string()),
   searchResults: z.string(),
+  retweetContext: z.string().optional(),
 });
 
 export const writeNoteOutput = z.object({
