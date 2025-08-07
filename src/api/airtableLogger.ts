@@ -7,6 +7,7 @@ interface AirtableLogEntry {
   "Full Result": string;
   "Final note": string;
   "Would be posted": number;
+  commit?: string;
 }
 
 export class AirtableLogger {
@@ -58,16 +59,22 @@ export class AirtableLogger {
 
   async logEntry(entry: AirtableLogEntry): Promise<void> {
     try {
+      const fields: any = {
+        URL: entry.URL,
+        "Bot name": entry["Bot name"],
+        "Initial tweet body": entry["Initial tweet body"],
+        "Full Result": entry["Full Result"],
+        "Final note": entry["Final note"],
+        "Would be posted": entry["Would be posted"],
+      };
+      
+      if (entry.commit) {
+        fields.commit = entry.commit;
+      }
+
       await this.base(this.tableName).create([
         {
-          fields: {
-            URL: entry.URL,
-            "Bot name": entry["Bot name"],
-            "Initial tweet body": entry["Initial tweet body"],
-            "Full Result": entry["Full Result"],
-            "Final note": entry["Final note"],
-            "Would be posted": entry["Would be posted"],
-          },
+          fields,
         },
       ]);
       console.log(
@@ -83,16 +90,22 @@ export class AirtableLogger {
     if (entries.length === 0) return;
 
     try {
-      const records = entries.map((entry) => ({
-        fields: {
+      const records = entries.map((entry) => {
+        const fields: any = {
           URL: entry.URL,
           "Bot name": entry["Bot name"],
           "Initial tweet body": entry["Initial tweet body"],
           "Full Result": entry["Full Result"],
           "Final note": entry["Final note"],
           "Would be posted": entry["Would be posted"],
-        },
-      }));
+        };
+        
+        if (entry.commit) {
+          fields.commit = entry.commit;
+        }
+        
+        return { fields };
+      });
 
       await this.base(this.tableName).create(records);
       console.log(
@@ -163,7 +176,8 @@ export function createLogEntry(
   searchContextResult: any,
   noteResult: any,
   checkResult: any,
-  botName: string = "first-bot"
+  botName: string = "first-bot",
+  commit?: string
 ): AirtableLogEntry {
   // Create the tweet URL
   const tweetUrl = `https://twitter.com/i/status/${post.id}`;
@@ -192,7 +206,7 @@ export function createLogEntry(
       ? 1
       : 0;
 
-  return {
+  const logEntry: AirtableLogEntry = {
     URL: tweetUrl,
     "Bot name": botName,
     "Initial tweet body": tweetBody,
@@ -200,4 +214,10 @@ export function createLogEntry(
     "Final note": finalNote,
     "Would be posted": wouldBePosted,
   };
+
+  if (commit) {
+    logEntry.commit = commit;
+  }
+
+  return logEntry;
 }
