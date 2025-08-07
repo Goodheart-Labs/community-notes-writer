@@ -67,7 +67,7 @@ export class AirtableLogger {
         "Final note": entry["Final note"],
         "Would be posted": entry["Would be posted"],
       };
-      
+
       if (entry.commit) {
         fields.commit = entry.commit;
       }
@@ -99,11 +99,11 @@ export class AirtableLogger {
           "Final note": entry["Final note"],
           "Would be posted": entry["Would be posted"],
         };
-        
+
         if (entry.commit) {
           fields.commit = entry.commit;
         }
-        
+
         return { fields };
       });
 

@@ -142,11 +142,11 @@ function parsePostsResponse(data: any): Post[] {
           }
         }
       }
-      // Get referenced tweet data if this is a retweet
+      // Get referenced tweet data if this is a retweet or quoted tweet
       let referencedTweetData: ReferencedTweetData | undefined;
       if (tweet.referenced_tweets?.length > 0) {
         const referencedTweet = tweet.referenced_tweets.find(
-          (rt: any) => rt.type === 'retweeted'
+          (rt: any) => rt.type === 'retweeted' || rt.type === 'quoted'
         );
         if (referencedTweet) {
           const referencedData = referencedTweetsMap.get(referencedTweet.id);
