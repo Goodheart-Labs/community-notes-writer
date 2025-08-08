@@ -31,7 +31,7 @@ const promptTemplate = ({
 
 ${retweetContext}` : ''}
 
-Focus only on factual context that materially and significantly changes the interpretation of the post. Do not flag opinions, predictions, or minor details.
+Focus only on factual context that materially and significantly changes the interpretation of the post. Do not flag opinions, predictions, or minor details. Please be concise and get straight to the point.
 
 Please start by responding with one of the following statuses “TWEET NOT SIGNIFICANTLY INCORRECT” “NO MISSING CONTEXT” “CORRECTION WITH TRUSTWORTHY CITATION” “CORRECTION WITHOUT TRUSTWORTHY CITATION”
 
