@@ -33,12 +33,57 @@ ${retweetContext}` : ''}
 
 Focus only on factual context that materially and significantly changes the interpretation of the post. Do not flag opinions, predictions, or minor details. Please be concise and get straight to the point.
 
-Please start by responding with one of the following statuses “TWEET NOT SIGNIFICANTLY INCORRECT” “NO MISSING CONTEXT” “CORRECTION WITH TRUSTWORTHY CITATION” “CORRECTION WITHOUT TRUSTWORTHY CITATION”
+Please start by responding with one of the following statuses "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
 
-If important context is missing, write a community note to correct the claim. Always include a URL, if no url is possible respond with the relevant status. After the status, no more than 500 characters, including the URL. Respond with the following format:
+If important context is missing, write a community note to correct the claim. Always include a URL, if no url is possible respond with the relevant status. Keep the correction text to 275 characters or less (URL will be added separately). Respond with the following format:
 [Status]
 [Short correction of most significant error]
 [URL of most trustworthy source]
+
+Post perhaps in need of community note:
+\`\`\`
+${text}
+\`\`\`
+
+Perpelexity search results:
+\`\`\`
+${searchResults}
+
+Citations:
+\`\`\`
+${citations.join("\n")}
+\`\`\``;
+
+const retryPromptTemplate = ({
+  text,
+  searchResults,
+  citations,
+  retweetContext,
+  previousNote,
+  characterCount,
+}: {
+  text: string;
+  searchResults: string;
+  citations: string[];
+  retweetContext?: string;
+  previousNote: string;
+  characterCount: number;
+}) => `Given this X post and search results about it, identify the most important pieces of context that are missing from the post that would help readers understand the full picture.${retweetContext ? `
+
+${retweetContext}` : ''}
+
+Focus only on factual context that materially and significantly changes the interpretation of the post. Do not flag opinions, predictions, or minor details. Please be concise and get straight to the point.
+
+Please start by responding with one of the following statuses "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
+
+If important context is missing, write a community note to correct the claim. Always include a URL, if no url is possible respond with the relevant status. Keep the correction text to 275 characters or less (URL will be added separately). Respond with the following format:
+[Status]
+[Short correction of most significant error]
+[URL of most trustworthy source]
+
+IMPORTANT: You previously generated this note, but it was ${characterCount} characters long, which exceeds the 275 character limit. Please rewrite it to be 275 characters or less by removing less essential details and using more concise wording while preserving the key factual corrections:
+
+Previous note: "${previousNote}"
 
 Post perhaps in need of community note:
 \`\`\`
@@ -65,23 +110,63 @@ export async function writeNoteWithSearchFn(
     model: string;
   }
 ) {
+  const maxRetries = 3;
+  let attempt = 0;
+  let previousParsed: ReturnType<typeof parseStatusNoteUrl> | null = null;
+
   try {
-    const prompt = promptTemplate({ text, searchResults, citations, retweetContext });
+    while (attempt < maxRetries) {
+      attempt++;
+      
+      let prompt: string;
+      if (attempt === 1) {
+        // First attempt - use original prompt
+        prompt = promptTemplate({ text, searchResults, citations, retweetContext });
+      } else {
+        // Retry attempt - use previous result to provide feedback
+        if (!previousParsed) {
+          throw new Error("Previous result not available for retry");
+        }
+        
+        prompt = retryPromptTemplate({ 
+          text, 
+          searchResults, 
+          citations, 
+          retweetContext,
+          previousNote: previousParsed.note,
+          characterCount: previousParsed.note.length
+        });
+      }
 
-    const result = await llm.create({
-      model: config.model,
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-    });
+      const result = await llm.create({
+        model: config.model,
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+      });
 
-    let content = result.choices?.[0]?.message?.content ?? "";
+      const content = result.choices?.[0]?.message?.content ?? "";
+      const parsed = parseStatusNoteUrl(content);
 
-    // Use the new parser for status, note, url
-    return parseStatusNoteUrl(content);
+      // Check if note is within character limit
+      if (parsed.note.length <= 275) {
+        return parsed;
+      }
+
+      // Store for potential retry
+      previousParsed = parsed;
+
+      // If we've reached max retries, return the last result even if it's too long
+      if (attempt >= maxRetries) {
+        console.warn(`Note still exceeds 275 characters after ${maxRetries} attempts: ${parsed.note.length} characters`);
+        return parsed;
+      }
+    }
+
+    throw new Error("Unexpected error in retry logic");
   } catch (error) {
     console.error("Error in writeNoteWithSearchFn:", error);
     throw error;
