@@ -7,7 +7,7 @@ on:
   push:
     branches:
       - main
-      - 'staging:*'
+      - 'staging/*'
 
 jobs:
   fetch-and-submit:

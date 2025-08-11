@@ -92,17 +92,17 @@ The system runs automatically via GitHub Actions:
 
 To test changes without submitting actual Community Notes to X.com:
 
-1. **Create a staging branch** with the prefix `staging:`:
+1. **Create a staging branch** with the prefix `staging/`:
    ```bash
-   git checkout -b staging:experiment-name
-   # Example: staging:satire, staging:test-prompt, staging:new-model
+   git checkout -b staging/experiment-name
+   # Example: staging/satire, staging/test-prompt, staging/new-model
    ```
 
 2. **Make your changes** to the bot configuration, prompts, or logic
 
 3. **Push the branch**:
    ```bash
-   git push origin staging:experiment-name
+   git push origin staging/experiment-name
    ```
 
 4. **GitHub Actions will run automatically** on the staging branch with these behaviors:
