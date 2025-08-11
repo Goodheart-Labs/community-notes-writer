@@ -5,6 +5,7 @@ import { check as checkV1 } from "../pipeline/check";
 import { AirtableLogger, createLogEntry } from "../api/airtableLogger";
 import { getOriginalTweetContent } from "../utils/retweetUtils";
 import PQueue from "p-queue";
+import { execSync } from "child_process";
 
 const maxPosts = 10; // Maximum posts to process per run
 const concurrencyLimit = 3; // Process 3 posts at a time to avoid rate limiting
@@ -79,6 +80,25 @@ async function runPipeline(post: any, idx: number) {
 
 async function main() {
   try {
+    // Get current branch name
+    let currentBranch = "unknown";
+    try {
+      currentBranch = execSync("git rev-parse --abbrev-ref HEAD", { encoding: "utf8" }).trim();
+    } catch (error) {
+      console.warn("[main] Could not determine current branch, assuming main");
+      currentBranch = "main";
+    }
+    
+    // Determine if we should run in simulation mode (skip actual submission)
+    const shouldSubmitNotes = currentBranch === "main";
+    
+    console.log(`[main] Current branch: ${currentBranch}`);
+    console.log(`[main] Should submit notes: ${shouldSubmitNotes}`);
+    
+    if (!shouldSubmitNotes) {
+      console.log(`[main] Running in SIMULATION MODE - notes will be generated and logged but not submitted to X.com`);
+    }
+    
     // Get commit hash from environment variable (available in GitHub Actions)
     const commit = process.env.GITHUB_SHA;
     
@@ -132,7 +152,7 @@ async function main() {
           r.searchContextResult,
           r.noteResult,
           r.checkResult,
-          "first-bot",
+          currentBranch,
           commit
         );
         logEntries.push(logEntry);
@@ -141,26 +161,31 @@ async function main() {
           r.noteResult.status === "CORRECTION WITH TRUSTWORTHY CITATION" &&
           checkYes
         ) {
-          try {
-            // Submit the note using the same info as in your submitNote.ts
-            const { submitNote } = await import("../api/submitNote");
-            const info = {
-              classification: "misinformed_or_potentially_misleading",
-              misleading_tags: ["disputed_claim_as_fact"],
-              text: r.noteResult.note + " " + r.noteResult.url,
-              trustworthy_sources: true,
-            };
-            // TODO: Change this to false when we're ready to submit for real
-            const response = await submitNote(r.post.id, info, true);
+          if (shouldSubmitNotes) {
+            try {
+              // Submit the note using the same info as in your submitNote.ts
+              const { submitNote } = await import("../api/submitNote");
+              const info = {
+                classification: "misinformed_or_potentially_misleading",
+                misleading_tags: ["disputed_claim_as_fact"],
+                text: r.noteResult.note + " " + r.noteResult.url,
+                trustworthy_sources: true,
+              };
+              const response = await submitNote(r.post.id, info, false);
+              console.log(
+                `[main] Submitted note for post ${r.post.id}:`,
+                response
+              );
+              submitted++;
+            } catch (err: any) {
+              console.error(
+                `[main] Failed to submit note for post ${r.post.id}:`,
+                err.response?.data || err
+              );
+            }
+          } else {
             console.log(
-              `[main] Submitted note for post ${r.post.id}:`,
-              response
-            );
-            submitted++;
-          } catch (err: any) {
-            console.error(
-              `[main] Failed to submit note for post ${r.post.id}:`,
-              err.response?.data || err
+              `[main] SIMULATION MODE: Would submit note for post ${r.post.id} but skipping actual submission`
             );
           }
         } else {

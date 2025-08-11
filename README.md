@@ -88,6 +88,33 @@ The system runs automatically via GitHub Actions:
 - **Manual Trigger**: Available via GitHub Actions UI
 - **Workflow**: `.github/workflows/create-notes-routine.yml`
 
+### Testing Alternative Bot Configurations
+
+To test changes without submitting actual Community Notes to X.com:
+
+1. **Create a staging branch** with the prefix `staging:`:
+   ```bash
+   git checkout -b staging:experiment-name
+   # Example: staging:satire, staging:test-prompt, staging:new-model
+   ```
+
+2. **Make your changes** to the bot configuration, prompts, or logic
+
+3. **Push the branch**:
+   ```bash
+   git push origin staging:experiment-name
+   ```
+
+4. **GitHub Actions will run automatically** on the staging branch with these behaviors:
+   - ✅ **Full pipeline execution**: Posts are fetched, analyzed, and notes generated
+   - ✅ **Airtable logging**: All results are logged with the branch name as the bot name
+   - ✅ **Accurate "Would be posted" field**: Still reflects whether notes would be submitted based on your rules
+   - ❌ **No actual submission**: Notes are NOT submitted to X.com (simulation mode)
+
+5. **Review results** in Airtable to see how your changes perform without affecting live Community Notes
+
+This allows you to safely test different bot personalities, prompts, models, or logic changes in a production-like environment.
+
 ## Key Features
 
 ### Rate Limiting Protection
