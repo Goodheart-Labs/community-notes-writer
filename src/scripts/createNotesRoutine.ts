@@ -106,8 +106,8 @@ async function main() {
     const airtableLogger = new AirtableLogger();
     const logEntries: any[] = [];
 
-    // Get existing URLs from Airtable
-    const existingUrls = await airtableLogger.getExistingUrls();
+    // Get existing URLs from Airtable for this specific bot
+    const existingUrls = await airtableLogger.getExistingUrlsForBot(currentBranch);
 
     // Convert URLs to post IDs (extract ID from URL)
     const skipPostIds = new Set<string>();
@@ -116,7 +116,7 @@ async function main() {
       if (match && match[1]) skipPostIds.add(match[1]);
     });
 
-    console.log(`[main] Skipping ${skipPostIds.size} already-processed posts`);
+    console.log(`[main] Skipping ${skipPostIds.size} already-processed posts for bot '${currentBranch}'`);
 
     let posts = await fetchEligiblePosts(maxPosts, skipPostIds, 3); // Fetch up to 3 pages to get at least 10 posts
 

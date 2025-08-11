@@ -57,6 +57,38 @@ export class AirtableLogger {
     }
   }
 
+  async getExistingUrlsForBot(botName: string): Promise<Set<string>> {
+    const urls = new Set<string>();
+
+    try {
+      await this.base(this.tableName)
+        .select({
+          fields: ["URL", "Bot name"],
+          pageSize: 100,
+          filterByFormula: `{Bot name} = '${botName}'`,
+        })
+        .eachPage((records, fetchNextPage) => {
+          records.forEach((record) => {
+            const url = record.get("URL");
+            if (url) urls.add(url.toString());
+          });
+          fetchNextPage();
+        });
+
+      console.log(
+        `[AirtableLogger] Found ${urls.size} existing URLs for bot '${botName}' in Airtable`
+      );
+      return urls;
+    } catch (error) {
+      console.error(
+        `[AirtableLogger] Error fetching existing URLs for bot '${botName}':`,
+        error
+      );
+      // Return empty set on error to allow processing to continue
+      return new Set();
+    }
+  }
+
   async logEntry(entry: AirtableLogEntry): Promise<void> {
     try {
       const fields: any = {
