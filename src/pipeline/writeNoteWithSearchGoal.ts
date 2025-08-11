@@ -81,7 +81,16 @@ If important context is missing, write a community note to correct the claim. Al
 [Short correction of most significant error]
 [URL of most trustworthy source]
 
-IMPORTANT: You previously generated this note, but it was ${characterCount} characters long, which exceeds the 275 character limit. Please rewrite it to be 275 characters or less by removing less essential details and using more concise wording while preserving the key factual corrections:
+🚨 CRITICAL FAILURE: Your previous note was ${characterCount} characters - this VIOLATES the strict 275 character limit! You MUST drastically reduce this length NOW. This is NOT a suggestion - it is MANDATORY.
+
+REQUIRED ACTIONS:
+- CUT unnecessary words and filler phrases
+- Use shorter synonyms and abbreviations  
+- ELIMINATE any non-essential details
+- Remove redundant information
+- Make every single word count
+
+The 275 character limit is ABSOLUTE and NON-NEGOTIABLE. FAILURE to comply will result in rejection.
 
 Previous note: "${previousNote}"
 
