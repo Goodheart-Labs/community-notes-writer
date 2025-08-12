@@ -22,14 +22,13 @@ export type NoteInfo = {
  */
 export async function submitNote(
   postId: string,
-  info: NoteInfo,
-  testMode: boolean = true
+  info: NoteInfo
 ): Promise<SubmitNoteResponse> {
   const url = "https://api.x.com/2/notes";
   const data = {
     info,
     post_id: postId,
-    test_mode: testMode,
+    test_mode: true, // TODO: update this when X opens up the API
   };
 
   const body = JSON.stringify(data);
@@ -38,9 +37,9 @@ export async function submitNote(
     "Content-Type": "application/json",
   };
 
-  const response = await axios.post(url, data, { 
+  const response = await axios.post(url, data, {
     headers,
-    timeout: 30000 // 30 second timeout to prevent hanging
+    timeout: 30000, // 30 second timeout to prevent hanging
   });
   return response.data;
 }

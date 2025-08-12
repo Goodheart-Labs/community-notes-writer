@@ -171,7 +171,7 @@ async function main() {
                 text: r.noteResult.note + " " + r.noteResult.url,
                 trustworthy_sources: true,
               };
-              const response = await submitNote(r.post.id, info, false);
+              const response = await submitNote(r.post.id, info);
               console.log(
                 `[main] Submitted note for post ${r.post.id}:`,
                 response
