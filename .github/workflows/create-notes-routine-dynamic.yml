@@ -55,15 +55,15 @@ jobs:
         with:
           ref: ${{ matrix.branch }}
 
-      # - uses: oven-sh/setup-bun@v1
-      #   with:
-      #     bun-version: latest
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
 
-      # - name: Install dependencies
-      #   run: bun install
+      - name: Install dependencies
+        run: bun install
 
-      # - name: Install Playwright Browsers
-      #   run: npx playwright install --with-deps
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
 
-      # - name: Run create notes routine script
-      #   run: bun run src/scripts/createNotesRoutine.ts
+      - name: Run create notes routine script
+        run: bun run src/scripts/createNotesRoutine.ts
