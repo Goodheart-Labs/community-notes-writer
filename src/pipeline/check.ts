@@ -10,7 +10,7 @@ const prompt = (
   sourceUrl: string,
   sourceContent: string
 ) => `
-Given this source content and a community note, determine if the source contains information that justifies the claim made in the community note.
+Given this source content and a community note, determine if the source DIRECTLY supports the specific factual correction made in the note.
 Community note to check:
 \`\`\`
 ${missingContext}
@@ -20,9 +20,16 @@ Source content:
 \`\`\`
 ${sourceContent.substring(0, 30000)} // Limit to avoid token issues
 \`\`\`
-Analyze the source carefully and respond with ONLY:
-- “YES” if the source justifies the claim, such that a person could read it and agree with the correction
-- “NO” if the source is not very clear on the claim given, in any way.
+CRITICAL REQUIREMENTS:
+- The source must specifically address the exact claim being corrected (not just general background)
+- The source must be recent/relevant to the timeframe discussed in the original post
+- The correction must be directly supported by clear statements in the source
+- General context or tangentially related information does NOT count
+
+Respond with ONLY:
+- "YES" if the source directly and specifically supports the factual correction
+- "NO" if the source lacks direct support, is about a different timeframe, or provides only general context
+
 Do not provide any other text, quotes, or explanations. Just respond with YES or NO.`;
 
 // Helper to fetch and simplify page content
