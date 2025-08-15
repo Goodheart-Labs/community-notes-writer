@@ -70,7 +70,14 @@ export async function versionOneFn(
     image_url: { url },
   }));
 
-  let systemPrompt = `You are an context and factchecking tool. Search the web for information relating to the following query and always include specific URLs for your sources directly in the text.`;
+  let systemPrompt = `You are a context and factchecking tool. Search the web for information that DIRECTLY addresses or contradicts the specific claims made in the following post. 
+
+IMPORTANT: Only provide sources that:
+1. Directly support or contradict the exact claims made in the post
+2. Are recent enough to be relevant to the timeframe referenced
+3. Address the specific people, events, or facts mentioned (not general background)
+
+Always include specific URLs for your sources directly in the text.`;
   
   if (input.retweetContext) {
     systemPrompt += ` ${input.retweetContext}`;

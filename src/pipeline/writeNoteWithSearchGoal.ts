@@ -27,18 +27,30 @@ const promptTemplate = ({
   searchResults: string;
   citations: string[];
   retweetContext?: string;
-}) => `Given this X post and search results about it, identify the most important pieces of context that are missing from the post that would help readers understand the full picture.${retweetContext ? `
+}) => `TASK: Analyze this X post and determine if it contains factual errors that require correction.${retweetContext ? `
 
 ${retweetContext}` : ''}
 
-Focus only on factual context that materially and significantly changes the interpretation of the post. Do not flag opinions, predictions, or minor details. Please be concise and get straight to the point.
+CRITICAL ANALYSIS STEPS:
+1. IDENTIFY THE SPECIFIC CLAIM: What exact factual assertion is the post making?
+2. VERIFY ACCURACY: Do the search results directly contradict this specific claim?
+3. SOURCE RELEVANCE: Do the sources directly address this claim (not general background)?
+4. DIRECTNESS: Can you definitively say "this specific claim is false" based on the evidence?
+
+ONLY correct posts with clear factual errors supported by direct, relevant sources. Avoid:
+- General background context that doesn't contradict the claim
+- Sources about different timeframes than what the post discusses  
+- Correcting things the post never actually claimed
+- Vague corrections that don't directly address the core assertion
 
 Please start by responding with one of the following statuses "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
 
-If important context is missing, write a community note to correct the claim. Always include a URL, if no url is possible respond with the relevant status. Keep the correction text to 275 characters or less (URL will be added separately). Respond with the following format:
+If writing a correction, be explicit and direct. Start with "This claim is incorrect" or "This statement is false" and explain exactly what is wrong. Keep correction text to 275 characters or less (URL will be added separately).
+
+Format:
 [Status]
-[Short correction of most significant error]
-[URL of most trustworthy source]
+[Direct correction stating exactly what is wrong]
+[URL that specifically contradicts the claim]
 
 Post perhaps in need of community note:
 \`\`\`
@@ -68,18 +80,30 @@ const retryPromptTemplate = ({
   retweetContext?: string;
   previousNote: string;
   characterCount: number;
-}) => `Given this X post and search results about it, identify the most important pieces of context that are missing from the post that would help readers understand the full picture.${retweetContext ? `
+}) => `TASK: Analyze this X post and determine if it contains factual errors that require correction.${retweetContext ? `
 
 ${retweetContext}` : ''}
 
-Focus only on factual context that materially and significantly changes the interpretation of the post. Do not flag opinions, predictions, or minor details. Please be concise and get straight to the point.
+CRITICAL ANALYSIS STEPS:
+1. IDENTIFY THE SPECIFIC CLAIM: What exact factual assertion is the post making?
+2. VERIFY ACCURACY: Do the search results directly contradict this specific claim?
+3. SOURCE RELEVANCE: Do the sources directly address this claim (not general background)?
+4. DIRECTNESS: Can you definitively say "this specific claim is false" based on the evidence?
+
+ONLY correct posts with clear factual errors supported by direct, relevant sources. Avoid:
+- General background context that doesn't contradict the claim
+- Sources about different timeframes than what the post discusses  
+- Correcting things the post never actually claimed
+- Vague corrections that don't directly address the core assertion
 
 Please start by responding with one of the following statuses "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
 
-If important context is missing, write a community note to correct the claim. Always include a URL, if no url is possible respond with the relevant status. Keep the correction text to 275 characters or less (URL will be added separately). Respond with the following format:
+If writing a correction, be explicit and direct. Start with "This claim is incorrect" or "This statement is false" and explain exactly what is wrong. Keep correction text to 275 characters or less (URL will be added separately).
+
+Format:
 [Status]
-[Short correction of most significant error]
-[URL of most trustworthy source]
+[Direct correction stating exactly what is wrong]
+[URL that specifically contradicts the claim]
 
 🚨 CRITICAL FAILURE: Your previous note was ${characterCount} characters - this VIOLATES the strict 275 character limit! You MUST drastically reduce this length NOW. This is NOT a suggestion - it is MANDATORY.
 
