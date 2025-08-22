@@ -27,9 +27,13 @@ const promptTemplate = ({
   searchResults: string;
   citations: string[];
   retweetContext?: string;
-}) => `TASK: Analyze this X post and determine if it contains factual errors that require correction.${retweetContext ? `
+}) => `TASK: Analyze this X post and determine if it contains factual errors that require correction.${
+  retweetContext
+    ? `
 
-${retweetContext}` : ''}
+${retweetContext}`
+    : ""
+}
 
 CRITICAL ANALYSIS STEPS:
 1. IDENTIFY THE SPECIFIC CLAIM: What exact factual assertion is the post making?
@@ -44,8 +48,6 @@ ONLY correct posts with clear factual errors supported by direct, relevant sourc
 - Vague corrections that don't directly address the core assertion
 
 Please start by responding with one of the following statuses "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
-
-If writing a correction, be explicit and direct. Start with "This claim is incorrect" or "This statement is false" and explain exactly what is wrong. Keep correction text to 275 characters or less (URL will be added separately).
 
 Format:
 [Status]
@@ -80,9 +82,13 @@ const retryPromptTemplate = ({
   retweetContext?: string;
   previousNote: string;
   characterCount: number;
-}) => `TASK: Analyze this X post and determine if it contains factual errors that require correction.${retweetContext ? `
+}) => `TASK: Analyze this X post and determine if it contains factual errors that require correction.${
+  retweetContext
+    ? `
 
-${retweetContext}` : ''}
+${retweetContext}`
+    : ""
+}
 
 CRITICAL ANALYSIS STEPS:
 1. IDENTIFY THE SPECIFIC CLAIM: What exact factual assertion is the post making?
@@ -97,8 +103,6 @@ ONLY correct posts with clear factual errors supported by direct, relevant sourc
 - Vague corrections that don't directly address the core assertion
 
 Please start by responding with one of the following statuses "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
-
-If writing a correction, be explicit and direct. Start with "This claim is incorrect" or "This statement is false" and explain exactly what is wrong. Keep correction text to 275 characters or less (URL will be added separately).
 
 Format:
 [Status]
@@ -138,7 +142,12 @@ export const writeNoteWithSearch = writeNoteWithSearchGoal.register({
 });
 
 export async function writeNoteWithSearchFn(
-  { text, searchResults, citations, retweetContext }: z.infer<typeof textAndSearchResults>,
+  {
+    text,
+    searchResults,
+    citations,
+    retweetContext,
+  }: z.infer<typeof textAndSearchResults>,
   config: {
     model: string;
   }
@@ -150,24 +159,29 @@ export async function writeNoteWithSearchFn(
   try {
     while (attempt < maxRetries) {
       attempt++;
-      
+
       let prompt: string;
       if (attempt === 1) {
         // First attempt - use original prompt
-        prompt = promptTemplate({ text, searchResults, citations, retweetContext });
+        prompt = promptTemplate({
+          text,
+          searchResults,
+          citations,
+          retweetContext,
+        });
       } else {
         // Retry attempt - use previous result to provide feedback
         if (!previousParsed) {
           throw new Error("Previous result not available for retry");
         }
-        
-        prompt = retryPromptTemplate({ 
-          text, 
-          searchResults, 
-          citations, 
+
+        prompt = retryPromptTemplate({
+          text,
+          searchResults,
+          citations,
           retweetContext,
           previousNote: previousParsed.note,
-          characterCount: previousParsed.note.length
+          characterCount: previousParsed.note.length,
         });
       }
 
@@ -194,7 +208,9 @@ export async function writeNoteWithSearchFn(
 
       // If we've reached max retries, return the last result even if it's too long
       if (attempt >= maxRetries) {
-        console.warn(`Note still exceeds 275 characters after ${maxRetries} attempts: ${parsed.note.length} characters`);
+        console.warn(
+          `Note still exceeds 275 characters after ${maxRetries} attempts: ${parsed.note.length} characters`
+        );
         return parsed;
       }
     }
