@@ -17,6 +17,63 @@ export const writeNoteWithSearchGoal = createGoal({
 
 writeNoteWithSearchGoal.testFrom(searchVersionOne);
 
+const MAIN_PROMPT = `TASK: Analyze this X post and determine if it contains factual errors that require correction.
+
+CRITICAL ANALYSIS STEPS:
+1. IDENTIFY THE SPECIFIC CLAIM: What exact factual assertion(s) is the post making?
+2. UNDERSTAND RESEARCH: What is the situation that the research is addressing?
+3. VERIFY ACCURACY: Do the search results directly contradict this specific claim(s)?
+4. CHOOSE CORRECTION: What is the most important claim to correct?
+5. SOURCE RELEVANCE: Will the sources likely address this claim (not general background)?
+6. DIRECTNESS: Can you definitively provide relevant context based on the evidence?
+
+ONLY correct posts with clear factual errors supported by direct, relevant sources. Avoid:
+- General background context that doesn't contradict the claim
+- Sources about different timeframes than what the post discusses  
+- Correcting things the post never actually claimed
+- Vague corrections that don't directly address the core assertion
+- Attempting to correct opinions
+- Attempting to correct sarasm which would be obvious to the typical reader
+
+Please start by responding with one of the following statuses "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
+
+Format:
+[Status]
+[Direct correction stating exactly what is wrong]
+[URL that specifically contradicts the claim]`;
+
+const formatDataSection = ({
+  text,
+  searchResults,
+  citations,
+  retweetContext,
+}: {
+  text: string;
+  searchResults: string;
+  citations: string[];
+  retweetContext?: string;
+}) => `Post perhaps in need of community note:
+\`\`\`
+${text}
+\`\`\`
+
+${retweetContext
+  ? `\`\`\`
+Quote tweet information (what the post is referring to, by convention):
+${retweetContext}
+\`\`\``
+  : ""
+}
+
+Perpelexity search results:
+\`\`\`
+${searchResults}
+
+Citations:
+\`\`\`
+${citations.join("\n")}
+\`\`\``;
+
 const promptTemplate = ({
   text,
   searchResults,
@@ -27,46 +84,9 @@ const promptTemplate = ({
   searchResults: string;
   citations: string[];
   retweetContext?: string;
-}) => `TASK: Analyze this X post and determine if it contains factual errors that require correction.${
-  retweetContext
-    ? `
+}) => `${MAIN_PROMPT}
 
-${retweetContext}`
-    : ""
-}
-
-CRITICAL ANALYSIS STEPS:
-1. IDENTIFY THE SPECIFIC CLAIM: What exact factual assertion is the post making?
-2. VERIFY ACCURACY: Do the search results directly contradict this specific claim?
-3. SOURCE RELEVANCE: Do the sources directly address this claim (not general background)?
-4. DIRECTNESS: Can you definitively say "this specific claim is false" based on the evidence?
-
-ONLY correct posts with clear factual errors supported by direct, relevant sources. Avoid:
-- General background context that doesn't contradict the claim
-- Sources about different timeframes than what the post discusses  
-- Correcting things the post never actually claimed
-- Vague corrections that don't directly address the core assertion
-
-Please start by responding with one of the following statuses "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
-
-Format:
-[Status]
-[Direct correction stating exactly what is wrong]
-[URL that specifically contradicts the claim]
-
-Post perhaps in need of community note:
-\`\`\`
-${text}
-\`\`\`
-
-Perpelexity search results:
-\`\`\`
-${searchResults}
-
-Citations:
-\`\`\`
-${citations.join("\n")}
-\`\`\``;
+${formatDataSection({ text, searchResults, citations, retweetContext })}`;
 
 const retryPromptTemplate = ({
   text,
@@ -82,32 +102,7 @@ const retryPromptTemplate = ({
   retweetContext?: string;
   previousNote: string;
   characterCount: number;
-}) => `TASK: Analyze this X post and determine if it contains factual errors that require correction.${
-  retweetContext
-    ? `
-
-${retweetContext}`
-    : ""
-}
-
-CRITICAL ANALYSIS STEPS:
-1. IDENTIFY THE SPECIFIC CLAIM: What exact factual assertion is the post making?
-2. VERIFY ACCURACY: Do the search results directly contradict this specific claim?
-3. SOURCE RELEVANCE: Do the sources directly address this claim (not general background)?
-4. DIRECTNESS: Can you definitively say "this specific claim is false" based on the evidence?
-
-ONLY correct posts with clear factual errors supported by direct, relevant sources. Avoid:
-- General background context that doesn't contradict the claim
-- Sources about different timeframes than what the post discusses  
-- Correcting things the post never actually claimed
-- Vague corrections that don't directly address the core assertion
-
-Please start by responding with one of the following statuses "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
-
-Format:
-[Status]
-[Direct correction stating exactly what is wrong]
-[URL that specifically contradicts the claim]
+) => `${MAIN_PROMPT}
 
 🚨 CRITICAL FAILURE: Your previous note was ${characterCount} characters - this VIOLATES the strict 275 character limit! You MUST drastically reduce this length NOW. This is NOT a suggestion - it is MANDATORY.
 
@@ -122,19 +117,7 @@ The 275 character limit is ABSOLUTE and NON-NEGOTIABLE. FAILURE to comply will r
 
 Previous note: "${previousNote}"
 
-Post perhaps in need of community note:
-\`\`\`
-${text}
-\`\`\`
-
-Perpelexity search results:
-\`\`\`
-${searchResults}
-
-Citations:
-\`\`\`
-${citations.join("\n")}
-\`\`\``;
+${formatDataSection({ text, searchResults, citations, retweetContext })}`;
 
 export const writeNoteWithSearch = writeNoteWithSearchGoal.register({
   name: "write note with search v1",

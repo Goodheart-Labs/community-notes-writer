@@ -28,7 +28,7 @@ CRITICAL REQUIREMENTS:
 
 Respond with ONLY:
 - "YES" if the source directly and specifically supports the factual correction
-- "NO" if the source lacks direct support, is about a different timeframe, or provides only general context
+- "NO" otherwise. Ie if the source lacks direct support, is about a different timeframe, or provides only general context
 
 Do not provide any other text, quotes, or explanations. Just respond with YES or NO.`;
 
