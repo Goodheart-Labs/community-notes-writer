@@ -102,7 +102,7 @@ const retryPromptTemplate = ({
   retweetContext?: string;
   previousNote: string;
   characterCount: number;
-) => `${MAIN_PROMPT}
+}) => `${MAIN_PROMPT}
 
 🚨 CRITICAL FAILURE: Your previous note was ${characterCount} characters - this VIOLATES the strict 275 character limit! You MUST drastically reduce this length NOW. This is NOT a suggestion - it is MANDATORY.
 
