@@ -38,3 +38,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 query-cache.db
 
 TODO.md
+
+# Elo rating web app compiled files
+src/elo-rating-web/dist/
+src/elo-rating-web/*.js
