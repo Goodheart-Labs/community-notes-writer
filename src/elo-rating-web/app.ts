@@ -11,6 +11,8 @@ class CommunityNotesComparison {
   private comparisonPairs: ComparisonPair[] = [];
   private currentPairIndex: number = 0;
   private comparisons: Comparison[] = [];
+  private currentComparison: Comparison | null = null;
+  private awaitingRating: boolean = false;
 
   constructor() {
     this.eloCalculator = new EloCalculator();
@@ -88,6 +90,29 @@ class CommunityNotesComparison {
     // Export button
     document.getElementById('exportResults')?.addEventListener('click', () => this.exportResults());
 
+    // Rating interface buttons
+    document.getElementById('submitRatings')?.addEventListener('click', () => this.submitRatings());
+    document.getElementById('skipRatings')?.addEventListener('click', () => this.skipRatings());
+
+    // Sync slider and input for ratings
+    const leftSlider = document.getElementById('leftRating') as HTMLInputElement;
+    const leftInput = document.getElementById('leftRatingInput') as HTMLInputElement;
+    const rightSlider = document.getElementById('rightRating') as HTMLInputElement;
+    const rightInput = document.getElementById('rightRatingInput') as HTMLInputElement;
+
+    leftSlider?.addEventListener('input', () => {
+      leftInput.value = (parseFloat(leftSlider.value) / 100).toFixed(2);
+    });
+    leftInput?.addEventListener('input', () => {
+      leftSlider.value = (parseFloat(leftInput.value) * 100).toString();
+    });
+    rightSlider?.addEventListener('input', () => {
+      rightInput.value = (parseFloat(rightSlider.value) / 100).toFixed(2);
+    });
+    rightInput?.addEventListener('input', () => {
+      rightSlider.value = (parseFloat(rightInput.value) * 100).toString();
+    });
+
     // Clear cache button
     document.getElementById('clearCache')?.addEventListener('click', () => {
       this.cacheManager.clearCache();
@@ -101,6 +126,8 @@ class CommunityNotesComparison {
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
+      // Don't process shortcuts when rating
+      if (this.awaitingRating) return;
       if (!this.comparisonPairs.length || this.currentPairIndex >= this.comparisonPairs.length) return;
       
       switch(e.key.toLowerCase()) {
@@ -292,9 +319,17 @@ class CommunityNotesComparison {
     const tweetUrl = document.getElementById('tweetUrl')!;
     tweetUrl.innerHTML = `<a href="${pair.tweet.url}" target="_blank">${pair.tweet.url}</a>`;
     
-    // Display notes with clickable links and character count
-    this.displayNoteWithLinks('leftNote', pair.leftNote.text, pair.leftNote.status);
-    this.displayNoteWithLinks('rightNote', pair.rightNote.text, pair.rightNote.status);
+    // Display notes with clickable links, character count, and existing ratings
+    this.displayNoteWithLinks('leftNote', pair.leftNote.text, pair.leftNote.status, pair.leftNote.wouldNathanPost);
+    this.displayNoteWithLinks('rightNote', pair.rightNote.text, pair.rightNote.status, pair.rightNote.wouldNathanPost);
+    
+    // Show notice if both notes already have ratings
+    const ratingsNotice = document.getElementById('existingRatingsNotice')!;
+    if (pair.leftNote.wouldNathanPost !== undefined && pair.rightNote.wouldNathanPost !== undefined) {
+      ratingsNotice.classList.remove('hidden');
+    } else {
+      ratingsNotice.classList.add('hidden');
+    }
   }
 
   private parseTweetData(tweetJson: string): any {
@@ -339,7 +374,7 @@ class CommunityNotesComparison {
     return charCount;
   }
 
-  private displayNoteWithLinks(elementId: string, noteText: string, status: string): void {
+  private displayNoteWithLinks(elementId: string, noteText: string, status: string, rating?: number): void {
     const element = document.getElementById(elementId)!;
     
     // Calculate Community Notes character count
@@ -361,7 +396,7 @@ class CommunityNotesComparison {
       statusColor = 'text-orange-600';
     }
     
-    // Display note with character count and status
+    // Display note with character count, status, and rating if available
     element.innerHTML = `
       <div>
         <div class="mb-2">${htmlText}</div>
@@ -374,6 +409,11 @@ class CommunityNotesComparison {
           <div class="${statusColor}">
             <i class="fas fa-tag mr-1"></i>${status}
           </div>
+          ${rating !== undefined ? `
+          <div class="text-blue-600 font-semibold">
+            <i class="fas fa-star mr-1"></i>Nathan Rating: ${rating.toFixed(2)}
+          </div>
+          ` : ''}
         </div>
       </div>
     `;
@@ -385,15 +425,14 @@ class CommunityNotesComparison {
     const pair = this.comparisonPairs[this.currentPairIndex];
     
     if (result !== 'skip') {
-      // Record comparison
-      const comparison: Comparison = {
+      // Create comparison record
+      this.currentComparison = {
         tweetId: pair.tweet.id,
         leftBot: pair.leftNote.botName,
         rightBot: pair.rightNote.botName,
         winner: result === 'draw' ? null : (result === 'left' ? pair.leftNote.botName : pair.rightNote.botName),
         timestamp: new Date()
       };
-      this.comparisons.push(comparison);
 
       // Update Elo ratings
       if (result === 'draw') {
@@ -405,12 +444,15 @@ class CommunityNotesComparison {
       }
 
       this.updateLeaderboard();
-    }
 
-    // Move to next comparison
-    this.currentPairIndex++;
-    this.updateProgress();
-    this.displayCurrentComparison();
+      // Show rating interface
+      this.showRatingInterface();
+    } else {
+      // Skip - move to next comparison
+      this.currentPairIndex++;
+      this.updateProgress();
+      this.displayCurrentComparison();
+    }
   }
 
   private updateProgress(): void {
@@ -454,13 +496,117 @@ class CommunityNotesComparison {
   }
 
   private showInterface(interfaceId: string): void {
-    const interfaces = ['loadingState', 'comparisonInterface', 'noMoreComparisons'];
+    const interfaces = ['loadingState', 'comparisonInterface', 'ratingInterface', 'noMoreComparisons'];
     interfaces.forEach(id => {
       const element = document.getElementById(id);
       if (element) {
         element.classList.toggle('hidden', id !== interfaceId);
       }
     });
+  }
+
+  private showRatingInterface(): void {
+    this.awaitingRating = true;
+    const pair = this.comparisonPairs[this.currentPairIndex];
+    
+    // Show note previews
+    const leftPreview = document.getElementById('leftNotePreview')!;
+    const rightPreview = document.getElementById('rightNotePreview')!;
+    
+    leftPreview.textContent = pair.leftNote.text;
+    rightPreview.textContent = pair.rightNote.text;
+    
+    // Reset sliders and inputs to middle
+    (document.getElementById('leftRating') as HTMLInputElement).value = '50';
+    (document.getElementById('leftRatingInput') as HTMLInputElement).value = '0.50';
+    (document.getElementById('rightRating') as HTMLInputElement).value = '50';
+    (document.getElementById('rightRatingInput') as HTMLInputElement).value = '0.50';
+    
+    // Show existing ratings if available
+    if (pair.leftNote.wouldNathanPost !== undefined) {
+      const leftRating = pair.leftNote.wouldNathanPost;
+      (document.getElementById('leftRating') as HTMLInputElement).value = (leftRating * 100).toString();
+      (document.getElementById('leftRatingInput') as HTMLInputElement).value = leftRating.toFixed(2);
+    }
+    if (pair.rightNote.wouldNathanPost !== undefined) {
+      const rightRating = pair.rightNote.wouldNathanPost;
+      (document.getElementById('rightRating') as HTMLInputElement).value = (rightRating * 100).toString();
+      (document.getElementById('rightRatingInput') as HTMLInputElement).value = rightRating.toFixed(2);
+    }
+    
+    this.showInterface('ratingInterface');
+  }
+
+  private async submitRatings(): Promise<void> {
+    if (!this.currentComparison || !this.airtableClient) return;
+    
+    const pair = this.comparisonPairs[this.currentPairIndex];
+    const leftRating = parseFloat((document.getElementById('leftRatingInput') as HTMLInputElement).value);
+    const rightRating = parseFloat((document.getElementById('rightRatingInput') as HTMLInputElement).value);
+    
+    // Store ratings in the comparison
+    this.currentComparison.leftRating = leftRating;
+    this.currentComparison.rightRating = rightRating;
+    
+    // Update Airtable
+    try {
+      console.log('Updating ratings:', {
+        leftNote: { recordId: pair.leftNote.recordId, rating: leftRating },
+        rightNote: { recordId: pair.rightNote.recordId, rating: rightRating }
+      });
+      
+      await Promise.all([
+        this.airtableClient.updateNathanPostRating(pair.leftNote.recordId, leftRating),
+        this.airtableClient.updateNathanPostRating(pair.rightNote.recordId, rightRating)
+      ]);
+      
+      // Update local data
+      pair.leftNote.wouldNathanPost = leftRating;
+      pair.rightNote.wouldNathanPost = rightRating;
+      
+      console.log('Ratings updated successfully');
+    } catch (error) {
+      console.error('Failed to update Airtable ratings:', error);
+      console.error('Left note record ID:', pair.leftNote.recordId);
+      console.error('Right note record ID:', pair.rightNote.recordId);
+      alert('Failed to save ratings to Airtable. Check console for details.');
+    }
+    
+    // Save comparison and move to next
+    this.comparisons.push(this.currentComparison);
+    this.currentComparison = null;
+    this.awaitingRating = false;
+    
+    this.currentPairIndex++;
+    this.updateProgress();
+    
+    // Show next comparison or completion
+    if (this.currentPairIndex < this.comparisonPairs.length) {
+      this.showInterface('comparisonInterface');
+      this.displayCurrentComparison();
+    } else {
+      this.showInterface('noMoreComparisons');
+    }
+  }
+
+  private skipRatings(): void {
+    if (!this.currentComparison) return;
+    
+    // Save comparison without ratings
+    this.comparisons.push(this.currentComparison);
+    this.currentComparison = null;
+    this.awaitingRating = false;
+    
+    this.currentPairIndex++;
+    this.updateProgress();
+    
+    // Show next comparison or completion
+    if (this.currentPairIndex < this.comparisonPairs.length) {
+      this.showInterface('comparisonInterface');
+      this.displayCurrentComparison();
+    } else {
+      this.showInterface('noMoreComparisons');
+    }
   }
 
   private exportResults(): void {
