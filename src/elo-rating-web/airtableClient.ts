@@ -116,7 +116,7 @@ export class AirtableClient {
             text: fields["Final note"],
             status: status,
             wouldBePosted: fields["Would be posted"] === 1,
-            wouldNathanPost: fields["Would Nathan post"]
+            wouldNathanPost: fields["Would Nathan have posted?"]
           });
         });
         
@@ -158,7 +158,7 @@ export class AirtableClient {
         },
         body: JSON.stringify({
           fields: {
-            "Would Nathan post": rating
+            "Would Nathan have posted?": rating
           }
         })
       });
