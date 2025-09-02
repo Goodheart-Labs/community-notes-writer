@@ -11,15 +11,15 @@ export class EloCalculator {
     this.ratings = new Map();
   }
 
-  private getExpected(ratingA: number, ratingB: number): number {
+  private getExpected(ratingA: number, ratingB: number) {
     return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
   }
 
-  private updateRating(expected: number, actual: number, currentRating: number): number {
+  private updateRating(expected: number, actual: number, currentRating: number) {
     return currentRating + this.k * (actual - expected);
   }
 
-  private ensureBranchExists(branchName: string): void {
+  private ensureBranchExists(branchName: string) {
     if (!this.ratings.has(branchName)) {
       this.ratings.set(branchName, {
         name: branchName,
@@ -32,7 +32,7 @@ export class EloCalculator {
     }
   }
 
-  processComparison(winner: string, loser: string, isDraw: boolean = false): void {
+  processComparison(winner: string, loser: string, isDraw: boolean = false) {
     this.ensureBranchExists(winner);
     this.ensureBranchExists(loser);
 
@@ -64,20 +64,20 @@ export class EloCalculator {
     }
   }
 
-  getRatings(): BranchRating[] {
+  getRatings() {
     return Array.from(this.ratings.values())
       .sort((a, b) => b.rating - a.rating);
   }
 
-  getRating(branchName: string): number {
+  getRating(branchName: string) {
     return this.ratings.get(branchName)?.rating || this.baseRating;
   }
 
-  reset(): void {
+  reset() {
     this.ratings.clear();
   }
 
-  exportData(): string {
+  exportData() {
     const data = this.getRatings();
     const headers = ['Branch', 'Rating', 'Wins', 'Losses', 'Draws', 'Total Games', 'Win Rate'];
     

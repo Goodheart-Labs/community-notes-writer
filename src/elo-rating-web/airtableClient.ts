@@ -12,7 +12,7 @@ export class AirtableClient {
     this.tableName = tableName;
   }
 
-  async fetchRecords(daysBack: number): Promise<Tweet[]> {
+  async fetchRecords(daysBack: number) {
     const tweets = new Map<string, Tweet>();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - daysBack);
@@ -140,12 +140,12 @@ export class AirtableClient {
     return filteredTweets;
   }
 
-  private extractTweetId(url: string): string | null {
+  private extractTweetId(url: string) {
     const match = url.match(/status\/(\d+)/);
     return match ? match[1] : null;
   }
 
-  async updateNathanPostRating(recordId: string, rating: number): Promise<void> {
+  async updateNathanPostRating(recordId: string, rating: number) {
     const encodedTableName = encodeURIComponent(this.tableName);
     const url = `https://api.airtable.com/v0/${this.baseId}/${encodedTableName}/${recordId}`;
     
