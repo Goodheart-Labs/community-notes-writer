@@ -48,7 +48,7 @@ export async function fetchEligiblePosts(
       "media.fields":
         "type,url,preview_image_url,height,width,duration_ms,public_metrics",
       expansions: "attachments.media_keys,referenced_tweets.id",
-      test_mode: "true",
+      test_mode: "false",
     });
 
     // Add pagination token if we have one
