@@ -19,16 +19,36 @@ const globalTimeout = setTimeout(() => {
 
 async function runPipeline(post: any, idx: number) {
   console.log(
-    `\n${"=".repeat(80)}\n[runPipeline] Starting pipeline for post #${idx + 1} (ID: ${post.id})\n${"=".repeat(80)}`
+    `[runPipeline] Starting pipeline for post #${idx + 1} (ID: ${post.id})`
   );
   try {
     // Get the original tweet content (handling retweets)
     const originalContent = getOriginalTweetContent(post);
     
     console.log(`[runPipeline] Processing ${originalContent.isRetweet ? 'retweet' : 'original tweet'} for post #${idx + 1}`);
-    console.log(`\n[TWEET TEXT]:\n${originalContent.text}\n`);
-    if (originalContent.retweetContext) {
-      console.log(`[RETWEET CONTEXT]:\n${originalContent.retweetContext}\n`);
+    
+    // Check if the post contains video media
+    const hasVideo = post.media?.some((m: any) => m.type === 'video') || 
+                    post.referenced_tweet_data?.media?.some((m: any) => m.type === 'video');
+    
+    if (hasVideo) {
+      console.log(`[runPipeline] Skipping post #${idx + 1} (ID: ${post.id}) - contains video media`);
+      
+      // Return a special result for video posts that will still be logged to Airtable
+      return {
+        post,
+        searchContextResult: {
+          text: originalContent.text,
+          searchResults: "SKIPPED - Post contains video media",
+          citations: []
+        },
+        noteResult: {
+          status: "SKIPPED - VIDEO CONTENT",
+          note: "Video content is not currently supported for Community Notes generation",
+          url: ""
+        },
+        checkResult: "NO - VIDEO CONTENT"
+      };
     }
     
     const searchContextResult = await searchV1(
@@ -45,8 +65,6 @@ async function runPipeline(post: any, idx: number) {
         post.id
       })`
     );
-    console.log(`\n[SEARCH RESULTS]:\n${searchContextResult.searchResults}\n`);
-    console.log(`[CITATIONS]:\n${searchContextResult.citations?.join('\n') || 'None'}\n`);
 
     const noteResult = await writeV1(
       {
@@ -59,11 +77,6 @@ async function runPipeline(post: any, idx: number) {
     console.log(
       `[runPipeline] Note generated for post #${idx + 1} (ID: ${post.id})`
     );
-    console.log(`\n[NOTE GENERATION OUTPUT]:`);
-    console.log(`Status: ${noteResult.status}`);
-    console.log(`Note: ${noteResult.note}`);
-    console.log(`URL: ${noteResult.url}`);
-    console.log(`Character count: ${noteResult.note.length} characters\n`);
 
     const checkResult = await checkV1({
       note: noteResult.note,
@@ -73,8 +86,6 @@ async function runPipeline(post: any, idx: number) {
     console.log(
       `[runPipeline] Check complete for post #${idx + 1} (ID: ${post.id})`
     );
-    console.log(`\n[CHECK RESULT]: ${checkResult}\n`);
-    console.log(`${"=".repeat(80)}\n`);
 
     return {
       post,
