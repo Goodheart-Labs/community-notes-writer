@@ -19,13 +19,17 @@ const globalTimeout = setTimeout(() => {
 
 async function runPipeline(post: any, idx: number) {
   console.log(
-    `[runPipeline] Starting pipeline for post #${idx + 1} (ID: ${post.id})`
+    `\n${"=".repeat(80)}\n[runPipeline] Starting pipeline for post #${idx + 1} (ID: ${post.id})\n${"=".repeat(80)}`
   );
   try {
     // Get the original tweet content (handling retweets)
     const originalContent = getOriginalTweetContent(post);
     
     console.log(`[runPipeline] Processing ${originalContent.isRetweet ? 'retweet' : 'original tweet'} for post #${idx + 1}`);
+    console.log(`\n[TWEET TEXT]:\n${originalContent.text}\n`);
+    if (originalContent.retweetContext) {
+      console.log(`[RETWEET CONTEXT]:\n${originalContent.retweetContext}\n`);
+    }
     
     const searchContextResult = await searchV1(
       {
@@ -41,6 +45,8 @@ async function runPipeline(post: any, idx: number) {
         post.id
       })`
     );
+    console.log(`\n[SEARCH RESULTS]:\n${searchContextResult.searchResults}\n`);
+    console.log(`[CITATIONS]:\n${searchContextResult.citations?.join('\n') || 'None'}\n`);
 
     const noteResult = await writeV1(
       {
@@ -53,6 +59,11 @@ async function runPipeline(post: any, idx: number) {
     console.log(
       `[runPipeline] Note generated for post #${idx + 1} (ID: ${post.id})`
     );
+    console.log(`\n[NOTE GENERATION OUTPUT]:`);
+    console.log(`Status: ${noteResult.status}`);
+    console.log(`Note: ${noteResult.note}`);
+    console.log(`URL: ${noteResult.url}`);
+    console.log(`Character count: ${noteResult.note.length} characters\n`);
 
     const checkResult = await checkV1({
       note: noteResult.note,
@@ -62,6 +73,8 @@ async function runPipeline(post: any, idx: number) {
     console.log(
       `[runPipeline] Check complete for post #${idx + 1} (ID: ${post.id})`
     );
+    console.log(`\n[CHECK RESULT]: ${checkResult}\n`);
+    console.log(`${"=".repeat(80)}\n`);
 
     return {
       post,
