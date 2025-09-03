@@ -29,6 +29,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "typecheck-elo": "cd src/elo-rating-web && tsc --noEmit",
     "test-airtable": "bun run src/test-airtable-logger.ts",
     "routine": "bun run src/scripts/createNotesRoutine.ts",
     "test": "bun run src/scripts/run.ts",

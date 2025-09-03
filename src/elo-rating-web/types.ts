@@ -7,6 +7,7 @@ export interface AirtableRecord {
     "Full Result": string;
     "Final note": string;
     "Would be posted": number;
+    "Would Nathan have posted?": number;
     "Created": string;
   };
 }
@@ -19,10 +20,12 @@ export interface Tweet {
 }
 
 export interface Note {
+  recordId: string;
   botName: string;
   text: string;
   status: string;
   wouldBePosted: boolean;
+  wouldNathanPost?: number;
 }
 
 export interface Comparison {
@@ -30,6 +33,8 @@ export interface Comparison {
   leftBot: string;
   rightBot: string;
   winner: string | null;
+  leftRating?: number;
+  rightRating?: number;
   timestamp: Date;
 }
 

@@ -11,6 +11,16 @@ class CommunityNotesComparison {
   private comparisonPairs: ComparisonPair[] = [];
   private currentPairIndex: number = 0;
   private comparisons: Comparison[] = [];
+  private currentComparison: Comparison | null = null;
+  private awaitingRating: boolean = false;
+
+  private getElement(id: string) {
+    const element = document.getElementById(id);
+    if (!element) {
+      console.error(`Element with id '${id}' not found`);
+    }
+    return element;
+  }
 
   constructor() {
     this.eloCalculator = new EloCalculator();
@@ -26,7 +36,7 @@ class CommunityNotesComparison {
     }, 100);
   }
 
-  private checkForCredentials(): void {
+  private checkForCredentials() {
     // First check for injected credentials from server
     const config = (window as any).AIRTABLE_CONFIG;
     if (config && config.apiKey && config.baseId && config.tableName) {
@@ -50,8 +60,10 @@ class CommunityNotesComparison {
     }
   }
 
-  private showCredentialsPrompt(): void {
-    const loadingState = document.getElementById('loadingState')!;
+  private showCredentialsPrompt() {
+    const loadingState = this.getElement('loadingState');
+    if (!loadingState) return;
+    
     loadingState.innerHTML = `
       <div class="max-w-2xl mx-auto">
         <i class="fas fa-key text-4xl text-gray-400 mb-4"></i>
@@ -69,7 +81,7 @@ class CommunityNotesComparison {
     `;
   }
 
-  private initializeEventListeners(): void {
+  private initializeEventListeners() {
     // Fetch data button - hold shift to force refresh
     document.getElementById('fetchData')?.addEventListener('click', (e) => {
       const forceRefresh = e.shiftKey;
@@ -88,6 +100,29 @@ class CommunityNotesComparison {
     // Export button
     document.getElementById('exportResults')?.addEventListener('click', () => this.exportResults());
 
+    // Rating interface buttons
+    document.getElementById('submitRatings')?.addEventListener('click', () => this.submitRatings());
+    document.getElementById('skipRatings')?.addEventListener('click', () => this.skipRatings());
+
+    // Sync slider and input for ratings
+    const leftSlider = document.getElementById('leftRating') as HTMLInputElement;
+    const leftInput = document.getElementById('leftRatingInput') as HTMLInputElement;
+    const rightSlider = document.getElementById('rightRating') as HTMLInputElement;
+    const rightInput = document.getElementById('rightRatingInput') as HTMLInputElement;
+
+    leftSlider?.addEventListener('input', () => {
+      leftInput.value = (parseFloat(leftSlider.value) / 100).toFixed(2);
+    });
+    leftInput?.addEventListener('input', () => {
+      leftSlider.value = (parseFloat(leftInput.value) * 100).toString();
+    });
+    rightSlider?.addEventListener('input', () => {
+      rightInput.value = (parseFloat(rightSlider.value) / 100).toFixed(2);
+    });
+    rightInput?.addEventListener('input', () => {
+      rightSlider.value = (parseFloat(rightInput.value) * 100).toString();
+    });
+
     // Clear cache button
     document.getElementById('clearCache')?.addEventListener('click', () => {
       this.cacheManager.clearCache();
@@ -101,6 +136,8 @@ class CommunityNotesComparison {
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
+      // Don't process shortcuts when rating
+      if (this.awaitingRating) return;
       if (!this.comparisonPairs.length || this.currentPairIndex >= this.comparisonPairs.length) return;
       
       switch(e.key.toLowerCase()) {
@@ -125,11 +162,13 @@ class CommunityNotesComparison {
     });
   }
 
-  private async fetchData(forceRefresh: boolean = false): Promise<void> {
+  private async fetchData(forceRefresh: boolean = false) {
     if (!this.airtableClient) return;
 
     const button = document.getElementById('fetchData') as HTMLButtonElement;
-    const loadingState = document.getElementById('loadingState')!;
+    const loadingState = this.getElement('loadingState');
+    if (!loadingState) return;
+    
     button.disabled = true;
     button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Fetching...';
 
@@ -185,10 +224,13 @@ class CommunityNotesComparison {
       if (this.comparisonPairs.length > 0) {
         this.showInterface('comparisonInterface');
         this.displayCurrentComparison();
-        document.getElementById('exportResults')!.removeAttribute('disabled');
+        const exportButton = this.getElement('exportResults');
+        if (exportButton) exportButton.removeAttribute('disabled');
       } else {
         this.showInterface('loadingState');
-        const loadingState = document.getElementById('loadingState')!;
+        const loadingState = this.getElement('loadingState');
+        if (!loadingState) return;
+        
         loadingState.innerHTML = `
           <i class="fas fa-info-circle text-4xl text-gray-400 mb-4"></i>
           <p class="text-gray-600">No tweets found with multiple branch attempts in the selected time period.</p>
@@ -198,7 +240,9 @@ class CommunityNotesComparison {
       console.error('Error fetching data:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
-      const loadingState = document.getElementById('loadingState')!;
+      const loadingState = this.getElement('loadingState');
+      if (!loadingState) return;
+      
       loadingState.innerHTML = `
         <div class="max-w-2xl mx-auto">
           <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
@@ -214,7 +258,7 @@ class CommunityNotesComparison {
     }
   }
 
-  private generateComparisonPairs(): void {
+  private generateComparisonPairs() {
     this.comparisonPairs = [];
     
     for (const tweet of this.tweets) {
@@ -250,7 +294,7 @@ class CommunityNotesComparison {
     this.comparisonPairs.sort(() => Math.random() - 0.5);
   }
 
-  private displayCurrentComparison(): void {
+  private displayCurrentComparison() {
     if (this.currentPairIndex >= this.comparisonPairs.length) {
       this.showInterface('noMoreComparisons');
       return;
@@ -259,7 +303,8 @@ class CommunityNotesComparison {
     const pair = this.comparisonPairs[this.currentPairIndex];
     
     // Display tweet
-    const tweetContent = document.getElementById('tweetContent')!;
+    const tweetContent = this.getElement('tweetContent');
+    if (!tweetContent) return;
     const tweetData = this.parseTweetData(pair.tweet.text);
     
     // Build tweet display with media if available
@@ -289,15 +334,27 @@ class CommunityNotesComparison {
     tweetContent.innerHTML = tweetHtml;
     
     // Display URL
-    const tweetUrl = document.getElementById('tweetUrl')!;
+    const tweetUrl = this.getElement('tweetUrl');
+    if (!tweetUrl) return;
+    
     tweetUrl.innerHTML = `<a href="${pair.tweet.url}" target="_blank">${pair.tweet.url}</a>`;
     
-    // Display notes with clickable links and character count
-    this.displayNoteWithLinks('leftNote', pair.leftNote.text, pair.leftNote.status);
-    this.displayNoteWithLinks('rightNote', pair.rightNote.text, pair.rightNote.status);
+    // Display notes with clickable links, character count, and existing ratings
+    this.displayNoteWithLinks('leftNote', pair.leftNote.text, pair.leftNote.status, pair.leftNote.wouldNathanPost);
+    this.displayNoteWithLinks('rightNote', pair.rightNote.text, pair.rightNote.status, pair.rightNote.wouldNathanPost);
+    
+    // Show notice if both notes already have ratings
+    const ratingsNotice = this.getElement('existingRatingsNotice');
+    if (ratingsNotice) {
+      if (pair.leftNote.wouldNathanPost !== undefined && pair.rightNote.wouldNathanPost !== undefined) {
+        ratingsNotice.classList.remove('hidden');
+      } else {
+        ratingsNotice.classList.add('hidden');
+      }
+    }
   }
 
-  private parseTweetData(tweetJson: string): any {
+  private parseTweetData(tweetJson: string) {
     try {
       const data = JSON.parse(tweetJson);
       return {
@@ -312,13 +369,13 @@ class CommunityNotesComparison {
     }
   }
 
-  private escapeHtml(text: string): string {
+  private escapeHtml(text: string) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   }
 
-  private calculateCommunityNoteLength(text: string): number {
+  private calculateCommunityNoteLength(text: string) {
     // In Community Notes, URLs count as 1 character
     const urlRegex = /https?:\/\/[^\s]+/g;
     let charCount = 0;
@@ -326,11 +383,13 @@ class CommunityNotesComparison {
     
     const matches = text.matchAll(urlRegex);
     for (const match of matches) {
-      // Add the text before the URL
-      charCount += match.index! - lastIndex;
-      // Add 1 for the URL
-      charCount += 1;
-      lastIndex = match.index! + match[0].length;
+      if (match.index !== undefined) {
+        // Add the text before the URL
+        charCount += match.index - lastIndex;
+        // Add 1 for the URL
+        charCount += 1;
+        lastIndex = match.index + match[0].length;
+      }
     }
     
     // Add any remaining text after the last URL
@@ -339,8 +398,9 @@ class CommunityNotesComparison {
     return charCount;
   }
 
-  private displayNoteWithLinks(elementId: string, noteText: string, status: string): void {
-    const element = document.getElementById(elementId)!;
+  private displayNoteWithLinks(elementId: string, noteText: string, status: string, rating?: number) {
+    const element = this.getElement(elementId);
+    if (!element) return;
     
     // Calculate Community Notes character count
     const charCount = this.calculateCommunityNoteLength(noteText);
@@ -361,7 +421,7 @@ class CommunityNotesComparison {
       statusColor = 'text-orange-600';
     }
     
-    // Display note with character count and status
+    // Display note with character count, status, and rating if available
     element.innerHTML = `
       <div>
         <div class="mb-2">${htmlText}</div>
@@ -374,26 +434,30 @@ class CommunityNotesComparison {
           <div class="${statusColor}">
             <i class="fas fa-tag mr-1"></i>${status}
           </div>
+          ${rating !== undefined ? `
+          <div class="text-blue-600 font-semibold">
+            <i class="fas fa-star mr-1"></i>Nathan Rating: ${rating.toFixed(2)}
+          </div>
+          ` : ''}
         </div>
       </div>
     `;
   }
 
-  private handleComparison(result: 'left' | 'right' | 'draw' | 'skip'): void {
+  private handleComparison(result: 'left' | 'right' | 'draw' | 'skip') {
     if (this.currentPairIndex >= this.comparisonPairs.length) return;
 
     const pair = this.comparisonPairs[this.currentPairIndex];
     
     if (result !== 'skip') {
-      // Record comparison
-      const comparison: Comparison = {
+      // Create comparison record
+      this.currentComparison = {
         tweetId: pair.tweet.id,
         leftBot: pair.leftNote.botName,
         rightBot: pair.rightNote.botName,
         winner: result === 'draw' ? null : (result === 'left' ? pair.leftNote.botName : pair.rightNote.botName),
         timestamp: new Date()
       };
-      this.comparisons.push(comparison);
 
       // Update Elo ratings
       if (result === 'draw') {
@@ -405,26 +469,34 @@ class CommunityNotesComparison {
       }
 
       this.updateLeaderboard();
-    }
 
-    // Move to next comparison
-    this.currentPairIndex++;
-    this.updateProgress();
-    this.displayCurrentComparison();
+      // Show rating interface
+      this.showRatingInterface();
+    } else {
+      // Skip - move to next comparison
+      this.currentPairIndex++;
+      this.updateProgress();
+      this.displayCurrentComparison();
+    }
   }
 
-  private updateProgress(): void {
+  private updateProgress() {
     const current = this.currentPairIndex;
     const total = this.comparisonPairs.length;
     const percent = total > 0 ? (current / total) * 100 : 0;
 
-    document.getElementById('progressText')!.textContent = `${current} / ${total}`;
-    document.getElementById('progressPercent')!.textContent = `${Math.round(percent)}%`;
-    document.getElementById('progressBar')!.style.width = `${percent}%`;
+    const progressText = this.getElement('progressText');
+    const progressPercent = this.getElement('progressPercent');
+    const progressBar = this.getElement('progressBar');
+    
+    if (progressText) progressText.textContent = `${current} / ${total}`;
+    if (progressPercent) progressPercent.textContent = `${Math.round(percent)}%`;
+    if (progressBar) (progressBar as HTMLElement).style.width = `${percent}%`;
   }
 
-  private updateLeaderboard(): void {
-    const leaderboard = document.getElementById('leaderboard')!;
+  private updateLeaderboard() {
+    const leaderboard = this.getElement('leaderboard');
+    if (!leaderboard) return;
     const ratings = this.eloCalculator.getRatings();
 
     if (ratings.length === 0) {
@@ -453,8 +525,8 @@ class CommunityNotesComparison {
     }).join('');
   }
 
-  private showInterface(interfaceId: string): void {
-    const interfaces = ['loadingState', 'comparisonInterface', 'noMoreComparisons'];
+  private showInterface(interfaceId: string) {
+    const interfaces = ['loadingState', 'comparisonInterface', 'ratingInterface', 'noMoreComparisons'];
     interfaces.forEach(id => {
       const element = document.getElementById(id);
       if (element) {
@@ -463,7 +535,111 @@ class CommunityNotesComparison {
     });
   }
 
-  private exportResults(): void {
+  private showRatingInterface() {
+    this.awaitingRating = true;
+    const pair = this.comparisonPairs[this.currentPairIndex];
+    
+    // Show note previews
+    const leftPreview = this.getElement('leftNotePreview');
+    const rightPreview = this.getElement('rightNotePreview');
+    
+    if (leftPreview) leftPreview.textContent = pair.leftNote.text;
+    if (rightPreview) rightPreview.textContent = pair.rightNote.text;
+    
+    // Reset sliders and inputs to middle
+    (document.getElementById('leftRating') as HTMLInputElement).value = '50';
+    (document.getElementById('leftRatingInput') as HTMLInputElement).value = '0.50';
+    (document.getElementById('rightRating') as HTMLInputElement).value = '50';
+    (document.getElementById('rightRatingInput') as HTMLInputElement).value = '0.50';
+    
+    // Show existing ratings if available
+    if (pair.leftNote.wouldNathanPost !== undefined) {
+      const leftRating = pair.leftNote.wouldNathanPost;
+      (document.getElementById('leftRating') as HTMLInputElement).value = (leftRating * 100).toString();
+      (document.getElementById('leftRatingInput') as HTMLInputElement).value = leftRating.toFixed(2);
+    }
+    if (pair.rightNote.wouldNathanPost !== undefined) {
+      const rightRating = pair.rightNote.wouldNathanPost;
+      (document.getElementById('rightRating') as HTMLInputElement).value = (rightRating * 100).toString();
+      (document.getElementById('rightRatingInput') as HTMLInputElement).value = rightRating.toFixed(2);
+    }
+    
+    this.showInterface('ratingInterface');
+  }
+
+  private async submitRatings() {
+    if (!this.currentComparison || !this.airtableClient) return;
+    
+    const pair = this.comparisonPairs[this.currentPairIndex];
+    const leftRating = parseFloat((document.getElementById('leftRatingInput') as HTMLInputElement).value);
+    const rightRating = parseFloat((document.getElementById('rightRatingInput') as HTMLInputElement).value);
+    
+    // Store ratings in the comparison
+    this.currentComparison.leftRating = leftRating;
+    this.currentComparison.rightRating = rightRating;
+    
+    // Update Airtable
+    try {
+      console.log('Updating ratings:', {
+        leftNote: { recordId: pair.leftNote.recordId, rating: leftRating },
+        rightNote: { recordId: pair.rightNote.recordId, rating: rightRating }
+      });
+      
+      await Promise.all([
+        this.airtableClient.updateNathanPostRating(pair.leftNote.recordId, leftRating),
+        this.airtableClient.updateNathanPostRating(pair.rightNote.recordId, rightRating)
+      ]);
+      
+      // Update local data
+      pair.leftNote.wouldNathanPost = leftRating;
+      pair.rightNote.wouldNathanPost = rightRating;
+      
+      console.log('Ratings updated successfully');
+    } catch (error) {
+      console.error('Failed to update Airtable ratings:', error);
+      console.error('Left note record ID:', pair.leftNote.recordId);
+      console.error('Right note record ID:', pair.rightNote.recordId);
+      alert('Failed to save ratings to Airtable. Check console for details.');
+    }
+    
+    // Save comparison and move to next
+    this.comparisons.push(this.currentComparison);
+    this.currentComparison = null;
+    this.awaitingRating = false;
+    
+    this.currentPairIndex++;
+    this.updateProgress();
+    
+    // Show next comparison or completion
+    if (this.currentPairIndex < this.comparisonPairs.length) {
+      this.showInterface('comparisonInterface');
+      this.displayCurrentComparison();
+    } else {
+      this.showInterface('noMoreComparisons');
+    }
+  }
+
+  private skipRatings() {
+    if (!this.currentComparison) return;
+    
+    // Save comparison without ratings
+    this.comparisons.push(this.currentComparison);
+    this.currentComparison = null;
+    this.awaitingRating = false;
+    
+    this.currentPairIndex++;
+    this.updateProgress();
+    
+    // Show next comparison or completion
+    if (this.currentPairIndex < this.comparisonPairs.length) {
+      this.showInterface('comparisonInterface');
+      this.displayCurrentComparison();
+    } else {
+      this.showInterface('noMoreComparisons');
+    }
+  }
+
+  private exportResults() {
     const csv = this.eloCalculator.exportData();
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);

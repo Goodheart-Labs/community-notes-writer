@@ -12,7 +12,7 @@ export class AirtableClient {
     this.tableName = tableName;
   }
 
-  async fetchRecords(daysBack: number): Promise<Tweet[]> {
+  async fetchRecords(daysBack: number) {
     const tweets = new Map<string, Tweet>();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - daysBack);
@@ -108,13 +108,15 @@ export class AirtableClient {
             console.log('Could not extract status from Full Result');
           }
           
-          // Add note
+          // Add note with record ID
           const tweet = tweets.get(tweetId)!;
           tweet.notes.push({
+            recordId: record.id,
             botName: fields["Bot name"],
             text: fields["Final note"],
             status: status,
-            wouldBePosted: fields["Would be posted"] === 1
+            wouldBePosted: fields["Would be posted"] === 1,
+            wouldNathanPost: fields["Would Nathan have posted?"]
           });
         });
         
@@ -138,8 +140,39 @@ export class AirtableClient {
     return filteredTweets;
   }
 
-  private extractTweetId(url: string): string | null {
+  private extractTweetId(url: string) {
     const match = url.match(/status\/(\d+)/);
     return match ? match[1] : null;
+  }
+
+  async updateNathanPostRating(recordId: string, rating: number) {
+    const encodedTableName = encodeURIComponent(this.tableName);
+    const url = `https://api.airtable.com/v0/${this.baseId}/${encodedTableName}/${recordId}`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          fields: {
+            "Would Nathan have posted?": rating
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Failed to update record ${recordId}:`, errorText);
+        throw new Error(`Failed to update Airtable record: ${response.status}`);
+      }
+
+      console.log(`Updated record ${recordId} with rating ${rating}`);
+    } catch (error) {
+      console.error('Error updating Airtable:', error);
+      throw error;
+    }
   }
 }
