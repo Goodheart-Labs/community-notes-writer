@@ -80,7 +80,7 @@ async function runPipeline(post: any, idx: number) {
         text: originalContent.text,
         media: originalContent.media,
         searchResults: "",
-        retweetContext: originalContent.retweetContext,
+        quotedContext: originalContent.quotedContext,
         searchKeywords: keywordsResult?.searchQuery,
       },
       { model: "perplexity/sonar" }
