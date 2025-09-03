@@ -1,8 +1,9 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { AirtableDataFetcher, ResearchData } from './fetchAirtableData';
 import { testPromptOnSample } from './testPrompt';
+import { PromptLabError } from './errors';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,7 +32,7 @@ async function initializeData() {
 // API Routes
 
 // Get model info
-app.get('/api/model-info', (req, res) => {
+app.get('/api/model-info', (req: Request, res: Response) => {
   res.json({ 
     model: process.env.LLM_MODEL || 'anthropic/claude-sonnet-4',
     description: 'Claude Sonnet 4.1'
@@ -39,7 +40,7 @@ app.get('/api/model-info', (req, res) => {
 });
 
 // Get default prompt template
-app.get('/api/default-prompt', async (req, res) => {
+app.get('/api/default-prompt', async (req: Request, res: Response) => {
   const defaultPrompt = `TASK: Analyze this X post and determine if it contains factual errors that require correction.
 
 CRITICAL ANALYSIS STEPS:
@@ -79,7 +80,7 @@ Citations:
 });
 
 // Test prompt on random samples
-app.post('/api/test-prompt', async (req, res) => {
+app.post('/api/test-prompt', async (req: Request, res: Response) => {
   try {
     const { promptTemplate, sampleSize = 10 } = req.body;
     
@@ -103,23 +104,25 @@ app.post('/api/test-prompt', async (req, res) => {
     res.json({ results });
   } catch (error) {
     console.error('Error testing prompt:', error);
-    res.status(500).json({ error: error.message });
+    const promptError = PromptLabError.fromUnknown(error, 'Failed to test prompt');
+    res.status(promptError.statusCode).json({ error: promptError.message });
   }
 });
 
 // Refresh data from Airtable
-app.post('/api/refresh-data', async (req, res) => {
+app.post('/api/refresh-data', async (req: Request, res: Response) => {
   try {
     cachedData = await dataFetcher.getResearchData(true); // Force refresh
     res.json({ success: true, count: cachedData.length });
   } catch (error) {
     console.error('Error refreshing data:', error);
-    res.status(500).json({ error: error.message });
+    const promptError = PromptLabError.fromUnknown(error, 'Failed to refresh data');
+    res.status(promptError.statusCode).json({ error: promptError.message });
   }
 });
 
 // Get cached data stats
-app.get('/api/data-stats', (req, res) => {
+app.get('/api/data-stats', (req: Request, res: Response) => {
   res.json({
     count: cachedData.length,
     hasData: cachedData.length > 0

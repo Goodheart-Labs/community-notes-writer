@@ -1,6 +1,7 @@
 import { ResearchData } from './fetchAirtableData';
 import { llm } from '../pipeline/llm';
 import { parseStatusNoteUrl } from '../pipeline/parseStatusNoteUrl';
+import { PromptLabError } from './errors';
 
 export interface TestResult {
   id: string;
@@ -76,14 +77,14 @@ export async function testPromptOnSample(
       
       // Find note text (everything after "Note:" until URL or end)
       const noteMatch = content.match(/Note:\s*([\s\S]+?)(?:https?:\/\/|$)/i);
-      if (noteMatch) {
+      if (noteMatch && noteMatch[1]) {
         // Remove any URLs from the note text itself (they'll be added separately)
         noteText = noteMatch[1].replace(/https?:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+/g, '').trim();
       }
       
       // Find URL
       const urlMatch = content.match(/https?:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+/);
-      if (urlMatch) {
+      if (urlMatch && urlMatch[0]) {
         url = urlMatch[0];
       }
       
@@ -132,6 +133,7 @@ export async function testPromptOnSample(
       console.log(`✓ Processed sample ${results.length}/${samples.length}`);
     } catch (error) {
       console.error(`Error processing sample ${sample.id}:`, error);
+      const promptError = PromptLabError.fromUnknown(error, 'Failed to process sample');
       results.push({
         id: sample.id,
         url: sample.url,
@@ -143,7 +145,7 @@ export async function testPromptOnSample(
         generatedUrl: '',
         status: 'ERROR',
         characterCount: 0,
-        error: error.message
+        error: promptError.message
       });
     }
   }
@@ -176,7 +178,11 @@ function replacePlaceholders(template: string, data: ResearchData): string {
 export async function testSinglePrompt(
   data: ResearchData,
   promptTemplate: string
-): Promise<TestResult> {
+) {
   const results = await testPromptOnSample([data], promptTemplate);
-  return results[0];
+  const result = results[0];
+  if (!result) {
+    throw new PromptLabError('No result returned from prompt test', 'NO_RESULT');
+  }
+  return result;
 }
