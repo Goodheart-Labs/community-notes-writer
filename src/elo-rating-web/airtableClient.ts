@@ -15,11 +15,23 @@ export class AirtableClient {
   async fetchRecords(daysBack: number) {
     const tweets = new Map<string, Tweet>();
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - daysBack);
+    // Handle fractional days (e.g., 0.33 for 8 hours)
+    const hoursBack = daysBack * 24;
+    startDate.setHours(startDate.getHours() - hoursBack);
     
     console.log(`Fetching records from ${startDate.toISOString()} to now`);
-    console.log(`Days back: ${daysBack}`);
-    this.onProgress?.(`Fetching records from the last ${daysBack} day${daysBack > 1 ? 's' : ''}...`);
+    console.log(`Days back: ${daysBack} (${hoursBack} hours)`);
+    
+    // Format progress message based on time period
+    let progressMsg = '';
+    if (daysBack < 1) {
+      progressMsg = `Fetching records from the last ${Math.round(hoursBack)} hours...`;
+    } else if (daysBack === 1) {
+      progressMsg = `Fetching records from the last 24 hours...`;
+    } else {
+      progressMsg = `Fetching records from the last ${daysBack} days...`;
+    }
+    this.onProgress?.(progressMsg);
     
     let offset = '';
     let pageCount = 0;

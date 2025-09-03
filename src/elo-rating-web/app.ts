@@ -184,7 +184,7 @@ class CommunityNotesComparison {
     };
 
     try {
-      const daysBack = parseInt((document.getElementById('dateRange') as HTMLSelectElement).value);
+      const daysBack = parseFloat((document.getElementById('dateRange') as HTMLSelectElement).value);
       
       // Check cache first (unless force refresh)
       const cachedTweets = forceRefresh ? null : this.cacheManager.getFromCache(daysBack);

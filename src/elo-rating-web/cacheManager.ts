@@ -18,7 +18,8 @@ export class CacheManager {
       const expiryTime = Date.now() + (this.cacheHours * 60 * 60 * 1000);
       localStorage.setItem(this.cacheExpiryKey, expiryTime.toString());
       
-      console.log(`Cached ${tweets.length} tweets for ${daysBack} days`);
+      const timeDesc = daysBack < 1 ? `${Math.round(daysBack * 24)} hours` : `${daysBack} days`;
+      console.log(`Cached ${tweets.length} tweets for ${timeDesc}`);
     } catch (error) {
       console.error('Error saving to cache:', error);
     }
@@ -40,7 +41,9 @@ export class CacheManager {
       
       // Check if the cached data is for the same time period
       if (cacheData.daysBack !== daysBack) {
-        console.log(`Cache is for ${cacheData.daysBack} days, but requested ${daysBack} days`);
+        const cacheDesc = cacheData.daysBack < 1 ? `${Math.round(cacheData.daysBack * 24)} hours` : `${cacheData.daysBack} days`;
+        const requestDesc = daysBack < 1 ? `${Math.round(daysBack * 24)} hours` : `${daysBack} days`;
+        console.log(`Cache is for ${cacheDesc}, but requested ${requestDesc}`);
         return null;
       }
 
