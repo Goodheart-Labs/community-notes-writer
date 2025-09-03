@@ -108,6 +108,8 @@ Note:
 [Clear additional context relating to the most important inaccurate claim]
 [URL that specifically supports that additional context]
 
+Today's date: ${new Date().toISOString().split('T')[0]}
+
 Post perhaps in need of community note:
 \`\`\`
 ${text}

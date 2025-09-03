@@ -77,6 +77,8 @@ IMPORTANT: Only provide sources that:
 2. Are recent enough to be relevant to the timeframe referenced
 3. Address the specific people, events, or facts mentioned (not general background)
 
+When presenting information from your research, please clearly indicate the date of each piece of information (e.g., "According to Reuters (December 2024)..." or "As reported on January 15, 2025...").
+
 Always include specific URLs for your sources directly in the text.`;
   
   if (input.retweetContext) {
