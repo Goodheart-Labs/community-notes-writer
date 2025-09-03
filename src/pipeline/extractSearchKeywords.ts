@@ -51,12 +51,12 @@ Focus on:
 - The key claims made in the post
 - The central notions being conveyed
 
-Output in the following format:
-Reasoning:
-[Your reasoning for your keyword choices]
-
-Keywords:
-[5-10 specific keywords]
+Output your response as a JSON object with the following structure:
+{
+  "reasoning": "Your reasoning for your keyword choices",
+  "keywords": ["keyword1", "keyword2", "keyword3", ...],
+  "searchQuery": "Combined search query string"
+}
 
 Post to analyze:
 ${text}
