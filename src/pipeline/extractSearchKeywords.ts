@@ -27,7 +27,7 @@ export const extractSearchKeywordsGoal = createGoal({
 // Register the implementation
 export const extractSearchKeywords = extractSearchKeywordsGoal.register({
   name: "extract keywords v1",
-  config: [{ model: "anthropic/claude-4" }],
+  config: [{ model: "anthropic/claude-sonnet-4" }],
 });
 
 const promptTemplate = ({

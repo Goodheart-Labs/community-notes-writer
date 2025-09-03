@@ -62,7 +62,7 @@ async function runPipeline(post: any, idx: number) {
           media: originalContent.media,
           quotedContext: originalContent.quotedContext,
         },
-        { model: "anthropic/claude-3-5-sonnet-20241022" }
+        { model: "anthropic/claude-sonnet-4" }
       );
       console.log(
         `[runPipeline] Keywords extracted for post #${idx + 1} (ID: ${post.id}): ${keywordsResult.searchQuery}`
