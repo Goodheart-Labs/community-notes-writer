@@ -59,7 +59,7 @@ async function runPipeline(post: any, idx: number) {
         {
           text: originalContent.text,
           media: originalContent.media,
-          retweetContext: originalContent.retweetContext,
+          quotedContext: originalContent.quotedContext,
         },
         { model: "anthropic/claude-3-5-sonnet-20241022" }
       );

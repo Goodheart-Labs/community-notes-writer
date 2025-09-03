@@ -29,7 +29,7 @@ export const searchContextGoal = createGoal({
     media: z.array(z.string()),
     imagesSummary: z.string().optional(),
     searchResults: z.string(),
-    retweetContext: z.string().optional(),
+    quotedContext: z.string().optional(),
     searchKeywords: z.string().optional().describe("Pre-extracted keywords to guide the search"),
   }),
   output: textAndSearchResults,
@@ -60,7 +60,7 @@ export async function versionOneFn(
     media: string[];
     imagesSummary?: string;
     searchResults: string;
-    retweetContext?: string;
+    quotedContext?: string;
     searchKeywords?: string;
   },
   config: {
@@ -83,8 +83,8 @@ When presenting information from your research, please clearly indicate the date
 
 Always include specific URLs for your sources directly in the text.`;
   
-  if (input.retweetContext) {
-    systemPrompt += ` ${input.retweetContext}`;
+  if (input.quotedContext) {
+    systemPrompt += ` ${input.quotedContext}`;
   }
 
   const result = await llm.create({
@@ -113,7 +113,7 @@ Always include specific URLs for your sources directly in the text.`;
     text: input.text,
     searchResults: result.choices?.[0]?.message?.content ?? "Error",
     citations: (result as any).citations,
-    retweetContext: input.retweetContext,
+    quotedContext: input.quotedContext,
   };
 }
 

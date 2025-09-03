@@ -21,12 +21,12 @@ const promptTemplate = ({
   text,
   searchResults,
   citations,
-  retweetContext,
+  quotedContext,
 }: {
   text: string;
   searchResults: string;
   citations: string[];
-  retweetContext?: string;
+  quotedContext?: string;
 }) => `TASK: Analyze this X post and determine if it contains inaccuracies that require additional context, then write a note to provide that additional context.
 
 CRITICAL ANALYSIS STEPS:
@@ -117,7 +117,7 @@ ${text}
 
 Possible context that tweet is quoting (may be empty):
 \`\`\`
-${retweetContext}
+${quotedContext}
 \`\`\`
 
 Perplexity search results:
@@ -133,21 +133,21 @@ const retryPromptTemplate = ({
   text,
   searchResults,
   citations,
-  retweetContext,
+  quotedContext,
   previousNote,
   characterCount,
 }: {
   text: string;
   searchResults: string;
   citations: string[];
-  retweetContext?: string;
+  quotedContext?: string;
   previousNote: string;
   characterCount: number;
 }) => `TASK: Analyze this X post and determine if it contains factual errors that require correction.${
-  retweetContext
+  quotedContext
     ? `
 
-${retweetContext}`
+${quotedContext}`
     : ""
 }
 CRITICAL FAILURE: Your previous note was ${characterCount} characters (URLs only count as 1) - this VIOLATES the strict 280 character limit! You MUST drastically reduce this length NOW. This is NOT a suggestion - it is MANDATORY.
@@ -165,7 +165,7 @@ Previous note: "${previousNote}"
 
 Possible context that tweet is quoting (may be empty):
 \`\`\`
-${retweetContext}
+${quotedContext}
 \`\`\`
 
 Perplexity search results:
@@ -187,7 +187,7 @@ export async function writeNoteWithSearchFn(
     text,
     searchResults,
     citations,
-    retweetContext,
+    quotedContext,
   }: z.infer<typeof textAndSearchResults>,
   config: {
     model: string;
@@ -208,7 +208,7 @@ export async function writeNoteWithSearchFn(
           text,
           searchResults,
           citations,
-          retweetContext,
+          quotedContext,
         });
       } else {
         // Retry attempt - use previous result to provide feedback
@@ -220,7 +220,7 @@ export async function writeNoteWithSearchFn(
           text,
           searchResults,
           citations,
-          retweetContext,
+          quotedContext,
           previousNote: previousParsed.note,
           characterCount: previousParsed.note.length,
         });

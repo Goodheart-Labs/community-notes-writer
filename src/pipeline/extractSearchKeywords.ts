@@ -7,7 +7,7 @@ import type { ChatCompletionContentPartImage } from "openai/resources";
 export const keywordExtractionInput = z.object({
   text: z.string().describe("The tweet text to analyze"),
   media: z.array(z.string()).describe("Array of media URLs from the tweet"),
-  retweetContext: z.string().optional().describe("Context from quoted/retweeted post"),
+  quotedContext: z.string().optional().describe("Context from quoted post"),
 });
 
 export const keywordExtractionOutput = z.object({
@@ -27,17 +27,17 @@ export const extractSearchKeywordsGoal = createGoal({
 // Register the implementation
 export const extractSearchKeywords = extractSearchKeywordsGoal.register({
   name: "extract keywords v1",
-  config: [{ model: "anthropic/claude-3-5-sonnet-20241022" }],
+  config: [{ model: "anthropic/claude-4" }],
 });
 
 const promptTemplate = ({
   text,
   hasImages,
-  retweetContext,
+  quotedContext,
 }: {
   text: string;
   hasImages: boolean;
-  retweetContext?: string;
+  quotedContext?: string;
 }) => `Analyze this social media post ${hasImages ? "and its accompanying images " : ""}to extract the most effective search keywords for fact-checking.
 
 Your task:
@@ -47,21 +47,21 @@ Your task:
 4. Note any specific incidents or events referenced
 5. For images: describe what's shown and extract any visible text, logos, or identifying features
 
-Output the following:
-- 5-10 specific keywords that would be most effective for searching
-- A combined search query that would yield the most relevant fact-checking results
-- Brief reasoning for your keyword choices
-
 Focus on:
-- Specific, verifiable facts rather than opinions
-- Unique identifiers that would narrow search results
-- Current events or claims that need verification
-- Any claims about statistics, quotes, or historical facts
+- The key claims made in the post
+- The central notions being conveyed
 
-${retweetContext ? `\nQuoted/Retweeted Context:\n${retweetContext}\n` : ""}
+Output in the following format:
+Reasoning:
+[Your reasoning for your keyword choices]
+
+Keywords:
+[5-10 specific keywords]
 
 Post to analyze:
 ${text}
+
+${quotedContext ? `\nQuoted Context:\n${quotedContext}\n` : ""}
 
 ${hasImages ? "\nNote: This post includes images that may contain additional context, text, or claims that should be considered in your keyword extraction." : ""}`;
 
@@ -79,7 +79,7 @@ export async function extractSearchKeywordsFn(
     const prompt = promptTemplate({
       text: input.text,
       hasImages: input.media.length > 0,
-      retweetContext: input.retweetContext,
+      quotedContext: input.quotedContext,
     });
 
     // Create the message content array

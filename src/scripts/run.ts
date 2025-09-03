@@ -24,7 +24,7 @@ async function runPipeline(post: Post, idx: number) {
         text: originalContent.text,
         media: originalContent.media,
         searchResults: "",
-        retweetContext: originalContent.retweetContext,
+        quotedContext: originalContent.quotedContext,
       },
       { model: "perplexity/sonar" }
     );
