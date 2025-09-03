@@ -4,11 +4,13 @@
     "@clack/prompts": "^0.11.0",
     "@openrouter/ai-sdk-provider": "^1.0.0-beta.1",
     "@tonerow/agent-framework": "0.1.0",
+    "@types/express": "^5.0.3",
     "@types/p-queue": "^3.2.1",
     "ai": "^4",
     "airtable": "^0.12.2",
     "axios": "^1.10.0",
     "dotenv": "^17.2.1",
+    "express": "^5.1.0",
     "oauth-1.0a": "^2.2.6",
     "open": "^10.2.0",
     "openai": "^5.10.1",
@@ -35,6 +37,8 @@
     "test": "bun run src/scripts/run.ts",
     "build-elo": "cd src/elo-rating-web && bun build ./app.ts ./airtableClient.ts ./eloCalculator.ts ./types.ts ./cacheManager.ts --outdir ./dist --target browser",
     "serve-elo": "bun run src/elo-rating-web/server.ts",
-    "elo": "bun run build-elo && bun run serve-elo"
+    "elo": "bun run build-elo && bun run serve-elo",
+    "prompt-lab": "bun src/prompt-lab/server.ts",
+    "prompt-lab:fetch": "bun src/prompt-lab/fetchAirtableData.ts"
   }
 }

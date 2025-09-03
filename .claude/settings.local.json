@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun build:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run prompt-lab:fetch:*)",
+      "Bash(npm run:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
