@@ -38,12 +38,13 @@ export function getOriginalTweetContent(post: Post): {
   // Check if this looks like a traditional retweet (RT @username: ...)
   if (post.text.startsWith('RT @')) {
     const rtMatch = post.text.match(/^RT @\w+: (.+)$/);
-    if (rtMatch) {
+    if (rtMatch && rtMatch[1]) {
+      const originalText = rtMatch[1];
       return {
-        text: rtMatch[1], // Extract the original tweet text after "RT @username: "
+        text: originalText, // Extract the original tweet text after "RT @username: "
         media: post.media?.map(m => m.url || m.preview_image_url).filter(Boolean) || [],
         isRetweet: true,
-        retweetContext: `This community note is about a post that was retweeted. The original tweet content is: "${rtMatch[1]}"`
+        retweetContext: `This community note is about a post that was retweeted. The original tweet content is: "${originalText}"`
       };
     }
   }

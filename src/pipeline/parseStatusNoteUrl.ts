@@ -13,7 +13,7 @@ export function parseStatusNoteUrl(content: string): {
   const statusMatch = content.match(/Status:\s*(.+?)(?:\n|$)/i);
   const noteMatch = content.match(/Note:\s*([\s\S]+?)(?:$)/i);
   
-  if (statusMatch && noteMatch) {
+  if (statusMatch && statusMatch[1] && noteMatch && noteMatch[1]) {
     // New format detected
     let status = statusMatch[1].trim();
     let noteContent = noteMatch[1].trim();

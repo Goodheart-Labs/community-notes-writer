@@ -28,7 +28,7 @@ export async function submitNote(
   const data = {
     info,
     post_id: postId,
-    test_mode: true, // TODO: update this when X opens up the API
+    test_mode: false, // TODO: update this when X opens up the API
   };
 
   const body = JSON.stringify(data);

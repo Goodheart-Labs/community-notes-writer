@@ -5,7 +5,7 @@ export class CacheManager {
   private cacheExpiryKey = 'community-notes-elo-cache-expiry';
   private cacheHours = 2; // Cache for 2 hours
 
-  saveToCache(tweets: Tweet[], daysBack: number): void {
+  saveToCache(tweets: Tweet[], daysBack: number) {
     try {
       const cacheData = {
         tweets,
@@ -24,7 +24,7 @@ export class CacheManager {
     }
   }
 
-  getFromCache(daysBack: number): Tweet[] | null {
+  getFromCache(daysBack: number) {
     try {
       const expiryTime = localStorage.getItem(this.cacheExpiryKey);
       if (!expiryTime || Date.now() > parseInt(expiryTime)) {
@@ -55,13 +55,13 @@ export class CacheManager {
     }
   }
 
-  clearCache(): void {
+  clearCache() {
     localStorage.removeItem(this.cacheKey);
     localStorage.removeItem(this.cacheExpiryKey);
     console.log('Cache cleared');
   }
 
-  getCacheInfo(): { exists: boolean; ageMinutes: number; tweetCount: number; daysBack: number } | null {
+  getCacheInfo() {
     try {
       const cacheDataStr = localStorage.getItem(this.cacheKey);
       if (!cacheDataStr) return null;

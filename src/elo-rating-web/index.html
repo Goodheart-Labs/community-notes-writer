@@ -88,6 +88,9 @@
                     <!-- Action Buttons -->
                     <div class="bg-white rounded-lg shadow-md p-6">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">Which note is better?</h3>
+                        <div id="existingRatingsNotice" class="hidden bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-md mb-4 text-center text-sm">
+                            <i class="fas fa-info-circle mr-1"></i>Both notes have existing ratings shown above
+                        </div>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <button id="leftBetter" class="bg-blue-500 text-white px-4 py-3 rounded-md hover:bg-blue-600 transition-colors">
                                 <i class="fas fa-arrow-left mr-2"></i>A is Better
@@ -100,6 +103,53 @@
                             </button>
                             <button id="skip" class="bg-yellow-500 text-white px-4 py-3 rounded-md hover:bg-yellow-600 transition-colors">
                                 <i class="fas fa-forward mr-2"></i>Skip
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rating Interface -->
+                <div id="ratingInterface" class="hidden">
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Rate Each Note (0.0 - 1.0)</h3>
+                        <p class="text-gray-600 text-center mb-6">How likely would Nathan be to post each note?</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Left Note Rating -->
+                            <div class="space-y-4">
+                                <h4 class="font-semibold text-center">Option A</h4>
+                                <div id="leftNotePreview" class="text-sm text-gray-600 p-3 bg-gray-50 rounded max-h-32 overflow-y-auto"></div>
+                                <div class="space-y-2">
+                                    <input type="range" id="leftRating" min="0" max="100" value="50" class="w-full">
+                                    <div class="flex justify-between items-center">
+                                        <input type="number" id="leftRatingInput" min="0" max="1" step="0.01" value="0.50" 
+                                               class="w-20 p-2 border rounded text-center">
+                                        <span class="text-sm text-gray-500">0 = Never, 1 = Definitely</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Right Note Rating -->
+                            <div class="space-y-4">
+                                <h4 class="font-semibold text-center">Option B</h4>
+                                <div id="rightNotePreview" class="text-sm text-gray-600 p-3 bg-gray-50 rounded max-h-32 overflow-y-auto"></div>
+                                <div class="space-y-2">
+                                    <input type="range" id="rightRating" min="0" max="100" value="50" class="w-full">
+                                    <div class="flex justify-between items-center">
+                                        <input type="number" id="rightRatingInput" min="0" max="1" step="0.01" value="0.50" 
+                                               class="w-20 p-2 border rounded text-center">
+                                        <span class="text-sm text-gray-500">0 = Never, 1 = Definitely</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-4 mt-6">
+                            <button id="submitRatings" class="flex-1 bg-green-500 text-white px-4 py-3 rounded-md hover:bg-green-600 transition-colors">
+                                <i class="fas fa-check mr-2"></i>Submit Ratings & Continue
+                            </button>
+                            <button id="skipRatings" class="flex-1 bg-gray-500 text-white px-4 py-3 rounded-md hover:bg-gray-600 transition-colors">
+                                <i class="fas fa-forward mr-2"></i>Skip Rating
                             </button>
                         </div>
                     </div>

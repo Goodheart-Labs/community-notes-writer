@@ -8,6 +8,9 @@ interface AirtableLogEntry {
   "Final note": string;
   "Would be posted": number;
   commit?: string;
+  "HarassmentAbuse score"?: string;
+  "UrlValidity score"?: string;
+  "ClaimOpinion score"?: string;
 }
 
 export class AirtableLogger {
@@ -103,6 +106,18 @@ export class AirtableLogger {
       if (entry.commit) {
         fields.commit = entry.commit;
       }
+      
+      if (entry["HarassmentAbuse score"]) {
+        fields["HarassmentAbuse score"] = entry["HarassmentAbuse score"];
+      }
+      
+      if (entry["UrlValidity score"]) {
+        fields["UrlValidity score"] = entry["UrlValidity score"];
+      }
+      
+      if (entry["ClaimOpinion score"]) {
+        fields["ClaimOpinion score"] = entry["ClaimOpinion score"];
+      }
 
       await this.base(this.tableName).create([
         {
@@ -134,6 +149,18 @@ export class AirtableLogger {
 
         if (entry.commit) {
           fields.commit = entry.commit;
+        }
+        
+        if (entry["HarassmentAbuse score"]) {
+          fields["HarassmentAbuse score"] = entry["HarassmentAbuse score"];
+        }
+        
+        if (entry["UrlValidity score"]) {
+          fields["UrlValidity score"] = entry["UrlValidity score"];
+        }
+        
+        if (entry["ClaimOpinion score"]) {
+          fields["ClaimOpinion score"] = entry["ClaimOpinion score"];
         }
 
         return { fields };

@@ -2,19 +2,18 @@ import { createServer } from "http";
 import crypto from "crypto";
 import OAuth from "oauth-1.0a";
 
-// === CONFIGURATION ===
-// Set these from your Twitter/X Developer Portal app settings:
-const consumer_key = process.env.X_API_KEY as string; // <-- From your env
-const consumer_secret = process.env.X_API_KEY_SECRET as string; // <-- From your env
-const access_token = process.env.X_ACCESS_TOKEN as string; // <-- From your env
-const access_token_secret = process.env.X_ACCESS_TOKEN_SECRET as string; // <-- From your env
-
 // === OAuth1 Helper Function ===
 export function getOAuth1Headers(
   url: string,
   method: string = "GET",
   body?: string
 ) {
+  // Get credentials at runtime, not module load time
+  const consumer_key = process.env.X_API_KEY as string;
+  const consumer_secret = process.env.X_API_KEY_SECRET as string;
+  const access_token = process.env.X_ACCESS_TOKEN as string;
+  const access_token_secret = process.env.X_ACCESS_TOKEN_SECRET as string;
+  
   const oauth = new OAuth({
     consumer: {
       key: consumer_key,
@@ -47,6 +46,11 @@ export function getOAuth1Headers(
 
 // === OAuth1 Token Validation ===
 export async function validateOAuth1Tokens() {
+  const consumer_key = process.env.X_API_KEY as string;
+  const consumer_secret = process.env.X_API_KEY_SECRET as string;
+  const access_token = process.env.X_ACCESS_TOKEN as string;
+  const access_token_secret = process.env.X_ACCESS_TOKEN_SECRET as string;
+  
   if (
     !consumer_key ||
     !consumer_secret ||
