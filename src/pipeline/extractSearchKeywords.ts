@@ -51,12 +51,16 @@ Focus on:
 - The key claims made in the post
 - The central notions being conveyed
 
-Output your response as a JSON object with the following structure:
-{
-  "reasoning": "Your reasoning for your keyword choices",
-  "keywords": ["keyword1", "keyword2", "keyword3", ...],
-  "searchQuery": "Combined search query string"
-}
+Output in the following format:
+
+Reasoning:
+[Your reasoning for your keyword choices]
+
+Keywords:
+[keyword1, keyword2, keyword3, keyword4, keyword5, ...]
+
+Search Query:
+[Combined optimized search query]
 
 Post to analyze:
 ${text}
@@ -103,31 +107,59 @@ export async function extractSearchKeywordsFn(
           content: messageContent,
         },
       ],
-      response_format: { type: "json_object" },
       max_tokens: 1000,
     });
 
     const content = result.choices?.[0]?.message?.content ?? "";
     
-    // Parse the JSON response
-    let parsed;
+    // Parse the text response
+    let keywords: string[] = [];
+    let searchQuery = "";
+    let reasoning = "";
+    
     try {
-      parsed = JSON.parse(content);
+      // Extract reasoning
+      const reasoningMatch = content.match(/Reasoning:\s*([\s\S]+?)(?=Keywords:|$)/i);
+      if (reasoningMatch && reasoningMatch[1]) {
+        reasoning = reasoningMatch[1].trim();
+      }
+      
+      // Extract keywords
+      const keywordsMatch = content.match(/Keywords:\s*([\s\S]+?)(?=Search Query:|$)/i);
+      if (keywordsMatch && keywordsMatch[1]) {
+        // Parse keywords - they might be comma-separated or on new lines
+        const keywordText = keywordsMatch[1].trim();
+        keywords = keywordText
+          .split(/[,\n]/)
+          .map(k => k.trim())
+          .filter(k => k && !k.startsWith('[') && !k.endsWith(']'))
+          .map(k => k.replace(/^\[|\]$/g, '').trim());
+      }
+      
+      // Extract search query
+      const queryMatch = content.match(/Search Query:\s*([\s\S]+?)$/i);
+      if (queryMatch && queryMatch[1]) {
+        searchQuery = queryMatch[1].trim().replace(/^\[|\]$/g, '');
+      }
     } catch (e) {
-      console.error("Failed to parse JSON response:", content);
-      // Fallback: try to extract keywords from the text
-      parsed = {
-        keywords: [],
-        searchQuery: input.text.slice(0, 100), // Use first 100 chars as fallback
-        reasoning: "Failed to extract structured keywords",
-      };
+      console.error("Failed to parse text response:", e);
+    }
+    
+    // Fallback if parsing failed
+    if (keywords.length === 0) {
+      console.warn("No keywords extracted, using fallback");
+      keywords = input.text.split(' ').slice(0, 5);
+    }
+    
+    if (!searchQuery) {
+      searchQuery = keywords.join(" ") || input.text.slice(0, 100);
     }
 
     // Ensure the response has the required fields
     return {
-      keywords: parsed.keywords || [],
-      searchQuery: parsed.searchQuery || parsed.keywords?.join(" ") || input.text.slice(0, 100),
-      reasoning: parsed.reasoning || "No reasoning provided",
+      keywords,
+      searchQuery,
+      reasoning: reasoning || "No reasoning provided",
     };
   } catch (error) {
     console.error("Error in extractSearchKeywordsFn:", error);
