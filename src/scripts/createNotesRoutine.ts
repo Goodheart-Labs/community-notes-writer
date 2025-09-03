@@ -27,6 +27,30 @@ async function runPipeline(post: any, idx: number) {
     
     console.log(`[runPipeline] Processing ${originalContent.isRetweet ? 'retweet' : 'original tweet'} for post #${idx + 1}`);
     
+    // Check if the post contains video media
+    const hasVideo = post.media?.some((m: any) => m.type === 'video') || 
+                    post.referenced_tweet_data?.media?.some((m: any) => m.type === 'video');
+    
+    if (hasVideo) {
+      console.log(`[runPipeline] Skipping post #${idx + 1} (ID: ${post.id}) - contains video media`);
+      
+      // Return a special result for video posts that will still be logged to Airtable
+      return {
+        post,
+        searchContextResult: {
+          text: originalContent.text,
+          searchResults: "SKIPPED - Post contains video media",
+          citations: []
+        },
+        noteResult: {
+          status: "SKIPPED - VIDEO CONTENT",
+          note: "Video content is not currently supported for Community Notes generation",
+          url: ""
+        },
+        checkResult: "NO - VIDEO CONTENT"
+      };
+    }
+    
     const searchContextResult = await searchV1(
       {
         text: originalContent.text,

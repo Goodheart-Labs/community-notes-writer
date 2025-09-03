@@ -209,7 +209,11 @@ function formatFullResult(
   result += `COMMUNITY NOTE:\n`;
   result += `- Status: ${noteResult.status || "N/A"}\n`;
   result += `- Note text: ${noteResult.note || "N/A"}\n`;
-  result += `- Source URL: ${noteResult.url || "None"}\n\n`;
+  result += `- Source URL: ${noteResult.url || "None"}\n`;
+  if (noteResult.reasoning) {
+    result += `- Reasoning: ${noteResult.reasoning}\n`;
+  }
+  result += `\n`;
 
   // Check results
   result += `SOURCE VERIFICATION:\n`;

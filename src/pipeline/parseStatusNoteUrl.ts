@@ -1,14 +1,43 @@
 /**
- * Parses a string to extract status, note, and url.
+ * Parses a string to extract status, note, url, and reasoning.
  * @param {string} content - The string to parse.
- * @returns {{ status: string, note: string, url: string }}
+ * @returns {{ status: string, note: string, url: string, reasoning: string }}
  */
 export function parseStatusNoteUrl(content: string): {
   status: string;
   note: string;
   url: string;
+  reasoning?: string;
 } {
-  // Split by lines and trim whitespace
+  // Look for the new format with "Status:" and "Note:" labels
+  const statusMatch = content.match(/Status:\s*(.+?)(?:\n|$)/i);
+  const noteMatch = content.match(/Note:\s*([\s\S]+?)(?:$)/i);
+  
+  if (statusMatch && statusMatch[1] && noteMatch && noteMatch[1]) {
+    // New format detected
+    let status = statusMatch[1].trim();
+    let noteContent = noteMatch[1].trim();
+    
+    // Extract URL from the note content
+    const urlMatch = noteContent.match(/https?:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+/);
+    let url = urlMatch ? urlMatch[0] : "";
+    
+    // Remove URL from note text (it will be added back later if needed)
+    let note = noteContent.replace(/https?:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+/g, '').trim();
+    
+    // Extract reasoning (everything before "Status:")
+    let reasoning = "";
+    const statusIndex = content.indexOf("Status:");
+    if (statusIndex > 0) {
+      reasoning = content.substring(0, statusIndex).trim();
+      // Remove any [Reasoning] label if present
+      reasoning = reasoning.replace(/^\[?Reasoning\]?:?\s*/i, '').trim();
+    }
+    
+    return { status, note, url, reasoning };
+  }
+  
+  // Fall back to old format for backward compatibility
   const lines = content
     .split("\n")
     .map((l) => l.trim())
