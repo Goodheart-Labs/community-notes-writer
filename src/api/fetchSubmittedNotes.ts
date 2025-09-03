@@ -5,30 +5,34 @@ export type NoteStatus =
   | "currently_rated_helpful"
   | "currently_rated_not_helpful"
   | "needs_more_ratings"
-  | string;
+  | "";
 
-export type EvaluatorInfo = {
-  evaluator_id?: string;
-  rating?: string;
-  timestamp?: string;
+export type EvaluationOutcome = {
+  evaluator_score_bucket: "High" | "Medium" | "Low";
+  evaluator_type: "HarassmentAbuse" | "UrlValidity" | "ClaimOpinion";
 };
 
 export type SubmittedNote = {
   id: string;
-  post_id: string;
   status: NoteStatus;
   info?: {
+    post_id: string;
     classification?: string;
     misleading_tags?: string[];
     text?: string;
     trustworthy_sources?: boolean;
   };
   test_result?: {
-    evaluators?: EvaluatorInfo[];
+    evaluation_outcome?: EvaluationOutcome[];
     helpful_count?: number;
     not_helpful_count?: number;
   };
   created_at?: string;
+};
+
+export type ApiError = {
+  message: string;
+  code?: string;
 };
 
 export type FetchNotesResponse = {
@@ -37,7 +41,7 @@ export type FetchNotesResponse = {
     result_count: number;
     next_token?: string;
   };
-  errors?: any;
+  errors?: ApiError[];
 };
 
 /**
@@ -51,7 +55,7 @@ export async function fetchSubmittedNotes(
   testMode: boolean = true,
   maxResults: number = 10,
   paginationToken?: string
-): Promise<FetchNotesResponse> {
+) {
   const url = "https://api.x.com/2/notes/search/notes_written";
   
   // Build query parameters
@@ -101,7 +105,7 @@ export async function fetchSubmittedNotes(
  */
 export async function fetchAllSubmittedNotes(
   testMode: boolean = true
-): Promise<SubmittedNote[]> {
+) {
   const allNotes: SubmittedNote[] = [];
   let paginationToken: string | undefined;
   
@@ -127,7 +131,7 @@ export async function fetchAllSubmittedNotes(
  * Displays a summary of submitted notes with their evaluator information
  * @param notes Array of submitted notes
  */
-export function displayNotesSummary(notes: SubmittedNote[]): void {
+export function displayNotesSummary(notes: SubmittedNote[]) {
   console.log(`\n📊 Total notes submitted: ${notes.length}`);
   
   // Group by status
@@ -141,29 +145,32 @@ export function displayNotesSummary(notes: SubmittedNote[]): void {
     console.log(`  ${status}: ${count}`);
   });
   
-  // Show notes with evaluator information
-  const notesWithEvaluators = notes.filter(note => 
-    note.test_result?.evaluators && note.test_result.evaluators.length > 0
+  // Show notes with evaluation outcomes
+  const notesWithEvaluations = notes.filter(note => 
+    note.test_result?.evaluation_outcome && note.test_result.evaluation_outcome.length > 0
   );
   
-  if (notesWithEvaluators.length > 0) {
-    console.log(`\n👥 Notes with evaluator feedback: ${notesWithEvaluators.length}`);
+  if (notesWithEvaluations.length > 0) {
+    console.log(`\n👥 Notes with evaluation outcomes: ${notesWithEvaluations.length}`);
     
-    notesWithEvaluators.forEach(note => {
+    notesWithEvaluations.forEach(note => {
       console.log(`\n  Note ID: ${note.id}`);
-      console.log(`  Post ID: ${note.post_id}`);
-      console.log(`  Status: ${note.status}`);
+      console.log(`  Post ID: ${note.info?.post_id || 'N/A'}`);
+      console.log(`  Status: ${note.status || 'empty'}`);
       
       if (note.test_result) {
         console.log(`  Helpful: ${note.test_result.helpful_count || 0}`);
         console.log(`  Not Helpful: ${note.test_result.not_helpful_count || 0}`);
         
-        if (note.test_result.evaluators) {
-          console.log(`  Evaluators: ${note.test_result.evaluators.length}`);
+        if (note.test_result.evaluation_outcome) {
+          console.log(`  Evaluation outcomes: ${note.test_result.evaluation_outcome.length}`);
+          note.test_result.evaluation_outcome.forEach(outcome => {
+            console.log(`    ${outcome.evaluator_type}: ${outcome.evaluator_score_bucket}`);
+          });
         }
       }
     });
   } else {
-    console.log("\n👥 No notes with evaluator feedback yet");
+    console.log("\n👥 No notes with evaluation outcomes yet");
   }
 }

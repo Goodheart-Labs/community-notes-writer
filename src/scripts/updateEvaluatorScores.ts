@@ -1,5 +1,5 @@
 import { config } from "dotenv";
-import { fetchAllSubmittedNotes } from "../api/fetchSubmittedNotes";
+import { fetchAllSubmittedNotes, type SubmittedNote } from "../api/fetchSubmittedNotes";
 import Airtable from "airtable";
 
 // Load environment variables
@@ -44,9 +44,13 @@ async function updateEvaluatorScores() {
 
     notes.forEach(note => {
       if (note.test_result?.evaluation_outcome && Array.isArray(note.test_result.evaluation_outcome)) {
-        const scores: any = {};
+        const scores: {
+          HarassmentAbuse?: string;
+          UrlValidity?: string;
+          ClaimOpinion?: string;
+        } = {};
         
-        note.test_result.evaluation_outcome.forEach((evaluation: any) => {
+        note.test_result.evaluation_outcome.forEach((evaluation) => {
           if (evaluation.evaluator_type === "HarassmentAbuse") {
             scores.HarassmentAbuse = evaluation.evaluator_score_bucket;
           } else if (evaluation.evaluator_type === "UrlValidity") {
@@ -90,34 +94,36 @@ async function updateEvaluatorScores() {
           const url = record.get("URL") as string;
           
           // Extract post ID from URL (format: https://twitter.com/i/status/POST_ID)
-          const postIdMatch = url?.match(/status\/(\d+)/);
-          if (postIdMatch) {
-            const postId = postIdMatch[1];
-            const scores = evaluatorScoresMap.get(postId);
-            
-            if (scores) {
-              // Check if any scores are missing in Airtable
-              const needsUpdate = 
-                (!record.get("HarassmentAbuse score") && scores.HarassmentAbuse) ||
-                (!record.get("UrlValidity score") && scores.UrlValidity) ||
-                (!record.get("ClaimOpinion score") && scores.ClaimOpinion);
+          if (url) {
+            const postIdMatch = url.match(/status\/(\d+)/);
+            if (postIdMatch && postIdMatch[1]) {
+              const postId = postIdMatch[1];
+              const scores = evaluatorScoresMap.get(postId);
               
-              if (needsUpdate) {
-                recordsToUpdate.push({
-                  id: record.id,
-                  fields: {
-                    URL: url,
-                    ...(scores.HarassmentAbuse && !record.get("HarassmentAbuse score") 
-                      ? { "HarassmentAbuse score": scores.HarassmentAbuse } 
-                      : {}),
-                    ...(scores.UrlValidity && !record.get("UrlValidity score") 
-                      ? { "UrlValidity score": scores.UrlValidity } 
-                      : {}),
-                    ...(scores.ClaimOpinion && !record.get("ClaimOpinion score") 
-                      ? { "ClaimOpinion score": scores.ClaimOpinion } 
-                      : {}),
-                  }
-                });
+              if (scores) {
+                // Check if any scores are missing in Airtable
+                const needsUpdate = 
+                  (!record.get("HarassmentAbuse score") && scores.HarassmentAbuse) ||
+                  (!record.get("UrlValidity score") && scores.UrlValidity) ||
+                  (!record.get("ClaimOpinion score") && scores.ClaimOpinion);
+                
+                if (needsUpdate) {
+                  recordsToUpdate.push({
+                    id: record.id,
+                    fields: {
+                      URL: url,
+                      ...(scores.HarassmentAbuse && !record.get("HarassmentAbuse score") 
+                        ? { "HarassmentAbuse score": scores.HarassmentAbuse } 
+                        : {}),
+                      ...(scores.UrlValidity && !record.get("UrlValidity score") 
+                        ? { "UrlValidity score": scores.UrlValidity } 
+                        : {}),
+                      ...(scores.ClaimOpinion && !record.get("ClaimOpinion score") 
+                        ? { "ClaimOpinion score": scores.ClaimOpinion } 
+                        : {}),
+                    }
+                  });
+                }
               }
             }
           }
@@ -131,14 +137,19 @@ async function updateEvaluatorScores() {
     for (let i = 0; i < recordsToUpdate.length; i += 10) {
       const batch = recordsToUpdate.slice(i, i + 10);
       
-      const updates = batch.map(record => ({
-        id: record.id,
-        fields: {
-          ...(record.fields["HarassmentAbuse score"] ? { "HarassmentAbuse score": record.fields["HarassmentAbuse score"] } : {}),
-          ...(record.fields["UrlValidity score"] ? { "UrlValidity score": record.fields["UrlValidity score"] } : {}),
-          ...(record.fields["ClaimOpinion score"] ? { "ClaimOpinion score": record.fields["ClaimOpinion score"] } : {}),
+      const updates = batch.map(record => {
+        const fields: Record<string, string> = {};
+        if (record.fields["HarassmentAbuse score"]) {
+          fields["HarassmentAbuse score"] = record.fields["HarassmentAbuse score"];
         }
-      }));
+        if (record.fields["UrlValidity score"]) {
+          fields["UrlValidity score"] = record.fields["UrlValidity score"];
+        }
+        if (record.fields["ClaimOpinion score"]) {
+          fields["ClaimOpinion score"] = record.fields["ClaimOpinion score"];
+        }
+        return { id: record.id, fields };
+      });
 
       await base(tableName).update(updates);
       console.log(`Updated batch ${Math.floor(i / 10) + 1} of ${Math.ceil(recordsToUpdate.length / 10)}`);

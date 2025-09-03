@@ -27,11 +27,14 @@ async function checkAirtableFields() {
       .firstPage();
 
     if (records.length > 0) {
-      const fields = Object.keys(records[0].fields);
-      console.log("Available fields in Airtable:");
-      fields.forEach(field => {
-        console.log(`  - "${field}"`);
-      });
+      const record = records[0];
+      if (record && record.fields) {
+        const fields = Object.keys(record.fields);
+        console.log("Available fields in Airtable:");
+        fields.forEach(field => {
+          console.log(`  - "${field}"`);
+        });
+      }
     } else {
       console.log("No records found in Airtable");
     }
