@@ -38,6 +38,7 @@ async function runPipeline(post: any, idx: number) {
       // Return a special result for video posts that will still be logged to Airtable
       return {
         post,
+        keywordsResult: null,
         searchContextResult: {
           text: originalContent.text,
           searchResults: "SKIPPED - Post contains video media",
@@ -113,6 +114,7 @@ async function runPipeline(post: any, idx: number) {
 
     return {
       post,
+      keywordsResult,
       searchContextResult,
       noteResult,
       checkResult,
@@ -197,6 +199,7 @@ async function main() {
         // Create log entry for this result
         const logEntry = createLogEntry(
           r.post,
+          r.keywordsResult,
           r.searchContextResult,
           r.noteResult,
           r.checkResult,

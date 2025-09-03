@@ -183,6 +183,7 @@ export class AirtableLogger {
 // Helper function to create a human-readable result string
 function formatFullResult(
   post: any,
+  keywordsResult: any,
   searchContextResult: any,
   noteResult: any,
   checkResult: any
@@ -194,6 +195,16 @@ function formatFullResult(
   // Tweet information
   result += `TWEET ID: ${post.id}\n`;
   result += `TWEET TEXT:\n${post.text}\n\n`;
+
+  // Keyword extraction results
+  if (keywordsResult) {
+    result += `KEYWORD EXTRACTION:\n`;
+    result += `- Keywords: ${keywordsResult.keywords?.join(", ") || "None"}\n`;
+    result += `- Search query: ${keywordsResult.searchQuery || "N/A"}\n`;
+    result += `- Reasoning: ${keywordsResult.reasoning || "N/A"}\n\n`;
+  } else {
+    result += `KEYWORD EXTRACTION: Skipped\n\n`;
+  }
 
   // Search context results
   result += `SEARCH CONTEXT:\n`;
@@ -236,6 +247,7 @@ function formatFullResult(
 // Helper function to create a log entry from pipeline results
 export function createLogEntry(
   post: any,
+  keywordsResult: any,
   searchContextResult: any,
   noteResult: any,
   checkResult: any,
@@ -251,6 +263,7 @@ export function createLogEntry(
   // Create human-readable full result string
   const fullResult = formatFullResult(
     post,
+    keywordsResult,
     searchContextResult,
     noteResult,
     checkResult
