@@ -30,6 +30,7 @@ export const searchContextGoal = createGoal({
     imagesSummary: z.string().optional(),
     searchResults: z.string(),
     retweetContext: z.string().optional(),
+    searchKeywords: z.string().optional().describe("Pre-extracted keywords to guide the search"),
   }),
   output: textAndSearchResults,
 });
@@ -60,6 +61,7 @@ export async function versionOneFn(
     imagesSummary?: string;
     searchResults: string;
     retweetContext?: string;
+    searchKeywords?: string;
   },
   config: {
     model: OpenAIChatModelId;
@@ -97,7 +99,9 @@ Always include specific URLs for your sources directly in the text.`;
         content: [
           {
             type: "text",
-            text: input.text,
+            text: input.searchKeywords 
+              ? `${input.searchKeywords} current status today overview`
+              : input.text,
           },
           ...images,
         ],

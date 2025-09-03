@@ -2,6 +2,7 @@ import { fetchEligiblePosts } from "../api/fetchEligiblePosts";
 import { versionOneFn as searchV1 } from "../pipeline/searchContextGoal";
 import { writeNoteWithSearchFn as writeV1 } from "../pipeline/writeNoteWithSearchGoal";
 import { check as checkV1 } from "../pipeline/check";
+import { extractSearchKeywordsFn } from "../pipeline/extractSearchKeywords";
 import { AirtableLogger, createLogEntry } from "../api/airtableLogger";
 import { getOriginalTweetContent } from "../utils/retweetUtils";
 import PQueue from "p-queue";
@@ -51,12 +52,35 @@ async function runPipeline(post: any, idx: number) {
       };
     }
     
+    // Extract keywords first using Claude Sonnet
+    let keywordsResult;
+    try {
+      keywordsResult = await extractSearchKeywordsFn(
+        {
+          text: originalContent.text,
+          media: originalContent.media,
+          retweetContext: originalContent.retweetContext,
+        },
+        { model: "anthropic/claude-3-5-sonnet-20241022" }
+      );
+      console.log(
+        `[runPipeline] Keywords extracted for post #${idx + 1} (ID: ${post.id}): ${keywordsResult.searchQuery}`
+      );
+    } catch (error) {
+      console.error(
+        `[runPipeline] Failed to extract keywords for post #${idx + 1}, continuing without keywords:`,
+        error
+      );
+      keywordsResult = null;
+    }
+
     const searchContextResult = await searchV1(
       {
         text: originalContent.text,
         media: originalContent.media,
         searchResults: "",
         retweetContext: originalContent.retweetContext,
+        searchKeywords: keywordsResult?.searchQuery,
       },
       { model: "perplexity/sonar" }
     );
