@@ -43,6 +43,8 @@ Please write the note in the following fashion:
 - *DO NOT* refer to sources that you have not provided a link to. 
 - The note *MUST* be fewer than 280 characters, with URLS only counting as 1
 
+Please note that if the post references Trump or the US, that Trump won the 2024 election, so it may be discussing the current term as opposed to his 2017-2020 term.
+
 If the context supports the original claim, please respond with "TWEET NOT SIGNIFICANTLY INCORRECT" rather than "CORRECTION WITH TRUSTWORTHY CITATION". 
 
 Please start by responding with one of the following statuses "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"

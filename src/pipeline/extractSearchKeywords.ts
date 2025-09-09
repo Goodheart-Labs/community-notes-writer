@@ -51,6 +51,8 @@ Focus on:
 - The key claims made in the post
 - The central notions being conveyed
 
+If the post discusses Trump, note that Trump won the 2024 election, so it may be discussing the current term as opposed to his 2017-2020 term.
+
 Output in the following format:
 
 Reasoning:
