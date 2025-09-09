@@ -101,16 +101,24 @@ export async function extractSearchKeywordsFn(
       messageContent.push(...images);
     }
 
-    const result = await llm.create({
-      model: config.model,
-      messages: [
-        {
-          role: "user",
-          content: messageContent,
-        },
-      ],
-      max_tokens: 1000,
-    });
+    // Add timeout for image analysis to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('LLM call timeout')), 45000) // 45 second timeout
+    );
+
+    const result = await Promise.race([
+      llm.create({
+        model: config.model,
+        messages: [
+          {
+            role: "user",
+            content: messageContent,
+          },
+        ],
+        max_tokens: 1000,
+      }),
+      timeoutPromise
+    ]) as any;
 
     const content = result.choices?.[0]?.message?.content ?? "";
     
@@ -149,8 +157,11 @@ export async function extractSearchKeywordsFn(
     
     // Fallback if parsing failed
     if (keywords.length === 0) {
-      console.warn("No keywords extracted, using fallback");
-      keywords = input.text.split(' ').slice(0, 5);
+      console.warn("No keywords extracted, using text-based fallback");
+      keywords = input.text
+        .split(/\s+/)
+        .filter(word => word.length > 3)
+        .slice(0, 5);
     }
     
     if (!searchQuery) {
@@ -165,11 +176,21 @@ export async function extractSearchKeywordsFn(
     };
   } catch (error) {
     console.error("Error in extractSearchKeywordsFn:", error);
-    // Return a basic fallback
+    
+    // Enhanced fallback: extract basic keywords from text even on timeout
+    const basicKeywords = input.text
+      .split(/\s+/)
+      .filter(word => word.length > 3 && !/^(the|and|for|are|but|not|you|all|can|had|her|was|one|our|out|day|get|has|him|his|how|man|new|now|old|see|two|way|who|boy|did|its|let|put|say|she|too|use)$/i.test(word))
+      .slice(0, 5);
+      
+    const fallbackReason = error instanceof Error && error.message === 'LLM call timeout' 
+      ? 'LLM call timeout - using text-based keyword extraction'
+      : `Error extracting keywords: ${error}`;
+      
     return {
-      keywords: [],
-      searchQuery: input.text.slice(0, 100),
-      reasoning: `Error extracting keywords: ${error}`,
+      keywords: basicKeywords,
+      searchQuery: basicKeywords.join(' ') || input.text.slice(0, 100),
+      reasoning: fallbackReason,
     };
   }
 }
