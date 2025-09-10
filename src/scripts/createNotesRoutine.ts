@@ -67,6 +67,15 @@ async function runPipeline(post: any, idx: number) {
       console.log(
         `[runPipeline] Keywords extracted for post #${idx + 1} (ID: ${post.id}): ${keywordsResult.searchQuery}`
       );
+      
+      // Report image analysis status
+      if (keywordsResult.imageAnalysisStatus === 'timeout') {
+        console.warn(`[runPipeline] ⚠️  Image analysis TIMEOUT for post #${idx + 1} - fell back to text-based keywords`);
+      } else if (keywordsResult.imageAnalysisStatus === 'failed') {
+        console.warn(`[runPipeline] ❌ Image analysis FAILED for post #${idx + 1}: ${keywordsResult.imageAnalysisError}`);
+      } else if (keywordsResult.imageAnalysisStatus === 'success') {
+        console.log(`[runPipeline] ✅ Image analysis SUCCESS for post #${idx + 1}`);
+      }
     } catch (error) {
       console.error(
         `[runPipeline] Failed to extract keywords for post #${idx + 1}, continuing without keywords:`,
@@ -271,8 +280,31 @@ async function main() {
         "No posts with status 'CORRECTION WITH TRUSTWORTHY CITATION' found."
       );
     } else {
+      // Count image analysis results
+      const imageAnalysisStats = {
+        success: 0,
+        timeout: 0,
+        failed: 0,
+        no_images: 0
+      };
+      
+      logEntries.forEach(entry => {
+        const fullResult = entry.fields['Full Result'];
+        if (fullResult?.includes('Image analysis: SUCCESS')) imageAnalysisStats.success++;
+        else if (fullResult?.includes('Image analysis: TIMEOUT')) imageAnalysisStats.timeout++;
+        else if (fullResult?.includes('Image analysis: FAILED')) imageAnalysisStats.failed++;
+        else if (fullResult?.includes('Image analysis: NO_IMAGES')) imageAnalysisStats.no_images++;
+      });
+      
       console.log(
         `[main] Successfully processed ${logEntries.length} posts, submitted ${submitted} notes`
+      );
+      console.log(
+        `[main] 🖼️  Image Analysis Summary: ` +
+        `✅ ${imageAnalysisStats.success} success, ` +
+        `⚠️  ${imageAnalysisStats.timeout} timeout, ` +
+        `❌ ${imageAnalysisStats.failed} failed, ` +
+        `🚫 ${imageAnalysisStats.no_images} no images`
       );
     }
 

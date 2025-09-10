@@ -14,6 +14,8 @@ export const keywordExtractionOutput = z.object({
   keywords: z.array(z.string()).describe("Array of search keywords"),
   searchQuery: z.string().describe("Optimized search query combining the keywords"),
   reasoning: z.string().describe("Brief explanation of keyword choices"),
+  imageAnalysisStatus: z.string().describe("Status of image analysis: 'success', 'timeout', 'failed', 'no_images'"),
+  imageAnalysisError: z.string().optional().describe("Error message if image analysis failed"),
 });
 
 // Create the goal for keyword extraction
@@ -173,6 +175,8 @@ export async function extractSearchKeywordsFn(
       keywords,
       searchQuery,
       reasoning: reasoning || "No reasoning provided",
+      imageAnalysisStatus: input.media.length > 0 ? 'success' : 'no_images',
+      imageAnalysisError: undefined,
     };
   } catch (error) {
     console.error("Error in extractSearchKeywordsFn:", error);
@@ -182,15 +186,22 @@ export async function extractSearchKeywordsFn(
       .split(/\s+/)
       .filter(word => word.length > 3 && !/^(the|and|for|are|but|not|you|all|can|had|her|was|one|our|out|day|get|has|him|his|how|man|new|now|old|see|two|way|who|boy|did|its|let|put|say|she|too|use)$/i.test(word))
       .slice(0, 5);
-      
-    const fallbackReason = error instanceof Error && error.message === 'LLM call timeout' 
+    
+    const isTimeout = error instanceof Error && error.message === 'LLM call timeout';
+    const hasImages = input.media.length > 0;
+    
+    const fallbackReason = isTimeout 
       ? 'LLM call timeout - using text-based keyword extraction'
       : `Error extracting keywords: ${error}`;
+    
+    const imageStatus = !hasImages ? 'no_images' : (isTimeout ? 'timeout' : 'failed');
       
     return {
       keywords: basicKeywords,
       searchQuery: basicKeywords.join(' ') || input.text.slice(0, 100),
       reasoning: fallbackReason,
+      imageAnalysisStatus: imageStatus,
+      imageAnalysisError: error instanceof Error ? error.message : String(error),
     };
   }
 }

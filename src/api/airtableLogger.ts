@@ -201,7 +201,21 @@ function formatFullResult(
     result += `KEYWORD EXTRACTION:\n`;
     result += `- Keywords: ${keywordsResult.keywords?.join(", ") || "None"}\n`;
     result += `- Search query: ${keywordsResult.searchQuery || "N/A"}\n`;
-    result += `- Reasoning: ${keywordsResult.reasoning || "N/A"}\n\n`;
+    result += `- Reasoning: ${keywordsResult.reasoning || "N/A"}\n`;
+    
+    // Image analysis status reporting
+    if (keywordsResult.imageAnalysisStatus) {
+      result += `- Image analysis: ${keywordsResult.imageAnalysisStatus.toUpperCase()}`;
+      if (keywordsResult.imageAnalysisStatus === 'timeout') {
+        result += ` ⚠️ (fell back to text-based extraction)`;
+      } else if (keywordsResult.imageAnalysisStatus === 'failed' && keywordsResult.imageAnalysisError) {
+        result += ` ❌ (${keywordsResult.imageAnalysisError})`;
+      } else if (keywordsResult.imageAnalysisStatus === 'success') {
+        result += ` ✅`;
+      }
+      result += `\n`;
+    }
+    result += `\n`;
   } else {
     result += `KEYWORD EXTRACTION: Skipped\n\n`;
   }
