@@ -39,6 +39,7 @@
     "serve-elo": "bun run src/elo-rating-web/server.ts",
     "elo": "bun run build-elo && bun run serve-elo",
     "prompt-lab": "bun src/prompt-lab/server.ts",
-    "prompt-lab:fetch": "bun src/prompt-lab/fetchAirtableData.ts"
+    "prompt-lab:fetch": "bun src/prompt-lab/fetchAirtableData.ts",
+    "bad-miss": "bun src/bad-miss-analysis/server.ts"
   }
 }

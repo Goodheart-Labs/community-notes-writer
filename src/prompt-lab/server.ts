@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { AirtableDataFetcher, ResearchData } from './fetchAirtableData';
 import { testPromptOnSample } from './testPrompt';
 import { PromptLabError } from './errors';
@@ -41,26 +42,86 @@ app.get('/api/model-info', (req: Request, res: Response) => {
 
 // Get default prompt template
 app.get('/api/default-prompt', async (req: Request, res: Response) => {
-  const defaultPrompt = `TASK: Analyze this X post and determine if it contains factual errors that require correction.
+  const defaultPrompt = `TASK: Analyze this X post and determine if it contains inaccuracies that require additional context, then write a note to provide that additional context.
 
 CRITICAL ANALYSIS STEPS:
 1. IDENTIFY THE SPECIFIC CLAIM: What exact factual assertion is the post making?
-2. VERIFY ACCURACY: Do the search results directly contradict this specific claim?
-3. SOURCE RELEVANCE: Do the sources directly address this claim (not general background)?
-4. DIRECTNESS: Can you definitively say "this specific claim is false" based on the evidence?
+2. CONSIDER POSSIBLE CONFLICT: Do the search results suggest that significant additional context is required
+3. CHOOSE SOURCES: Choose 1 - 3 sources you are going to include
+4. SOURCE RELEVANCE: Do the sources directly address all aspects of the additional context (literally check the sentences in the research and which sources you've chosen)?
 
-ONLY correct posts with clear factual errors supported by direct, relevant sources. Avoid:
-- General background context that doesn't contradict the claim
-- Sources about different timeframes than what the post discusses  
-- Correcting things the post never actually claimed
-- Vague corrections that don't directly address the core assertion
+Please write the note in the following fashion:
+- Give the additional relevant context.
+- Generally do not attempt to summarise the original tweet or say "This tweet is false"
+- Only refer to "errors" in the original tweet if it is required to make clear how the context is relevant.
+- *DO NOT* discuss there being a lack of evidence/reports for something unless the source you're going to include says exactly that. The world is fast moving and new evidence may have appeared. ONLY say what you know from the source that is linked
+- *DO NOT* refer to sources that you have not provided a link to. 
+- The note *MUST* be fewer than 280 characters, with URLS only counting as 1
+
+If the context supports the original claim, please respond with "TWEET NOT SIGNIFICANTLY INCORRECT" rather than "CORRECTION WITH TRUSTWORTHY CITATION". 
 
 Please start by responding with one of the following statuses "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
 
-Format:
+Note examples:
+
+Bad note: 
+
+The claim that President Trump "has reportedly not been seen in several days" and rumors of his death are false. Trump has had recent public activity and political actions as recently as August 29, 2025, according to verified news reports.
+
+[link]
+
+Good note:
+
+Trump was seen golfing on August 29, 2025, according to Reuters. 
+
+[link]
+
+Explanation:
+
+Do not summarise or editorialise on the original post. His death might be real for all we know. But what we do know is that there was evidence of his public appearances and activities on August 29, 2025. So that is what we will say, and then provide a link. 
+
+Bad note:
+
+Post falsely claims UP is #1 in factories (15.91%) and GVA (25.03%). ASI 2023-24 shows UP ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03%.
+
+[Link]
+
+Good note:
+
+ASI 2023-24 shows Uttar Pradesh ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03% as claimed.
+
+[Link]
+
+Explanation:
+
+Bad note attempts to summarise original post. Readers don't need this, they can see it. Also it says the post is false. Instead we prefer to provide additional context.
+
+Bad note:
+
+This photograph is not from Rudy Giuliani's car accident. News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+[Link]
+
+Good note
+
+News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+Explanation:
+
+We don't say what the photo is or is not. Instead we give context for why the photo is likely wrong. 
+
+[Link]
+
+Output format:
+
+[Reasoning]
+
+Status:
 [Status]
-[Direct correction stating exactly what is wrong]
-[URL that specifically contradicts the claim]
+
+Note:
+[Clear additional context relating to the most important inaccurate claim]
+[URL that specifically supports that additional context]
 
 Post perhaps in need of community note:
 \`\`\`
@@ -82,26 +143,59 @@ Citations:
 // Test prompt on random samples
 app.post('/api/test-prompt', async (req: Request, res: Response) => {
   try {
-    const { promptTemplate, sampleSize = 10 } = req.body;
+    const { promptTemplate, sampleSize = 10, badMissesOnly = false } = req.body;
     
     if (!promptTemplate) {
       return res.status(400).json({ error: 'Prompt template is required' });
     }
     
-    if (cachedData.length === 0) {
+    // Log the prompt template to terminal for review
+    const timestamp = new Date().toISOString();
+    console.log('\n' + '='.repeat(80));
+    console.log(`PROMPT TEMPLATE USED AT ${timestamp}`);
+    console.log(`Bad Misses Only: ${badMissesOnly}`);
+    console.log(`Sample Size: ${sampleSize}`);
+    console.log('-'.repeat(80));
+    console.log(promptTemplate);
+    console.log('='.repeat(80) + '\n');
+    
+    // Also save to a history file
+    const historyPath = path.join(__dirname, 'prompt-history.log');
+    const historyEntry = `
+${'='.repeat(80)}
+TIMESTAMP: ${timestamp}
+BAD_MISSES_ONLY: ${badMissesOnly}
+SAMPLE_SIZE: ${sampleSize}
+${'-'.repeat(80)}
+${promptTemplate}
+${'='.repeat(80)}
+
+`;
+    fs.appendFileSync(historyPath, historyEntry);
+    
+    // For bad misses, always fetch fresh data
+    let dataToUse = cachedData;
+    if (badMissesOnly) {
+      console.log('Fetching bad misses for prompt testing...');
+      dataToUse = await dataFetcher.getResearchData(true, true);
+      if (dataToUse.length === 0) {
+        return res.status(404).json({ error: 'No bad misses found' });
+      }
+    } else if (cachedData.length === 0) {
       await initializeData();
-      if (cachedData.length === 0) {
+      dataToUse = cachedData;
+      if (dataToUse.length === 0) {
         return res.status(500).json({ error: 'No data available' });
       }
     }
     
     // Get random samples
-    const samples = getRandomSamples(cachedData, sampleSize);
+    const samples = getRandomSamples(dataToUse, sampleSize);
     
     // Test prompt on each sample
     const results = await testPromptOnSample(samples, promptTemplate);
     
-    res.json({ results });
+    res.json({ results, isBadMissData: badMissesOnly });
   } catch (error) {
     console.error('Error testing prompt:', error);
     const promptError = PromptLabError.fromUnknown(error, 'Failed to test prompt');
