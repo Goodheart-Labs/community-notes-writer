@@ -21,6 +21,14 @@ This project automatically:
 - **`airtableLogger.ts`**: Tracks processed posts to avoid duplicates
 - **AI Pipeline**: Search context → Note writing → Fact checking
 
+### Important Guidelines
+
+⚠️ **Airtable Data Integrity**: 
+- **NEVER modify or update existing records** in Airtable unless explicitly requested
+- Only **add new records** when processing new posts
+- Existing records serve as historical data and should remain unchanged
+- This ensures data consistency and prevents accidental overwrites
+
 ### Workflow
 
 1. **Hourly Execution**: GitHub Actions runs every hour at the top of the hour

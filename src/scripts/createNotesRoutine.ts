@@ -289,7 +289,7 @@ async function main() {
       };
       
       logEntries.forEach(entry => {
-        const fullResult = entry.fields['Full Result'];
+        const fullResult = entry['Full Result'];
         if (fullResult?.includes('Image analysis: SUCCESS')) imageAnalysisStats.success++;
         else if (fullResult?.includes('Image analysis: TIMEOUT')) imageAnalysisStats.timeout++;
         else if (fullResult?.includes('Image analysis: FAILED')) imageAnalysisStats.failed++;

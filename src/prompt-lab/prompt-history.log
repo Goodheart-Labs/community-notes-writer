@@ -1,0 +1,868 @@
+
+================================================================================
+TIMESTAMP: 2025-09-12T18:00:41.653Z
+BAD_MISSES_ONLY: true
+SAMPLE_SIZE: 10
+--------------------------------------------------------------------------------
+TASK: Analyze this X post and determine if it contains inaccuracies that require additional context, then maybe write a note to provide that additional context which counters it.
+
+CRITICAL ANALYSIS STEPS:
+1. IDENTIFY THE POST CLAIM: What exact factual assertion(s) is the post making?
+2. SUGGEST CONTEXT CLAIM(S): What additional context is required? Write concisely
+
+For each context claim, go through in turn
+
+1. SUGGEST SOURCE: Is there a source which backs the specific claim?
+2. POSITIVE CLAIM: Is the claim about things which did happen, rather than those which didn't. 
+
+Only carry forward positive context claims with sources, write them here. 
+
+NOTE NEEDED STEPS:
+Answer the following questions:
+1. Is this a developing situation? Will new info arrive in days or hours?
+2. Is the original post significantly inaccurate?
+3. Is there a positive claim with a trustworthy source to back up that inaccuracy.
+
+Respond with one of the following statuses. If it is a developing situation, be extra careful.
+
+"TWEET NOT SIGNIFICANTLY INCORRECT" "NO POSITIVE CORRECTION POSSIBLE" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
+
+Using the carried forward context claims, please write the note in the following fashion:
+- Write each claim in order.
+- Add explanations or simplify language.
+- Do not add extra sentences. 
+- *DO NOT* add negative claims about things that haven't been said or been done. Leave the carried forward claims as they are. 
+- Only refer to "errors" in the original tweet if it is required to make clear how the context is relevant.
+- *DO NOT* refer to sources that you have not provided a link to. 
+- The note *MUST* be fewer than 280 characters, with URLS only counting as 1
+
+Note examples:
+
+Bad note: 
+
+The claim that President Trump "has reportedly not been seen in several days" and rumors of his death are false. Trump has had recent public activity and political actions as recently as August 29, 2025, according to verified news reports.
+
+[link]
+
+Good note:
+
+Trump was seen golfing on August 29, 2025, according to Reuters. 
+
+[link]
+
+Explanation:
+
+Do not summarise or editorialise on the original post. His death might be real for all we know. But what we do know is that there was evidence of his public appearances and activities on August 29, 2025. So that is what we will say, and then provide a link. 
+
+Bad note:
+
+Post falsely claims UP is #1 in factories (15.91%) and GVA (25.03%). ASI 2023-24 shows UP ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03%.
+
+[Link]
+
+Good note:
+
+ASI 2023-24 shows Uttar Pradesh ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03% as claimed.
+
+[Links]
+
+Explanation:
+
+Bad note attempts to summarise original post. Readers don't need this, they can see it. Also it says the post is false. Instead we prefer to provide additional context.
+
+Bad note:
+
+This photograph is not from Rudy Giuliani's car accident. News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+[Link]
+
+Good note
+
+News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+Explanation:
+
+We don't say what the photo is or is not. Instead we give context for why the photo is likely wrong. 
+
+[Link]
+
+Output format:
+
+[Reasoning]
+
+Status:
+[Status]
+
+Note:
+[Clear additional context relating to the most important inaccurate claim]
+[URL that specifically supports that additional context]
+
+Post perhaps in need of community note:
+```
+{tweetText}
+```
+
+Perplexity search results:
+```
+{searchResults}
+
+Citations:
+```
+{citations}
+```
+================================================================================
+
+
+================================================================================
+TIMESTAMP: 2025-09-12T18:08:00.930Z
+BAD_MISSES_ONLY: true
+SAMPLE_SIZE: 10
+--------------------------------------------------------------------------------
+TASK: Analyze this X post and determine if it contains inaccuracies that require additional context, then maybe write a note to provide that additional context which counters it.
+
+CRITICAL ANALYSIS STEPS:
+1. IDENTIFY THE POST CLAIM: What exact factual assertion(s) is the post making?
+2. SUGGEST CONTEXT CLAIM(S): What additional context is required? Write concisely and have each claim be a single sentence without run ons. If it needs more make it a separate claim.
+
+For each context claim, go through in turn
+
+1. SUGGEST SOURCE: Is there a source which backs the specific claim?
+2. POSITIVE CLAIM: Is the claim about things which did happen, rather than those which didn't. The thing happening cannot be people saying something didn't happen. An action must have taken place. 
+
+Only carry forward positive context claims with sources, write them here. 
+
+NOTE NEEDED STEPS:
+Answer the following questions:
+1. Is this a developing situation? Will new info arrive in days or hours?
+2. Is the original post significantly inaccurate?
+3. Is there a positive claim with a trustworthy source to back up that inaccuracy.
+
+Respond with one of the following statuses. If it is a developing situation, be extra careful.
+
+"TWEET NOT SIGNIFICANTLY INCORRECT" "NO POSITIVE CORRECTION POSSIBLE" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
+
+Using the carried forward context claims, please write the note in the following fashion:
+- Write each claim in order.
+- Add explanations or simplify language.
+- Do not add extra sentences. 
+- *DO NOT* add negative claims about things that haven't been said or been done. Leave the carried forward claims as they are. 
+- Only refer to "errors" in the original tweet if it is required to make clear how the context is relevant.
+- *DO NOT* refer to sources that you have not provided a link to. 
+- The note *MUST* be fewer than 280 characters, with URLS only counting as 1
+
+Note examples:
+
+Bad note: 
+
+The claim that President Trump "has reportedly not been seen in several days" and rumors of his death are false. Trump has had recent public activity and political actions as recently as August 29, 2025, according to verified news reports.
+
+[link]
+
+Good note:
+
+Trump was seen golfing on August 29, 2025, according to Reuters. 
+
+[link]
+
+Explanation:
+
+Do not summarise or editorialise on the original post. His death might be real for all we know. But what we do know is that there was evidence of his public appearances and activities on August 29, 2025. So that is what we will say, and then provide a link. 
+
+Bad note:
+
+Post falsely claims UP is #1 in factories (15.91%) and GVA (25.03%). ASI 2023-24 shows UP ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03%.
+
+[Link]
+
+Good note:
+
+ASI 2023-24 shows Uttar Pradesh ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03% as claimed.
+
+[Links]
+
+Explanation:
+
+Bad note attempts to summarise original post. Readers don't need this, they can see it. Also it says the post is false. Instead we prefer to provide additional context.
+
+Bad note:
+
+This photograph is not from Rudy Giuliani's car accident. News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+[Link]
+
+Good note
+
+News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+Explanation:
+
+We don't say what the photo is or is not. Instead we give context for why the photo is likely wrong. 
+
+[Link]
+
+Output format:
+
+[Reasoning]
+
+Status:
+[Status]
+
+Note:
+[Clear additional context relating to the most important inaccurate claim]
+[URL that specifically supports that additional context]
+
+Post perhaps in need of community note:
+```
+{tweetText}
+```
+
+Perplexity search results:
+```
+{searchResults}
+
+Citations:
+```
+{citations}
+```
+================================================================================
+
+
+================================================================================
+TIMESTAMP: 2025-09-12T18:15:11.366Z
+BAD_MISSES_ONLY: true
+SAMPLE_SIZE: 10
+--------------------------------------------------------------------------------
+TASK: Analyze this X post and determine if it contains inaccuracies that require additional context, then maybe write a note to provide that additional context which counters it.
+
+CRITICAL ANALYSIS STEPS:
+1. IDENTIFY THE POST CLAIM: What exact factual assertion(s) is the post making?
+2. SUGGEST CONTEXT CLAIM(S): What additional context is required? Write concisely and have each claim be a single sentence without run ons. If it needs more make it a separate claim.
+
+For each context claim, go through in turn
+
+1. SUGGEST SOURCE: Is there a source which backs the specific claim?
+2. POSITIVE CLAIM: Is the claim unambiguously about things which did happen, rather than those which didn't. If the claim is about statments those statements must also be positive.
+
+Only carry forward positive context claims with sources, write them here. 
+
+NOTE NEEDED STEPS:
+Answer the following questions:
+1. Is this a developing situation? Will new info arrive in days or hours?
+2. Is the original post significantly inaccurate?
+3. Is there a positive claim with a trustworthy source to back up that inaccuracy.
+
+Respond with one of the following statuses. If it is a developing situation, be extra careful.
+
+"TWEET NOT SIGNIFICANTLY INCORRECT" "NO POSITIVE CORRECTION POSSIBLE" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
+
+Using the carried forward context claims, please write the note in the following fashion:
+- Write each claim in order.
+- Add explanations or simplify language.
+- Do not add extra sentences. 
+- *DO NOT* add negative claims about things that haven't been said or been done. Leave the carried forward claims as they are. 
+- Only refer to "errors" in the original tweet if it is required to make clear how the context is relevant.
+- *DO NOT* refer to sources that you have not provided a link to. 
+- The note *MUST* be fewer than 280 characters, with URLS only counting as 1
+
+Note examples:
+
+Bad note: 
+
+The claim that President Trump "has reportedly not been seen in several days" and rumors of his death are false. Trump has had recent public activity and political actions as recently as August 29, 2025, according to verified news reports.
+
+[link]
+
+Good note:
+
+Trump was seen golfing on August 29, 2025, according to Reuters. 
+
+[link]
+
+Explanation:
+
+Do not summarise or editorialise on the original post. His death might be real for all we know. But what we do know is that there was evidence of his public appearances and activities on August 29, 2025. So that is what we will say, and then provide a link. 
+
+Bad note:
+
+Post falsely claims UP is #1 in factories (15.91%) and GVA (25.03%). ASI 2023-24 shows UP ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03%.
+
+[Link]
+
+Good note:
+
+ASI 2023-24 shows Uttar Pradesh ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03% as claimed.
+
+[Links]
+
+Explanation:
+
+Bad note attempts to summarise original post. Readers don't need this, they can see it. Also it says the post is false. Instead we prefer to provide additional context.
+
+Bad note:
+
+This photograph is not from Rudy Giuliani's car accident. News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+[Link]
+
+Good note
+
+News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+Explanation:
+
+We don't say what the photo is or is not. Instead we give context for why the photo is likely wrong. 
+
+[Link]
+
+Bad note: 
+
+Major sources publish reports that do not include mention of an attack on Moscow.
+
+[link]
+
+Good note:
+
+[NO POSITIVE CORRECTION POSSIBLE]
+
+Explanation:
+
+The reports might exist but our statement about them is negative. There would have to be a specific fact check about this specific event for it to be admissible. 
+
+Output format:
+
+[Reasoning]
+
+Status:
+[Status]
+
+Note:
+[Clear additional context relating to the most important inaccurate claim]
+[URL that specifically supports that additional context]
+
+Post perhaps in need of community note:
+```
+{tweetText}
+```
+
+Perplexity search results:
+```
+{searchResults}
+
+Citations:
+```
+{citations}
+```
+================================================================================
+
+
+================================================================================
+TIMESTAMP: 2025-09-12T18:20:10.591Z
+BAD_MISSES_ONLY: true
+SAMPLE_SIZE: 10
+--------------------------------------------------------------------------------
+TASK: Analyze this X post and determine if it contains inaccuracies that require additional context, then maybe write a note to provide that additional context which counters it.
+
+CRITICAL ANALYSIS STEPS:
+1. IDENTIFY THE POST CLAIM: What exact factual assertion(s) is the post making?
+2. SUGGEST CONTEXT CLAIM(S): What additional context is required? Write concisely and have each claim be a single sentence without run ons. If it needs more make it a separate claim.
+
+For each context claim, go through in turn
+
+1. SUGGEST SOURCE: Is there a source which backs the specific claim?
+2. POSITIVE CLAIM: Is the claim unambiguously about things which did happen, rather than those which didn't. If the claim is about statements those statements must also be positive, ie about things which did happen, not those which didn't. 
+
+Only carry forward positive context claims with sources, write them here. 
+
+NOTE NEEDED STEPS:
+Answer the following questions:
+1. Is this a developing situation? Will new info arrive in days or hours?
+2. Is the original post significantly inaccurate?
+3. Is there a positive claim with a trustworthy source to back up that inaccuracy.
+
+Respond with one of the following statuses. If it is a developing situation, be extra careful.
+
+"TWEET NOT SIGNIFICANTLY INCORRECT" "NO POSITIVE CORRECTION POSSIBLE" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
+
+Using the carried forward context claims, please write the note in the following fashion:
+- Write each claim in order.
+- Add explanations or simplify language.
+- Do not add extra sentences. 
+- *DO NOT* add negative claims about things that haven't been said or been done. Leave the carried forward claims as they are. 
+- Only refer to "errors" in the original tweet if it is required to make clear how the context is relevant.
+- *DO NOT* refer to sources that you have not provided a link to. 
+- The note *MUST* be fewer than 280 characters, with URLS only counting as 1
+
+Note examples:
+
+Bad note: 
+
+The claim that President Trump "has reportedly not been seen in several days" and rumors of his death are false. Trump has had recent public activity and political actions as recently as August 29, 2025, according to verified news reports.
+
+[link]
+
+Good note:
+
+Trump was seen golfing on August 29, 2025, according to Reuters. 
+
+[link]
+
+Explanation:
+
+Do not summarise or editorialise on the original post. His death might be real for all we know. But what we do know is that there was evidence of his public appearances and activities on August 29, 2025. So that is what we will say, and then provide a link. 
+
+Bad note:
+
+Post falsely claims UP is #1 in factories (15.91%) and GVA (25.03%). ASI 2023-24 shows UP ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03%.
+
+[Link]
+
+Good note:
+
+ASI 2023-24 shows Uttar Pradesh ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03% as claimed.
+
+[Links]
+
+Explanation:
+
+Bad note attempts to summarise original post. Readers don't need this, they can see it. Also it says the post is false. Instead we prefer to provide additional context.
+
+Bad note:
+
+This photograph is not from Rudy Giuliani's car accident. News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+[Link]
+
+Good note
+
+News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+Explanation:
+
+We don't say what the photo is or is not. Instead we give context for why the photo is likely wrong. 
+
+[Link]
+
+Bad note: 
+
+Major sources publish reports that do not include mention of an attack on Moscow.
+
+[link]
+
+Good note:
+
+[NO POSITIVE CORRECTION POSSIBLE]
+
+Explanation:
+
+The reports might exist but our statement about them is negative. There would have to be a specific fact check about this specific event for it to be admissible. 
+
+Output format:
+
+[Reasoning]
+
+Status:
+[Status]
+
+Note:
+[Clear additional context relating to the most important inaccurate claim]
+[URL that specifically supports that additional context]
+
+Post perhaps in need of community note:
+```
+{tweetText}
+```
+
+Perplexity search results:
+```
+{searchResults}
+
+Citations:
+```
+{citations}
+```
+================================================================================
+
+
+================================================================================
+TIMESTAMP: 2025-09-12T18:36:45.180Z
+BAD_MISSES_ONLY: true
+SAMPLE_SIZE: 10
+--------------------------------------------------------------------------------
+TASK: Analyze this X post and determine if it contains inaccuracies that require additional context, then maybe write a note to provide that additional context which counters it. You are an LLM with a knowledge cutoff being supplied trustworthy research by perplexity. Be extremely wary of saying what hasn't happened, since it may be outside of the limited information provided. 
+
+CRITICAL ANALYSIS STEPS:
+1. IDENTIFY THE POST CLAIM: What exact factual assertion(s) is the post making?
+2. SUGGEST CONTEXT CLAIM(S): What additional context is required? Write concisely and have each claim be a single sentence without run ons. If it needs more make it a separate claim.
+
+For each context claim, go through in turn
+
+1. SUGGEST SOURCE: Is there a source which backs the specific claim?
+2. POSITIVE CLAIM: Is the claim unambiguously about things which did happen, rather than those which didn't. If the claim is about statements those statements must also be positive, ie about things which did happen, not those which didn't. 
+
+Only carry forward positive context claims with sources, write them here. 
+
+NOTE NEEDED STEPS:
+Answer the following questions:
+1. Is this a developing situation? Will new info arrive in days or hours?
+2. Is the original post significantly inaccurate?
+3. Is there a positive claim with a trustworthy source to back up that inaccuracy.
+
+Respond with one of the following statuses. If it is a developing situation, be extra careful.
+
+"TWEET NOT SIGNIFICANTLY INCORRECT" "NO POSITIVE CORRECTION POSSIBLE" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
+
+Using the carried forward context claims, please write the note in the following fashion:
+- Write each claim in order.
+- Add explanations or simplify language.
+- Do not add extra sentences. 
+- *DO NOT* add negative claims about things that haven't been said or been done. Leave the carried forward claims as they are. 
+- Only refer to "errors" in the original tweet if it is required to make clear how the context is relevant.
+- *DO NOT* refer to sources that you have not provided a link to. 
+- The note *MUST* be fewer than 280 characters, with URLS only counting as 1
+
+Note examples:
+
+Bad note: 
+
+The claim that President Trump "has reportedly not been seen in several days" and rumors of his death are false. Trump has had recent public activity and political actions as recently as August 29, 2025, according to verified news reports.
+
+[link]
+
+Good note:
+
+Trump was seen golfing on August 29, 2025, according to Reuters. 
+
+[link]
+
+Explanation:
+
+Do not summarise or editorialise on the original post. His death might be real for all we know. But what we do know is that there was evidence of his public appearances and activities on August 29, 2025. So that is what we will say, and then provide a link. 
+
+Bad note:
+
+Post falsely claims UP is #1 in factories (15.91%) and GVA (25.03%). ASI 2023-24 shows UP ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03%.
+
+[Link]
+
+Good note:
+
+ASI 2023-24 shows Uttar Pradesh ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03% as claimed.
+
+[Links]
+
+Explanation:
+
+Bad note attempts to summarise original post. Readers don't need this, they can see it. Also it says the post is false. Instead we prefer to provide additional context.
+
+Bad note:
+
+This photograph is not from Rudy Giuliani's car accident. News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+[Link]
+
+Good note
+
+News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+Explanation:
+
+We don't say what the photo is or is not. Instead we give context for why the photo is likely wrong. 
+
+[Link]
+
+Bad note: 
+
+Major sources publish reports that do not include mention of an attack on Moscow.
+
+[link]
+
+Good note:
+
+[NO POSITIVE CORRECTION POSSIBLE]
+
+Explanation:
+
+The reports might exist but our statement about them is negative. There would have to be a specific fact check about this specific event for it to be admissible. 
+
+Output format:
+
+[Reasoning]
+
+Status:
+[Status]
+
+Note:
+[Clear additional context relating to the most important inaccurate claim]
+[URL that specifically supports that additional context]
+
+Post perhaps in need of community note:
+```
+{tweetText}
+```
+
+Perplexity search results:
+```
+{searchResults}
+
+Citations:
+```
+{citations}
+```
+================================================================================
+
+
+================================================================================
+TIMESTAMP: 2025-09-12T18:46:10.240Z
+BAD_MISSES_ONLY: true
+SAMPLE_SIZE: 10
+--------------------------------------------------------------------------------
+TASK: Analyze this X post and determine if it contains inaccuracies that require additional context, then maybe write a note to provide that additional context which counters it. You are an LLM with a knowledge cutoff being supplied trustworthy research by perplexity. Be extremely wary of saying what hasn't happened, since it may be outside of the limited information provided. 
+
+CRITICAL ANALYSIS STEPS:
+1. IDENTIFY THE POST CLAIM: What exact factual assertion(s) is the post making?
+2. SUGGEST CONTEXT CLAIM(S): What additional context is required? Write concisely and have each claim be a single sentence without run ons. If it needs more make it a separate claim.
+
+For each context claim, go through in turn
+
+1. SUGGEST SOURCE: Is there a source which backs the specific claim?
+2. POSITIVE CLAIM: Is the claim unambiguously about things which did happen, rather than those which didn't. If the claim is about statements those statements must also be positive, ie saying that things did happen, as opposed to not reporting them. 
+
+Only carry forward positive context claims with sources, write them here. 
+
+NOTE NEEDED STEPS:
+Answer the following questions:
+1. Is this a developing situation? Will new info arrive in days or hours?
+2. Is the original post significantly inaccurate?
+3. Is there a positive claim with a trustworthy source to back up that inaccuracy.
+
+Respond with one of the following statuses. If it is a developing situation, be extra careful.
+
+"TWEET NOT SIGNIFICANTLY INCORRECT" "NO POSITIVE CORRECTION POSSIBLE" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
+
+Using the carried forward context claims, please write the note in the following fashion:
+- Write each claim in order.
+- Add explanations or simplify language.
+- Do not add extra sentences. 
+- *DO NOT* add negative claims about things that haven't been said or been done. Leave the carried forward claims as they are. 
+- Only refer to "errors" in the original tweet if it is required to make clear how the context is relevant.
+- *DO NOT* refer to sources that you have not provided a link to. 
+- The note *MUST* be fewer than 280 characters, with URLS only counting as 1
+
+Note examples:
+
+Bad note: 
+
+The claim that President Trump "has reportedly not been seen in several days" and rumors of his death are false. Trump has had recent public activity and political actions as recently as August 29, 2025, according to verified news reports.
+
+[link]
+
+Good note:
+
+Trump was seen golfing on August 29, 2025, according to Reuters. 
+
+[link]
+
+Explanation:
+
+Do not summarise or editorialise on the original post. His death might be real for all we know. But what we do know is that there was evidence of his public appearances and activities on August 29, 2025. So that is what we will say, and then provide a link. 
+
+Bad note:
+
+Post falsely claims UP is #1 in factories (15.91%) and GVA (25.03%). ASI 2023-24 shows UP ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03%.
+
+[Link]
+
+Good note:
+
+ASI 2023-24 shows Uttar Pradesh ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03% as claimed.
+
+[Links]
+
+Explanation:
+
+Bad note attempts to summarise original post. Readers don't need this, they can see it. Also it says the post is false. Instead we prefer to provide additional context.
+
+Bad note:
+
+This photograph is not from Rudy Giuliani's car accident. News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+[Link]
+
+Good note
+
+News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+Explanation:
+
+We don't say what the photo is or is not. Instead we give context for why the photo is likely wrong. 
+
+[Link]
+
+Bad note: 
+
+Major sources publish reports that do not include mention of an attack on Moscow.
+
+[link]
+
+Good note:
+
+[NO POSITIVE CORRECTION POSSIBLE]
+
+Explanation:
+
+The reports might exist but our statement about them is negative. There would have to be a specific fact check about this specific event for it to be admissible. 
+
+Output format:
+
+[Reasoning]
+
+Status:
+[Status]
+
+Note:
+[Clear additional context relating to the most important inaccurate claim]
+[URL that specifically supports that additional context]
+
+Post perhaps in need of community note:
+```
+{tweetText}
+```
+
+Perplexity search results:
+```
+{searchResults}
+
+Citations:
+```
+{citations}
+```
+================================================================================
+
+
+================================================================================
+TIMESTAMP: 2025-09-12T18:49:15.055Z
+BAD_MISSES_ONLY: true
+SAMPLE_SIZE: 10
+--------------------------------------------------------------------------------
+TASK: Analyze this X post and determine if it contains inaccuracies that require additional context, then maybe write a note to provide that additional context which counters it. You are an LLM with a knowledge cutoff being supplied trustworthy research by perplexity. Be extremely wary of saying what hasn't happened, since it may be outside of the limited information provided. 
+
+CRITICAL ANALYSIS STEPS:
+1. IDENTIFY THE POST CLAIM: What exact factual assertion(s) is the post making?
+2. SUGGEST CONTEXT CLAIM(S): What additional context is required? Write concisely and have each claim be a single simple sentence without run ons or hyphens. If it needs more make it a separate claim.
+
+For each context claim, go through in turn
+
+1. SUGGEST SOURCE: Is there a source which backs the specific claim?
+2. POSITIVE CLAIM: Is the claim unambiguously about things which did happen, rather than those which didn't. If the claim is about statements those statements must also be positive, ie saying that things did happen, as opposed to not reporting them. 
+
+Only carry forward positive context claims with sources, write them here. 
+
+NOTE NEEDED STEPS:
+Answer the following questions:
+1. Is this a developing situation? Will new info arrive in days or hours?
+2. Is the original post significantly inaccurate?
+3. Is there a positive claim with a trustworthy source to back up that inaccuracy.
+
+Respond with one of the following statuses. If it is a developing situation, be extra careful.
+
+"TWEET NOT SIGNIFICANTLY INCORRECT" "NO POSITIVE CORRECTION POSSIBLE" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
+
+Using the carried forward context claims, please write the note in the following fashion:
+- Write each claim in order.
+- Add explanations or simplify language.
+- Do not add extra sentences. 
+- *DO NOT* add negative claims about things that haven't been said or been done. Leave the carried forward claims as they are. 
+- Only refer to "errors" in the original tweet if it is required to make clear how the context is relevant.
+- *DO NOT* refer to sources that you have not provided a link to. 
+- The note *MUST* be fewer than 280 characters, with URLS only counting as 1
+
+Note examples:
+
+Bad note: 
+
+The claim that President Trump "has reportedly not been seen in several days" and rumors of his death are false. Trump has had recent public activity and political actions as recently as August 29, 2025, according to verified news reports.
+
+[link]
+
+Good note:
+
+Trump was seen golfing on August 29, 2025, according to Reuters. 
+
+[link]
+
+Explanation:
+
+Do not summarise or editorialise on the original post. His death might be real for all we know. But what we do know is that there was evidence of his public appearances and activities on August 29, 2025. So that is what we will say, and then provide a link. 
+
+Bad note:
+
+Post falsely claims UP is #1 in factories (15.91%) and GVA (25.03%). ASI 2023-24 shows UP ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03%.
+
+[Link]
+
+Good note:
+
+ASI 2023-24 shows Uttar Pradesh ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03% as claimed.
+
+[Links]
+
+Explanation:
+
+Bad note attempts to summarise original post. Readers don't need this, they can see it. Also it says the post is false. Instead we prefer to provide additional context.
+
+Bad note:
+
+This photograph is not from Rudy Giuliani's car accident. News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+[Link]
+
+Good note
+
+News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
+
+Explanation:
+
+We don't say what the photo is or is not. Instead we give context for why the photo is likely wrong. 
+
+[Link]
+
+Bad note: 
+
+Major sources publish reports that do not include mention of an attack on Moscow.
+
+[link]
+
+Good note:
+
+[NO POSITIVE CORRECTION POSSIBLE]
+
+Explanation:
+
+The reports might exist but our statement about them is negative. There would have to be a specific fact check about this specific event for it to be admissible. 
+
+Output format:
+
+[Reasoning]
+
+Status:
+[Status]
+
+Note:
+[Clear additional context relating to the most important inaccurate claim]
+[URL that specifically supports that additional context]
+
+Post perhaps in need of community note:
+```
+{tweetText}
+```
+
+Perplexity search results:
+```
+{searchResults}
+
+Citations:
+```
+{citations}
+```
+================================================================================
+
