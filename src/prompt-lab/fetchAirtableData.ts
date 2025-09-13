@@ -66,15 +66,21 @@ export class AirtableDataFetcher {
     return result;
   }
 
-  async fetchLatestNotes(limit: number = 50): Promise<ResearchData[]> {
+  async fetchLatestNotes(limit: number = 50, badMissesOnly: boolean = false): Promise<ResearchData[]> {
     const records: ResearchData[] = [];
 
-    console.log(`Fetching last ${limit} notes from main branch...`);
+    const filterType = badMissesOnly ? 'bad misses' : 'posted notes';
+    console.log(`Fetching last ${limit} ${filterType} from main branch...`);
+
+    // Build filter formula based on whether we want bad misses or all posted notes
+    const filterFormula = badMissesOnly 
+      ? 'AND({Bad miss}, {Bot name} = "main")'
+      : 'AND({Would be posted} = 1, {Bot name} = "main")';
 
     await this.base(this.tableName)
       .select({
         pageSize: 100,
-        filterByFormula: 'AND({Would be posted} = 1, {Bot name} = "main")',
+        filterByFormula: filterFormula,
         sort: [{ field: "Created", direction: "desc" }],
         maxRecords: limit
       })
@@ -142,16 +148,20 @@ export class AirtableDataFetcher {
     }
   }
 
-  async getResearchData(forceRefresh: boolean = false): Promise<ResearchData[]> {
-    if (!forceRefresh) {
+  async getResearchData(forceRefresh: boolean = false, badMissesOnly: boolean = false): Promise<ResearchData[]> {
+    // For bad misses, always fetch fresh data (don't use cache)
+    if (!forceRefresh && !badMissesOnly) {
       const cached = this.loadFromCache();
       if (cached) {
         return cached.data;
       }
     }
 
-    const data = await this.fetchLatestNotes();
-    this.saveToCache(data);
+    const data = await this.fetchLatestNotes(50, badMissesOnly);
+    // Only cache non-bad-miss data
+    if (!badMissesOnly) {
+      this.saveToCache(data);
+    }
     return data;
   }
 }

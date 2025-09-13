@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bad Miss Analysis - Community Notes</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #f5f7fa;
+      color: #2d3748;
+    }
+    
+    .header {
+      background: #1a202c;
+      color: white;
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    
+    .header .subtitle {
+      font-size: 0.9rem;
+      color: #a0aec0;
+      margin-top: 0.25rem;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    .controls {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    
+    button {
+      background: #4299e1;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    button:hover:not(:disabled) {
+      background: #3182ce;
+    }
+    
+    button:disabled {
+      background: #a0aec0;
+      cursor: not-allowed;
+    }
+    
+    select {
+      padding: 0.75rem 1rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      background: white;
+      cursor: pointer;
+    }
+    
+    .stats {
+      margin-left: auto;
+      font-size: 0.9rem;
+      color: #718096;
+    }
+    
+    .stats span {
+      font-weight: 600;
+      color: #2d3748;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: #718096;
+    }
+    
+    .loading-spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e2e8f0;
+      border-top-color: #4299e1;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .bad-miss-entry {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
+    
+    .entry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 1rem;
+    }
+    
+    .entry-number {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #2d3748;
+    }
+    
+    .entry-timestamp {
+      font-size: 0.85rem;
+      color: #718096;
+    }
+    
+    .tweet-section {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .section-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 0.5rem;
+    }
+    
+    .tweet-text {
+      font-size: 1rem;
+      line-height: 1.5;
+      color: #2d3748;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    
+    .tweet-link {
+      display: inline-block;
+      margin-top: 0.5rem;
+      color: #4299e1;
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+    
+    .tweet-link:hover {
+      text-decoration: underline;
+    }
+    
+    .posted-note {
+      background: #ebf8ff;
+      border: 1px solid #90cdf4;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .posted-note .section-label {
+      color: #2c5282;
+    }
+    
+    .branch-comparisons {
+      margin-top: 1.5rem;
+    }
+    
+    .branch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+      margin-top: 0.75rem;
+    }
+    
+    .branch-card {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 1rem;
+    }
+    
+    .branch-name {
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+    
+    .branch-note {
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: #4a5568;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    
+    .branch-status {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      color: #718096;
+    }
+    
+    .branch-would-post {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-top: 0.5rem;
+    }
+    
+    .would-post-yes {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+    
+    .would-post-no {
+      background: #fed7d7;
+      color: #742a2a;
+    }
+    
+    .no-data {
+      text-align: center;
+      padding: 3rem;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .no-data-icon {
+      font-size: 3rem;
+      color: #a0aec0;
+      margin-bottom: 1rem;
+    }
+    
+    .navigation {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      background: white;
+      padding: 0.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .nav-button {
+      background: white;
+      color: #4a5568;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .nav-button:hover:not(:disabled) {
+      background: #f7fafc;
+      border-color: #cbd5e0;
+    }
+    
+    .nav-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .nav-counter {
+      padding: 0 1rem;
+      font-size: 0.9rem;
+      color: #4a5568;
+    }
+    
+    @media (max-width: 768px) {
+      .branch-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .stats {
+        margin-left: 0;
+        margin-top: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Bad Miss Analysis</h1>
+    <div class="subtitle">Review posts marked as "Bad miss" (checked posts that should not have been posted)</div>
+  </div>
+  
+  <div class="container">
+    <div class="controls">
+      <button id="loadDataBtn">Load Bad Misses</button>
+      <button id="refreshDataBtn">Refresh from Airtable</button>
+      
+      <select id="branchFilter">
+        <option value="main">Main Branch Only</option>
+        <option value="all">All Branches</option>
+      </select>
+      
+      <select id="timeFilter">
+        <option value="24">Last 24 Hours</option>
+        <option value="72">Last 3 Days</option>
+        <option value="168">Last Week</option>
+        <option value="720">Last Month</option>
+        <option value="all">All Time</option>
+      </select>
+      
+      <div class="stats">
+        Total: <span id="totalCount">0</span> | 
+        Showing: <span id="showingCount">0</span>
+      </div>
+    </div>
+    
+    <div id="mainContent">
+      <div id="loadingState" class="loading" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p style="margin-top: 1rem;">Loading bad misses...</p>
+      </div>
+      
+      <div id="badMissList"></div>
+      
+      <div id="noDataState" class="no-data" style="display: none;">
+        <div class="no-data-icon">📊</div>
+        <h2>No Bad Misses Found</h2>
+        <p style="margin-top: 0.5rem; color: #718096;">
+          No posts marked as "Bad miss" for the selected filters.
+        </p>
+      </div>
+    </div>
+    
+    <div id="navigation" class="navigation" style="display: none;">
+      <button id="prevBtn" class="nav-button">← Previous</button>
+      <div class="nav-counter">
+        <span id="currentIndex">1</span> / <span id="totalIndex">1</span>
+      </div>
+      <button id="nextBtn" class="nav-button">Next →</button>
+    </div>
+  </div>
+  
+  <script>
+    const API_BASE = window.location.origin;
+    let badMisses = [];
+    let currentIndex = 0;
+    
+    // Load data
+    async function loadData() {
+      const loadingState = document.getElementById('loadingState');
+      const badMissList = document.getElementById('badMissList');
+      const noDataState = document.getElementById('noDataState');
+      const navigation = document.getElementById('navigation');
+      
+      loadingState.style.display = 'block';
+      badMissList.innerHTML = '';
+      noDataState.style.display = 'none';
+      navigation.style.display = 'none';
+      
+      try {
+        const branchFilter = document.getElementById('branchFilter').value;
+        const timeFilter = document.getElementById('timeFilter').value;
+        
+        const response = await fetch(`${API_BASE}/api/bad-misses?branch=${branchFilter}&hours=${timeFilter}`);
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        badMisses = data.badMisses;
+        document.getElementById('totalCount').textContent = data.total;
+        document.getElementById('showingCount').textContent = badMisses.length;
+        
+        if (badMisses.length === 0) {
+          noDataState.style.display = 'block';
+        } else {
+          displayBadMisses();
+          if (badMisses.length > 1) {
+            navigation.style.display = 'flex';
+            updateNavigation();
+          }
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+        badMissList.innerHTML = `<div style="color: red; padding: 1rem;">Error: ${escapeHtml(error.message)}</div>`;
+      } finally {
+        loadingState.style.display = 'none';
+      }
+    }
+    
+    // Display bad misses
+    function displayBadMisses() {
+      const badMissList = document.getElementById('badMissList');
+      badMissList.innerHTML = '';
+      
+      badMisses.forEach((miss, index) => {
+        const entry = document.createElement('div');
+        entry.className = 'bad-miss-entry';
+        entry.id = `miss-${index}`;
+        
+        entry.innerHTML = `
+          <div class="entry-header">
+            <div class="entry-number">Bad Miss #${index + 1}</div>
+            <div class="entry-timestamp">${new Date(miss.createdAt).toLocaleString()}</div>
+          </div>
+          
+          <div class="tweet-section">
+            <div class="section-label">Original Tweet</div>
+            <div class="tweet-text">${escapeHtml(miss.tweetText)}</div>
+            <a href="${miss.url}" target="_blank" class="tweet-link">View on X →</a>
+          </div>
+          
+          <div class="posted-note">
+            <div class="section-label">✓ Posted Note (Main Branch)</div>
+            <div class="tweet-text">${escapeHtml(miss.postedNote)}</div>
+            <div class="branch-status">Status: ${escapeHtml(miss.status || 'N/A')}</div>
+          </div>
+          
+          ${miss.branches && miss.branches.length > 0 ? `
+            <div class="branch-comparisons">
+              <div class="section-label">Other Branch Outputs</div>
+              <div class="branch-grid">
+                ${miss.branches.map(branch => `
+                  <div class="branch-card">
+                    <div class="branch-name">${escapeHtml(branch.name)}</div>
+                    <div class="branch-note">${escapeHtml(branch.note)}</div>
+                    <div class="branch-status">Status: ${escapeHtml(branch.status || 'N/A')}</div>
+                    <div class="branch-would-post ${branch.wouldPost ? 'would-post-yes' : 'would-post-no'}">
+                      ${branch.wouldPost ? 'Would Post' : 'Would Not Post'}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        `;
+        
+        badMissList.appendChild(entry);
+      });
+    }
+    
+    // Navigation
+    function updateNavigation() {
+      document.getElementById('currentIndex').textContent = currentIndex + 1;
+      document.getElementById('totalIndex').textContent = badMisses.length;
+      
+      document.getElementById('prevBtn').disabled = currentIndex === 0;
+      document.getElementById('nextBtn').disabled = currentIndex === badMisses.length - 1;
+      
+      // Scroll to current entry
+      const entry = document.getElementById(`miss-${currentIndex}`);
+      if (entry) {
+        entry.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+    
+    // Refresh data from Airtable
+    async function refreshData() {
+      const btn = document.getElementById('refreshDataBtn');
+      btn.disabled = true;
+      btn.textContent = 'Refreshing...';
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/refresh-bad-misses`, {
+          method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        alert(`Data refreshed! Found ${data.count} bad misses.`);
+        await loadData();
+      } catch (error) {
+        console.error('Error refreshing data:', error);
+        alert('Failed to refresh data: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Refresh from Airtable';
+      }
+    }
+    
+    // Utility function
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+    
+    // Event listeners
+    document.getElementById('loadDataBtn').addEventListener('click', loadData);
+    document.getElementById('refreshDataBtn').addEventListener('click', refreshData);
+    document.getElementById('branchFilter').addEventListener('change', loadData);
+    document.getElementById('timeFilter').addEventListener('change', loadData);
+    
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      if (currentIndex > 0) {
+        currentIndex--;
+        updateNavigation();
+      }
+    });
+    
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      if (currentIndex < badMisses.length - 1) {
+        currentIndex++;
+        updateNavigation();
+      }
+    });
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (badMisses.length === 0) return;
+      
+      if (e.key === 'ArrowUp' || e.key === 'k') {
+        document.getElementById('prevBtn').click();
+      } else if (e.key === 'ArrowDown' || e.key === 'j') {
+        document.getElementById('nextBtn').click();
+      }
+    });
+  </script>
+</body>
+</html>

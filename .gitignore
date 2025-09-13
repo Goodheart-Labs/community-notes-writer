@@ -42,3 +42,7 @@ TODO.md
 # Elo rating web app compiled files
 src/elo-rating-web/dist/
 src/elo-rating-web/*.js
+
+# Prompt lab history
+src/prompt-lab/prompt-history.log
+src/prompt-lab/research-cache.json

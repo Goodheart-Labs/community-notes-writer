@@ -290,6 +290,10 @@
         <button id="loadDefaultBtn">Load Default Prompt</button>
         <button id="testPromptBtn">Test on Random 10</button>
         <button id="refreshDataBtn">Refresh Data</button>
+        <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem;">
+          <input type="checkbox" id="badMissOnly" style="width: 18px; height: 18px;">
+          <span>Bad Misses Only</span>
+        </label>
         <div class="model-info">Model: <span id="modelName">Loading...</span></div>
       </div>
     </div>
@@ -342,6 +346,7 @@
         return;
       }
       
+      const badMissesOnly = document.getElementById('badMissOnly').checked;
       const btn = document.getElementById('testPromptBtn');
       const loadingIndicator = document.getElementById('loadingIndicator');
       const resultsSection = document.getElementById('resultsSection');
@@ -352,11 +357,19 @@
       resultsSection.classList.add('active');
       resultsGrid.innerHTML = '';
       
+      // Update loading message for bad misses
+      const loadingText = loadingIndicator.querySelector('p');
+      if (loadingText) {
+        loadingText.textContent = badMissesOnly 
+          ? 'Generating notes for bad misses...' 
+          : 'Generating notes with your prompt...';
+      }
+      
       try {
         const response = await fetch(`${API_BASE}/api/test-prompt`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ promptTemplate, sampleSize: 10 })
+          body: JSON.stringify({ promptTemplate, sampleSize: 10, badMissesOnly })
         });
         
         const results = await response.json();
@@ -365,7 +378,7 @@
           throw new Error(results.error);
         }
         
-        displayResults(results.results);
+        displayResults(results.results, results.isBadMissData);
       } catch (error) {
         console.error('Error testing prompt:', error);
         resultsGrid.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
@@ -417,9 +430,17 @@
       return charCount;
     }
     
-    function displayResults(results) {
+    function displayResults(results, isBadMissData = false) {
       const resultsGrid = document.getElementById('resultsGrid');
       resultsGrid.innerHTML = '';
+      
+      // Add a header if these are bad misses
+      if (isBadMissData) {
+        const header = document.createElement('div');
+        header.style.cssText = 'background: #fee; border: 1px solid #fcc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; text-align: center;';
+        header.innerHTML = '<strong>⚠️ Testing on Bad Misses</strong> - These are posts that were marked as mistakes';
+        resultsGrid.appendChild(header);
+      }
       
       results.forEach((result, index) => {
         const resultItem = document.createElement('div');
