@@ -4,7 +4,6 @@ import { writeNoteWithSearchFn as writeV1 } from "../pipeline/writeNoteWithSearc
 import { check as checkV1 } from "../pipeline/check";
 import { AirtableLogger, createLogEntry } from "../api/airtableLogger";
 import { getOriginalTweetContent } from "../utils/retweetUtils";
-import { runProductionFilters, formatFilterResultsForAirtable } from "../pipeline/productionFilters";
 import PQueue from "p-queue";
 import { execSync } from "child_process";
 
@@ -198,34 +197,19 @@ async function main() {
         // Track if we actually posted to Twitter
         let postedToX = false;
         let twitterResponse = null;
-        let filterResults = null;
-        let filtersPassed = false;
 
         if (
           r.noteResult.status === "CORRECTION WITH TRUSTWORTHY CITATION" &&
           checkYes
         ) {
-          // Run production filters before posting
-          const noteText = r.noteResult.note + " " + r.noteResult.url;
-          const postText = r.post.text || r.post.full_text || '';
-          
-          console.log(`[main] Running production filters for post ${r.post.id}`);
-          const filterRun = await runProductionFilters(noteText, postText, currentBranch);
-          filterResults = formatFilterResultsForAirtable(filterRun.results);
-          filtersPassed = filterRun.shouldPost;
-          
-          if (!filtersPassed) {
-            console.log(
-              `[main] Filters blocked note for post ${r.post.id}. Failed filters: ${filterRun.summary.requiredFailed.join(', ')}`
-            );
-          } else if (shouldSubmitNotes) {
+          if (shouldSubmitNotes) {
             try {
               // Submit the note using the same info as in your submitNote.ts
               const { submitNote } = await import("../api/submitNote");
               const info = {
                 classification: "misinformed_or_potentially_misleading",
                 misleading_tags: ["disputed_claim_as_fact"],
-                text: noteText,
+                text: r.noteResult.note + " " + r.noteResult.url,
                 trustworthy_sources: true,
               };
               const response = await submitNote(r.post.id, info);
@@ -256,7 +240,7 @@ async function main() {
           console.log(`[main] Skipping post ${r.post.id} (${reason})`);
         }
 
-        // Create log entry with actual posting status and filter results
+        // Create log entry with actual posting status
         const logEntry = createLogEntry(
           r.post,
           r.searchContextResult,
@@ -264,9 +248,7 @@ async function main() {
           r.checkResult,
           currentBranch,
           commit,
-          postedToX,
-          filterResults || undefined,
-          filtersPassed || undefined
+          postedToX
         );
         logEntries.push(logEntry);
       });
