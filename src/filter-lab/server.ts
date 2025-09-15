@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import Airtable from 'airtable';
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 
 dotenv.config();
 
@@ -17,9 +17,9 @@ const PORT = process.env.FILTER_LAB_PORT || 3003;
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname)));
 
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+// Initialize Anthropic
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 // Initialize Airtable
@@ -152,28 +152,28 @@ async function fetchNotes(source: string): Promise<Note[]> {
 }
 
 // Run a single filter on a single note
-async function runFilter(filter: Filter, note: string): Promise<'PASS' | 'FAIL' | 'ERROR'> {
+async function runFilter(filter: Filter, note: string, post: string = ''): Promise<'PASS' | 'FAIL' | 'ERROR'> {
   try {
-    // Replace {note} placeholder with actual note text
-    const prompt = filter.prompt.replace(/\{note\}/g, note);
+    // Replace placeholders with actual text
+    let prompt = filter.prompt.replace(/\{note\}/g, note);
+    prompt = prompt.replace(/\{post\}/g, post || '[No original post available]');
     
-    const response = await openai.chat.completions.create({
-      model: process.env.LLM_MODEL || 'gpt-4-turbo-preview',
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 10,
+      temperature: 0.3,
+      system: 'You are a Community Notes filter evaluator. Respond with only "PASS" or "FAIL" based on the criteria given.',
       messages: [
-        {
-          role: 'system',
-          content: 'You are a Community Notes filter evaluator. Respond with only "PASS" or "FAIL" based on the criteria given.'
-        },
         {
           role: 'user',
           content: prompt
         }
-      ],
-      temperature: 0.3,
-      max_tokens: 10
+      ]
     });
     
-    const result = response.choices[0]?.message?.content?.trim().toUpperCase();
+    const result = response.content[0].type === 'text' 
+      ? response.content[0].text.trim().toUpperCase()
+      : '';
     
     if (result === 'PASS' || result === 'FAIL') {
       return result as 'PASS' | 'FAIL';
@@ -231,7 +231,7 @@ app.post('/api/filter-lab/run', async (req: Request, res: Response) => {
       // Run each filter on this note
       for (const filter of activeFilters) {
         console.log(`Running filter "${filter.name}" on note ${note.id}`);
-        const result = await runFilter(filter, note.text);
+        const result = await runFilter(filter, note.text, note.tweetText || '');
         filterResults[filter.name] = result;
       }
       
@@ -278,5 +278,5 @@ app.get('/', (req: Request, res: Response) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`Filter Lab server running on http://localhost:${PORT}`);
-  console.log(`Using OpenAI model: ${process.env.LLM_MODEL || 'gpt-4-turbo-preview'}`);
+  console.log(`Using Claude 3.5 Sonnet for filter evaluation`);
 });

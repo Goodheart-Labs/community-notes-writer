@@ -426,6 +426,9 @@ Consider:
 
 Respond with only "PASS" if the note is appropriate, or "FAIL" if it contains harassment/abuse.
 
+Original post:
+{post}
+
 Note to evaluate:
 {note}`
       },
@@ -442,6 +445,9 @@ Consider:
 
 Respond with only "PASS" if URLs are valid, or "FAIL" if there are URL issues.
 
+Original post:
+{post}
+
 Note to evaluate:
 {note}`
       },
@@ -457,6 +463,9 @@ Consider:
 - Community Notes should primarily address factual inaccuracies
 
 Respond with only "PASS" if it addresses a factual claim, or "FAIL" if it's targeting an opinion.
+
+Original post:
+{post}
 
 Note to evaluate:
 {note}`
@@ -490,7 +499,7 @@ Note to evaluate:
             </div>
           </div>
           <textarea class="filter-prompt" 
-                    placeholder="Enter filter prompt. Use {note} for the note text."
+                    placeholder="Enter filter prompt. Use {note} for the note text and {post} for the original tweet."
                     onchange="updateFilterPrompt(${filter.id}, this.value)">${escapeHtml(filter.prompt)}</textarea>
         `;
         filtersList.appendChild(filterEl);
@@ -505,7 +514,7 @@ Note to evaluate:
         id: filterIdCounter++,
         name: `Filter ${filters.length + 1}`,
         active: true,
-        prompt: 'Evaluate this note:\n{note}\n\nRespond with only "PASS" or "FAIL".'
+        prompt: 'Original post:\n{post}\n\nNote to evaluate:\n{note}\n\nRespond with only "PASS" or "FAIL".'
       });
       renderFilters();
     }
@@ -564,8 +573,11 @@ Note to evaluate:
               Loaded ${notes.length} notes (showing first 3)
             </div>
             ${notes.slice(0, 3).map(note => `
-              <div class="note-text" style="margin-bottom: 0.5rem;">
-                ${escapeHtml(note.text.substring(0, 200))}${note.text.length > 200 ? '...' : ''}
+              <div style="margin-bottom: 1rem; padding: 1rem; background: #f9f9f9; border-radius: 6px;">
+                ${note.tweetText ? `<div style="color: #718096; font-size: 0.875rem; margin-bottom: 0.5rem;">Post: ${escapeHtml(note.tweetText.substring(0, 100))}...</div>` : ''}
+                <div class="note-text">
+                  ${escapeHtml(note.text.substring(0, 200))}${note.text.length > 200 ? '...' : ''}
+                </div>
               </div>
             `).join('')}
           `;
