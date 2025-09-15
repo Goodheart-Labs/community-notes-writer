@@ -160,77 +160,72 @@ async function fetchNotes(source: string): Promise<Note[]> {
   }
 }
 
-// Run a single filter on a single note with retry logic
-async function runFilter(filter: Filter, note: string, post: string = '', retries: number = 2): Promise<{ result: 'PASS' | 'FAIL' | 'ERROR', error?: string }> {
-  let lastError: string = '';
-  
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      // Replace placeholders with actual text
-      let prompt = filter.prompt.replace(/\{note\}/g, note);
-      prompt = prompt.replace(/\{post\}/g, post || '[No original post available]');
-      
-      // Log the prompt for debugging
-      if (attempt === 0) {
-        console.log(`[Filter: ${filter.name}] Running with prompt length: ${prompt.length} chars`);
-      } else {
-        console.log(`[Filter: ${filter.name}] Retry attempt ${attempt}/${retries}`);
-      }
-      
-      const response = await openrouter.chat.completions.create({
-        model: 'anthropic/claude-sonnet-4',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a Community Notes filter evaluator. Respond with ONLY the single word "PASS" or "FAIL" based on the criteria given. Do not include any other text, punctuation, or explanation.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.1,  // Lower temperature for more consistent responses
-        max_tokens: 10,
-        timeout: 10000  // 10 second timeout
-      });
-      
-      const rawResult = response.choices[0]?.message?.content || '';
-      // Clean up the result - remove punctuation, extra spaces, etc.
-      const result = rawResult.trim().toUpperCase().replace(/[^A-Z]/g, '');
-      
-      console.log(`[Filter: ${filter.name}] Raw response: "${rawResult}", Cleaned: "${result}"`);
-      
-      if (result === 'PASS' || result === 'FAIL') {
-        return { result: result as 'PASS' | 'FAIL' };
-      }
-      
-      // Check for common variations
-      if (result.includes('PASS')) return { result: 'PASS' };
-      if (result.includes('FAIL')) return { result: 'FAIL' };
-      
-      lastError = `Unexpected response: "${rawResult}"`;
-      console.warn(`[Filter: ${filter.name}] ${lastError}`);
-      
-      // Don't retry for unexpected responses, only for actual errors
-      if (attempt === 0) {
-        return { result: 'ERROR', error: lastError };
-      }
-    } catch (error: any) {
-      lastError = error.message || String(error);
-      console.error(`[Filter: ${filter.name}] Attempt ${attempt + 1} failed:`, lastError);
-      
-      if (attempt < retries) {
-        // Wait before retrying (exponential backoff)
-        const delay = 1000 * Math.pow(2, attempt);
-        console.log(`[Filter: ${filter.name}] Waiting ${delay}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
+// Run a single filter on a single note
+async function runFilter(filter: Filter, note: string, post: string = ''): Promise<{ result: 'PASS' | 'FAIL' | 'ERROR', error?: string, rawResponse?: string }> {
+  try {
+    // Replace placeholders with actual text
+    let prompt = filter.prompt.replace(/\{note\}/g, note);
+    prompt = prompt.replace(/\{post\}/g, post || '[No original post available]');
+    
+    console.log(`[Filter: ${filter.name}] Running with prompt length: ${prompt.length} chars`);
+    
+    const response = await openrouter.chat.completions.create({
+      model: 'anthropic/claude-sonnet-4',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a Community Notes filter evaluator. Respond with ONLY the single word "PASS" or "FAIL" based on the criteria given. Do not include any other text, punctuation, or explanation.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.1,  // Lower temperature for more consistent responses
+      max_tokens: 10,
+      timeout: 10000  // 10 second timeout
+    });
+    
+    const rawResult = response.choices[0]?.message?.content || '';
+    // Clean up the result - just trim and uppercase
+    const trimmed = rawResult.trim().toUpperCase();
+    
+    console.log(`[Filter: ${filter.name}] Raw response: "${rawResult}"`);
+    
+    // Check for exact matches first
+    if (trimmed === 'PASS' || trimmed === 'FAIL') {
+      return { result: trimmed as 'PASS' | 'FAIL' };
     }
+    
+    // Check for common variations with punctuation
+    if (trimmed === 'PASS.' || trimmed === 'PASS!' || trimmed === '"PASS"') return { result: 'PASS' };
+    if (trimmed === 'FAIL.' || trimmed === 'FAIL!' || trimmed === '"FAIL"') return { result: 'FAIL' };
+    
+    // Check if it starts with PASS or FAIL (might have explanation after)
+    if (trimmed.startsWith('PASS')) return { result: 'PASS' };
+    if (trimmed.startsWith('FAIL')) return { result: 'FAIL' };
+    
+    // Check if PASS or FAIL appears anywhere in the response
+    const cleanedAlpha = trimmed.replace(/[^A-Z]/g, '');
+    if (cleanedAlpha === 'PASS' || cleanedAlpha === 'FAIL') {
+      return { result: cleanedAlpha as 'PASS' | 'FAIL' };
+    }
+    
+    // Return ERROR with the actual response the LLM gave
+    console.warn(`[Filter: ${filter.name}] Unexpected response: "${rawResult}"`);
+    return { 
+      result: 'ERROR', 
+      error: `LLM responded with: "${rawResult}"`,
+      rawResponse: rawResult
+    };
+  } catch (error: any) {
+    const errorMsg = error.message || String(error);
+    console.error(`[Filter: ${filter.name}] Error:`, errorMsg);
+    return { 
+      result: 'ERROR', 
+      error: errorMsg
+    };
   }
-  
-  // All retries exhausted
-  console.error(`[Filter: ${filter.name}] All retries exhausted. Last error:`, lastError);
-  return { result: 'ERROR', error: `Failed after ${retries} retries: ${lastError}` };
 }
 
 // API Routes
