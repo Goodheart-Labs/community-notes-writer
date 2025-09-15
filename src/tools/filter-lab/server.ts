@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import Airtable from 'airtable';
 import OpenAI from 'openai';
+import fs from 'fs/promises';
 
 dotenv.config();
 
@@ -66,6 +67,7 @@ interface FilterResult {
   note: string;
   wouldBePosted: boolean;
   filterResults: { [filterName: string]: 'PASS' | 'FAIL' | 'ERROR' };
+  filterErrors?: { [filterName: string]: string };
   tweetUrl?: string;
   tweetText?: string;
 }
@@ -158,44 +160,94 @@ async function fetchNotes(source: string): Promise<Note[]> {
   }
 }
 
-// Run a single filter on a single note
-async function runFilter(filter: Filter, note: string, post: string = ''): Promise<'PASS' | 'FAIL' | 'ERROR'> {
-  try {
-    // Replace placeholders with actual text
-    let prompt = filter.prompt.replace(/\{note\}/g, note);
-    prompt = prompt.replace(/\{post\}/g, post || '[No original post available]');
-    
-    const response = await openrouter.chat.completions.create({
-      model: 'anthropic/claude-sonnet-4',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a Community Notes filter evaluator. Respond with only "PASS" or "FAIL" based on the criteria given.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.3,
-      max_tokens: 10
-    });
-    
-    const result = response.choices[0]?.message?.content?.trim().toUpperCase();
-    
-    if (result === 'PASS' || result === 'FAIL') {
-      return result as 'PASS' | 'FAIL';
+// Run a single filter on a single note with retry logic
+async function runFilter(filter: Filter, note: string, post: string = '', retries: number = 2): Promise<{ result: 'PASS' | 'FAIL' | 'ERROR', error?: string }> {
+  let lastError: string = '';
+  
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      // Replace placeholders with actual text
+      let prompt = filter.prompt.replace(/\{note\}/g, note);
+      prompt = prompt.replace(/\{post\}/g, post || '[No original post available]');
+      
+      // Log the prompt for debugging
+      if (attempt === 0) {
+        console.log(`[Filter: ${filter.name}] Running with prompt length: ${prompt.length} chars`);
+      } else {
+        console.log(`[Filter: ${filter.name}] Retry attempt ${attempt}/${retries}`);
+      }
+      
+      const response = await openrouter.chat.completions.create({
+        model: 'anthropic/claude-sonnet-4',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a Community Notes filter evaluator. Respond with ONLY the single word "PASS" or "FAIL" based on the criteria given. Do not include any other text, punctuation, or explanation.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.1,  // Lower temperature for more consistent responses
+        max_tokens: 10,
+        timeout: 10000  // 10 second timeout
+      });
+      
+      const rawResult = response.choices[0]?.message?.content || '';
+      // Clean up the result - remove punctuation, extra spaces, etc.
+      const result = rawResult.trim().toUpperCase().replace(/[^A-Z]/g, '');
+      
+      console.log(`[Filter: ${filter.name}] Raw response: "${rawResult}", Cleaned: "${result}"`);
+      
+      if (result === 'PASS' || result === 'FAIL') {
+        return { result: result as 'PASS' | 'FAIL' };
+      }
+      
+      // Check for common variations
+      if (result.includes('PASS')) return { result: 'PASS' };
+      if (result.includes('FAIL')) return { result: 'FAIL' };
+      
+      lastError = `Unexpected response: "${rawResult}"`;
+      console.warn(`[Filter: ${filter.name}] ${lastError}`);
+      
+      // Don't retry for unexpected responses, only for actual errors
+      if (attempt === 0) {
+        return { result: 'ERROR', error: lastError };
+      }
+    } catch (error: any) {
+      lastError = error.message || String(error);
+      console.error(`[Filter: ${filter.name}] Attempt ${attempt + 1} failed:`, lastError);
+      
+      if (attempt < retries) {
+        // Wait before retrying (exponential backoff)
+        const delay = 1000 * Math.pow(2, attempt);
+        console.log(`[Filter: ${filter.name}] Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
-    
-    console.warn(`Unexpected filter response: ${result}`);
-    return 'ERROR';
-  } catch (error) {
-    console.error(`Error running filter "${filter.name}":`, error);
-    return 'ERROR';
   }
+  
+  // All retries exhausted
+  console.error(`[Filter: ${filter.name}] All retries exhausted. Last error:`, lastError);
+  return { result: 'ERROR', error: `Failed after ${retries} retries: ${lastError}` };
 }
 
 // API Routes
+
+// Get default filters
+app.get('/api/filter-lab/default-filters', async (req: Request, res: Response) => {
+  try {
+    const filtersPath = path.join(__dirname, 'defaultFilters.json');
+    const filtersData = await fs.readFile(filtersPath, 'utf-8');
+    const filters = JSON.parse(filtersData);
+    res.json({ filters });
+  } catch (error: any) {
+    console.error('Error loading default filters:', error);
+    // Return empty array if file doesn't exist
+    res.json({ filters: [] });
+  }
+});
 
 // Get notes
 app.get('/api/filter-lab/notes', async (req: Request, res: Response) => {
@@ -235,18 +287,23 @@ app.post('/api/filter-lab/run', async (req: Request, res: Response) => {
     // Process each note
     for (const note of notes) {
       const filterResults: { [filterName: string]: 'PASS' | 'FAIL' | 'ERROR' } = {};
+      const filterErrors: { [filterName: string]: string } = {};
       
       // Run each filter on this note
       for (const filter of activeFilters) {
         console.log(`Running filter "${filter.name}" on note ${note.id}`);
-        const result = await runFilter(filter, note.text, note.tweetText || '');
-        filterResults[filter.name] = result;
+        const filterResponse = await runFilter(filter, note.text, note.tweetText || '');
+        filterResults[filter.name] = filterResponse.result;
+        if (filterResponse.error) {
+          filterErrors[filter.name] = filterResponse.error;
+        }
       }
       
       results.push({
         note: note.text,
         wouldBePosted: note.wouldBePosted,
         filterResults,
+        filterErrors: Object.keys(filterErrors).length > 0 ? filterErrors : undefined,
         tweetUrl: note.url,
         tweetText: note.tweetText
       });

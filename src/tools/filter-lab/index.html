@@ -418,66 +418,35 @@
     let notes = [];
     let filterIdCounter = 0;
     
-    // Default filters
-    const defaultFilters = [
-      {
-        id: filterIdCounter++,
-        name: 'Harassment/Abuse Check',
-        active: true,
-        prompt: `Evaluate if this Community Note could be considered harassment or abusive.
-
-Consider:
-- Does it attack the person rather than address the content?
-- Does it use inflammatory or offensive language?
-- Is it unnecessarily harsh or personal?
-
-Respond with only "PASS" if the note is appropriate, or "FAIL" if it contains harassment/abuse.
-
-Original post:
-{post}
-
-Note to evaluate:
-{note}`
-      },
-      {
-        id: filterIdCounter++,
-        name: 'URL Validity Check',
-        active: true,
-        prompt: `Check if the URLs in this Community Note are properly formatted and relevant.
-
-Consider:
-- Are all URLs complete and valid?
-- Do the URLs appear to support the claim being made?
-- Is at least one credible source provided?
-
-Respond with only "PASS" if URLs are valid, or "FAIL" if there are URL issues.
-
-Original post:
-{post}
-
-Note to evaluate:
-{note}`
-      },
-      {
-        id: filterIdCounter++,
-        name: 'Claim vs Opinion Check',
-        active: true,
-        prompt: `Determine if this Community Note addresses a factual claim or just an opinion.
-
-Consider:
-- Is the original post making a verifiable factual claim?
-- Or is it expressing a subjective opinion, prediction, or interpretation?
-- Community Notes should primarily address factual inaccuracies
-
-Respond with only "PASS" if it addresses a factual claim, or "FAIL" if it's targeting an opinion.
-
-Original post:
-{post}
-
-Note to evaluate:
-{note}`
+    // Default filters (will be loaded from server)
+    let defaultFilters = [];
+    
+    // Load default filters from server
+    async function loadDefaultFilters() {
+      try {
+        const response = await fetch(`${API_BASE}/api/filter-lab/default-filters`);
+        const data = await response.json();
+        if (data.filters && data.filters.length > 0) {
+          // Add IDs to the loaded filters
+          filterIdCounter = 0;
+          defaultFilters = data.filters.map(f => ({
+            ...f,
+            id: filterIdCounter++
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading default filters:', error);
+        // Fallback to hardcoded defaults if server fails
+        defaultFilters = [
+          {
+            id: filterIdCounter++,
+            name: 'Harassment Check',
+            active: true,
+            prompt: 'Check if the Community Note contains harassment or abuse.\n\nNote to evaluate:\n{note}\n\nRespond with only "PASS" or "FAIL".'
+          }
+        ];
       }
-    ];
+    }
     
     // Save filters to localStorage
     function saveFilters() {
@@ -508,7 +477,10 @@ Note to evaluate:
     }
     
     // Initialize
-    function init() {
+    async function init() {
+      // Load default filters first
+      await loadDefaultFilters();
+      
       // Try to load saved filters, fall back to defaults
       if (!loadFilters()) {
         filters = [...defaultFilters];
@@ -594,8 +566,10 @@ Note to evaluate:
     }
     
     // Reset to default filters
-    function resetToDefaults() {
+    async function resetToDefaults() {
       if (confirm('This will replace all your current filters with the defaults. Continue?')) {
+        // Reload defaults from server to get latest version
+        await loadDefaultFilters();
         filterIdCounter = 0;
         filters = defaultFilters.map(f => ({
           ...f,
@@ -742,6 +716,23 @@ Note to evaluate:
       
       resultsGrid.appendChild(summary);
       
+      // Show any errors at the top
+      const allErrors = results.results.flatMap(r => 
+        r.filterErrors ? Object.entries(r.filterErrors).map(([filter, error]) => ({ filter, error })) : []
+      );
+      
+      if (allErrors.length > 0) {
+        const errorSection = document.createElement('div');
+        errorSection.style.cssText = 'background: #fed7d7; border: 1px solid #fc8181; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;';
+        errorSection.innerHTML = `
+          <h3 style="color: #c53030; margin: 0 0 0.5rem 0;">⚠️ Filter Errors Detected</h3>
+          <ul style="margin: 0; padding-left: 1.5rem; color: #742a2a;">
+            ${[...new Set(allErrors.map(e => `${e.filter}: ${e.error}`))].map(e => `<li>${escapeHtml(e)}</li>`).join('')}
+          </ul>
+        `;
+        resultsGrid.appendChild(errorSection);
+      }
+      
       // Individual results
       results.results.forEach((result, index) => {
         const noteResult = document.createElement('div');
@@ -758,11 +749,15 @@ Note to evaluate:
           ${result.tweetText ? `<div style="padding: 0.75rem; background: #f7fafc; border-radius: 6px; margin-bottom: 0.75rem; font-size: 0.875rem; color: #4a5568;">Original: ${escapeHtml(result.tweetText)}</div>` : ''}
           <div class="note-text">${escapeHtml(result.note)}</div>
           <div class="filter-results">
-            ${Object.entries(result.filterResults).map(([filterName, status]) => `
-              <span class="filter-result ${status.toLowerCase()}">
-                ${escapeHtml(filterName)}: ${status}
-              </span>
-            `).join('')}
+            ${Object.entries(result.filterResults).map(([filterName, status]) => {
+              const errorMsg = result.filterErrors && result.filterErrors[filterName];
+              return `
+                <span class="filter-result ${status.toLowerCase()}" ${errorMsg ? `title="${escapeHtml(errorMsg)}" style="cursor: help;"` : ''}>
+                  ${escapeHtml(filterName)}: ${status}
+                  ${errorMsg ? '⚠️' : ''}
+                </span>
+              `;
+            }).join('')}
           </div>
         `;
         
