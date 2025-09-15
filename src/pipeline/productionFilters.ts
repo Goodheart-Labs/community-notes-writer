@@ -173,7 +173,7 @@ export async function runProductionFilters(
     results = PRODUCTION_FILTERS.map(f => ({
       name: f.name,
       passed: false,
-      error: 'Filters timed out'
+      error: `Overall timeout exceeded (${overallTimeoutMs}ms)`
     }));
   }
   
