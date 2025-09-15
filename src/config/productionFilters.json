@@ -1,0 +1,41 @@
+{
+  "main": {
+    "enabled": true,
+    "filters": [
+      {
+        "name": "No Harassment",
+        "required": true,
+        "prompt": "Check if the Community Note contains harassment, abuse, or unnecessarily hostile language.\n\nNote to evaluate:\n{note}\n\nRespond with only \"PASS\" if the note is appropriate and professional, or \"FAIL\" if it contains harassment/abuse."
+      },
+      {
+        "name": "Substantive Disagreement",
+        "required": true,
+        "prompt": "Consider:\nDo the original post and community note actually disagree?\nIt isn't enough to be providing some context, the context and original post must substantively conflict.\n\nOriginal post:\n{post}\n\nNote to evaluate:\n{note}\n\nRespond with \"PASS\" if the two substantially disagree or \"FAIL\" otherwise."
+      },
+      {
+        "name": "Has Citation",
+        "required": true,
+        "prompt": "Check if the Community Note includes a credible source or citation.\nNotes making factual corrections should include supporting evidence.\n\nNote to evaluate:\n{note}\n\nRespond with \"PASS\" if the note includes a URL or reference to a source, or \"FAIL\" if it makes claims without any citation."
+      },
+      {
+        "name": "Avoid Negative Claims",
+        "required": false,
+        "prompt": "Determine if this Community Note claims at any point that someone *didn't* do something.\n\nConsider:\nDoes it say that someone didn't say something?\nDoes it say that someone didn't do something?\nIf the source referenced is a specific factcheck that backs up the negative claim, you may \"PASS\" it, but otherwise \"FAIL\"\n\nNote to evaluate:\n{note}\n\nRespond with only \"PASS\" if it is solely comprised of positive claims (or the single additional claim above), or \"FAIL\" in all other cases."
+      }
+    ]
+  },
+  "staging": {
+    "enabled": true,
+    "filters": [
+      {
+        "name": "No Harassment",
+        "required": true,
+        "prompt": "Check if the Community Note contains harassment, abuse, or unnecessarily hostile language.\n\nNote to evaluate:\n{note}\n\nRespond with only \"PASS\" if the note is appropriate and professional, or \"FAIL\" if it contains harassment/abuse."
+      }
+    ]
+  },
+  "default": {
+    "enabled": false,
+    "filters": []
+  }
+}

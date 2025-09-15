@@ -12,6 +12,8 @@ interface AirtableLogEntry {
   "HarassmentAbuse score"?: string;
   "UrlValidity score"?: string;
   "ClaimOpinion score"?: string;
+  "Filter Results"?: string;
+  "Filters Passed"?: boolean;
 }
 
 export class AirtableLogger {
@@ -123,6 +125,14 @@ export class AirtableLogger {
       if (entry["Posted to X"] !== undefined) {
         fields["Posted to X"] = entry["Posted to X"];
       }
+      
+      if (entry["Filter Results"]) {
+        fields["Filter Results"] = entry["Filter Results"];
+      }
+      
+      if (entry["Filters Passed"] !== undefined) {
+        fields["Filters Passed"] = entry["Filters Passed"];
+      }
 
       await this.base(this.tableName).create([
         {
@@ -170,6 +180,14 @@ export class AirtableLogger {
         
         if (entry["Posted to X"] !== undefined) {
           fields["Posted to X"] = entry["Posted to X"];
+        }
+        
+        if (entry["Filter Results"]) {
+          fields["Filter Results"] = entry["Filter Results"];
+        }
+        
+        if (entry["Filters Passed"] !== undefined) {
+          fields["Filters Passed"] = entry["Filters Passed"];
         }
 
         return { fields };
@@ -250,7 +268,9 @@ export function createLogEntry(
   checkResult: any,
   botName: string = "first-bot",
   commit?: string,
-  postedToX: boolean = false
+  postedToX: boolean = false,
+  filterResults?: string,
+  filtersPassed?: boolean
 ): AirtableLogEntry {
   // Create the tweet URL
   const tweetUrl = `https://twitter.com/i/status/${post.id}`;
@@ -291,6 +311,14 @@ export function createLogEntry(
 
   if (commit) {
     logEntry.commit = commit;
+  }
+  
+  if (filterResults) {
+    logEntry["Filter Results"] = filterResults;
+  }
+  
+  if (filtersPassed !== undefined) {
+    logEntry["Filters Passed"] = filtersPassed;
   }
 
   return logEntry;
