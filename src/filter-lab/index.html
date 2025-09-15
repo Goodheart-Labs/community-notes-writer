@@ -362,6 +362,7 @@
         </div>
         
         <button class="add-filter-btn" onclick="addNewFilter()">+ Add New Filter</button>
+        <button class="control-btn" onclick="resetToDefaults()" style="margin-top: 0.5rem;">Reset to Default Filters</button>
       </div>
       
       <!-- Notes Section -->
@@ -478,9 +479,40 @@ Note to evaluate:
       }
     ];
     
+    // Save filters to localStorage
+    function saveFilters() {
+      localStorage.setItem('filterLabFilters', JSON.stringify(filters));
+    }
+    
+    // Load filters from localStorage
+    function loadFilters() {
+      const saved = localStorage.getItem('filterLabFilters');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          // Validate the structure
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Reset filter IDs to avoid conflicts
+            filterIdCounter = 0;
+            filters = parsed.map(f => ({
+              ...f,
+              id: filterIdCounter++
+            }));
+            return true;
+          }
+        } catch (e) {
+          console.error('Error loading saved filters:', e);
+        }
+      }
+      return false;
+    }
+    
     // Initialize
     function init() {
-      filters = [...defaultFilters];
+      // Try to load saved filters, fall back to defaults
+      if (!loadFilters()) {
+        filters = [...defaultFilters];
+      }
       renderFilters();
     }
     
@@ -523,18 +555,25 @@ Note to evaluate:
         prompt: 'Original post:\n{post}\n\nNote to evaluate:\n{note}\n\nRespond with only "PASS" or "FAIL".'
       });
       renderFilters();
+      saveFilters();
     }
     
     // Update filter name
     function updateFilterName(id, name) {
       const filter = filters.find(f => f.id === id);
-      if (filter) filter.name = name;
+      if (filter) {
+        filter.name = name;
+        saveFilters();
+      }
     }
     
     // Update filter prompt
     function updateFilterPrompt(id, prompt) {
       const filter = filters.find(f => f.id === id);
-      if (filter) filter.prompt = prompt;
+      if (filter) {
+        filter.prompt = prompt;
+        saveFilters();
+      }
     }
     
     // Toggle filter
@@ -543,6 +582,7 @@ Note to evaluate:
       if (filter) {
         filter.active = !filter.active;
         renderFilters();
+        saveFilters();
       }
     }
     
@@ -550,6 +590,20 @@ Note to evaluate:
     function removeFilter(id) {
       filters = filters.filter(f => f.id !== id);
       renderFilters();
+      saveFilters();
+    }
+    
+    // Reset to default filters
+    function resetToDefaults() {
+      if (confirm('This will replace all your current filters with the defaults. Continue?')) {
+        filterIdCounter = 0;
+        filters = defaultFilters.map(f => ({
+          ...f,
+          id: filterIdCounter++
+        }));
+        renderFilters();
+        saveFilters();
+      }
     }
     
     // Load notes
