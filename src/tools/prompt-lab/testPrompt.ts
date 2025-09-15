@@ -1,6 +1,6 @@
 import { ResearchData } from './fetchAirtableData';
-import { llm } from '../pipeline/llm';
-import { parseStatusNoteUrl } from '../pipeline/parseStatusNoteUrl';
+import { llm } from '../../pipeline/llm';
+import { parseStatusNoteUrl } from '../../pipeline/parseStatusNoteUrl';
 import { PromptLabError } from './errors';
 
 export interface TestResult {

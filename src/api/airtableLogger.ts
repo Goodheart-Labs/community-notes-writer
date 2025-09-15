@@ -7,6 +7,7 @@ interface AirtableLogEntry {
   "Full Result": string;
   "Final note": string;
   "Would be posted": number;
+  "Posted to X"?: boolean;
   commit?: string;
   "HarassmentAbuse score"?: string;
   "UrlValidity score"?: string;
@@ -118,6 +119,10 @@ export class AirtableLogger {
       if (entry["ClaimOpinion score"]) {
         fields["ClaimOpinion score"] = entry["ClaimOpinion score"];
       }
+      
+      if (entry["Posted to X"] !== undefined) {
+        fields["Posted to X"] = entry["Posted to X"];
+      }
 
       await this.base(this.tableName).create([
         {
@@ -161,6 +166,10 @@ export class AirtableLogger {
         
         if (entry["ClaimOpinion score"]) {
           fields["ClaimOpinion score"] = entry["ClaimOpinion score"];
+        }
+        
+        if (entry["Posted to X"] !== undefined) {
+          fields["Posted to X"] = entry["Posted to X"];
         }
 
         return { fields };
@@ -240,7 +249,8 @@ export function createLogEntry(
   noteResult: any,
   checkResult: any,
   botName: string = "first-bot",
-  commit?: string
+  commit?: string,
+  postedToX: boolean = false
 ): AirtableLogEntry {
   // Create the tweet URL
   const tweetUrl = `https://twitter.com/i/status/${post.id}`;
@@ -276,6 +286,7 @@ export function createLogEntry(
     "Full Result": fullResult,
     "Final note": finalNote,
     "Would be posted": wouldBePosted,
+    "Posted to X": postedToX,
   };
 
   if (commit) {

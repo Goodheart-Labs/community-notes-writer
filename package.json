@@ -31,16 +31,16 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "typecheck-elo": "cd src/elo-rating-web && tsc --noEmit",
+    "typecheck-elo": "cd src/tools/elo-rating-web && tsc --noEmit",
     "test-airtable": "bun run src/test-airtable-logger.ts",
     "routine": "bun run src/scripts/createNotesRoutine.ts",
     "test": "bun run src/scripts/run.ts",
-    "build-elo": "cd src/elo-rating-web && bun build ./app.ts ./airtableClient.ts ./eloCalculator.ts ./types.ts ./cacheManager.ts --outdir ./dist --target browser",
-    "serve-elo": "bun run src/elo-rating-web/server.ts",
+    "build-elo": "cd src/tools/elo-rating-web && bun build ./app.ts ./airtableClient.ts ./eloCalculator.ts ./types.ts ./cacheManager.ts --outdir ./dist --target browser",
+    "serve-elo": "bun run src/tools/elo-rating-web/server.ts",
     "elo": "bun run build-elo && bun run serve-elo",
-    "prompt-lab": "bun src/prompt-lab/server.ts",
-    "prompt-lab:fetch": "bun src/prompt-lab/fetchAirtableData.ts",
-    "bad-miss": "bun src/bad-miss-analysis/server.ts",
-    "filter-lab": "bun src/filter-lab/server.ts"
+    "prompt-lab": "bun src/tools/prompt-lab/server.ts",
+    "prompt-lab:fetch": "bun src/tools/prompt-lab/fetchAirtableData.ts",
+    "bad-miss": "bun src/tools/bad-miss-analysis/server.ts",
+    "filter-lab": "bun src/tools/filter-lab/server.ts"
   }
 }

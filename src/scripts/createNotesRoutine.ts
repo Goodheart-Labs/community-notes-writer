@@ -9,13 +9,22 @@ import { execSync } from "child_process";
 
 const maxPosts = 10; // Maximum posts to process per run
 const concurrencyLimit = 3; // Process 3 posts at a time to avoid rate limiting
-const MAX_RUNTIME_MS = 5 * 60 * 1000; // 5 minutes maximum runtime
+const SOFT_TIMEOUT_MS = 8 * 60 * 1000; // 8 minutes - stop processing new items
+const HARD_TIMEOUT_MS = 9 * 60 * 1000; // 9 minutes - force exit
 
-// Global timeout to prevent hanging
-const globalTimeout = setTimeout(() => {
-  console.log("[main] Maximum runtime reached (5 minutes), forcing exit");
-  process.exit(0);
-}, MAX_RUNTIME_MS);
+let shouldStopProcessing = false;
+
+// Soft timeout - stop accepting new work
+const softTimeout = setTimeout(() => {
+  console.log("[main] Soft timeout reached (8 minutes), stopping new processing");
+  shouldStopProcessing = true;
+}, SOFT_TIMEOUT_MS);
+
+// Hard timeout - force exit
+const hardTimeout = setTimeout(() => {
+  console.log("[main] Hard timeout reached (9 minutes), forcing exit");
+  process.exit(1);
+}, HARD_TIMEOUT_MS);
 
 async function runPipeline(post: any, idx: number) {
   console.log(
@@ -106,11 +115,19 @@ async function main() {
   try {
     // Get current branch name
     let currentBranch = "unknown";
-    try {
-      currentBranch = execSync("git rev-parse --abbrev-ref HEAD", { encoding: "utf8" }).trim();
-    } catch (error) {
-      console.warn("[main] Could not determine current branch, assuming main");
-      currentBranch = "main";
+    
+    // First check if we're in GitHub Actions and use the branch from environment
+    if (process.env.GITHUB_BRANCH_NAME) {
+      currentBranch = process.env.GITHUB_BRANCH_NAME;
+      console.log(`[main] Running in GitHub Actions, using branch from env: ${currentBranch}`);
+    } else {
+      // Fallback to git command for local development
+      try {
+        currentBranch = execSync("git rev-parse --abbrev-ref HEAD", { encoding: "utf8" }).trim();
+      } catch (error) {
+        console.warn("[main] Could not determine current branch, assuming main");
+        currentBranch = "main";
+      }
     }
     
     // Determine if we should run in simulation mode (skip actual submission)
@@ -146,7 +163,8 @@ async function main() {
 
     if (!posts.length) {
       console.log("No new eligible posts found.");
-      clearTimeout(globalTimeout);
+      clearTimeout(softTimeout);
+      clearTimeout(hardTimeout);
       process.exit(0);
     }
     console.log(`[main] Starting pipelines for ${posts.length} posts...`);
@@ -162,6 +180,12 @@ async function main() {
 
     // Add all tasks to the queue
     for (const [idx, post] of posts.entries()) {
+      // Check for soft timeout before adding new tasks
+      if (shouldStopProcessing) {
+        console.log(`[main] Soft timeout reached, skipping remaining ${posts.length - idx} posts`);
+        break;
+      }
+      
       queue.add(async () => {
         const r = await runPipeline(post, idx);
         if (!r) return;
@@ -170,16 +194,9 @@ async function main() {
         const checkYes =
           r.checkResult && r.checkResult.trim().toUpperCase() === "YES";
 
-        // Create log entry for this result
-        const logEntry = createLogEntry(
-          r.post,
-          r.searchContextResult,
-          r.noteResult,
-          r.checkResult,
-          currentBranch,
-          commit
-        );
-        logEntries.push(logEntry);
+        // Track if we actually posted to Twitter
+        let postedToX = false;
+        let twitterResponse = null;
 
         if (
           r.noteResult.status === "CORRECTION WITH TRUSTWORTHY CITATION" &&
@@ -197,15 +214,18 @@ async function main() {
               };
               const response = await submitNote(r.post.id, info);
               console.log(
-                `[main] Submitted note for post ${r.post.id}:`,
+                `[main] Successfully submitted note for post ${r.post.id}:`,
                 response
               );
+              postedToX = true;
+              twitterResponse = response;
               submitted++;
             } catch (err: any) {
               console.error(
                 `[main] Failed to submit note for post ${r.post.id}:`,
                 err.response?.data || err
               );
+              postedToX = false;
             }
           } else {
             console.log(
@@ -219,6 +239,18 @@ async function main() {
               : `check result: ${r.checkResult}`;
           console.log(`[main] Skipping post ${r.post.id} (${reason})`);
         }
+
+        // Create log entry with actual posting status
+        const logEntry = createLogEntry(
+          r.post,
+          r.searchContextResult,
+          r.noteResult,
+          r.checkResult,
+          currentBranch,
+          commit,
+          postedToX
+        );
+        logEntries.push(logEntry);
       });
     }
 
@@ -249,8 +281,9 @@ async function main() {
       );
     }
 
-    // Clear the global timeout and exit successfully
-    clearTimeout(globalTimeout);
+    // Clear all timeouts and exit successfully
+    clearTimeout(softTimeout);
+    clearTimeout(hardTimeout);
     console.log("[main] Process completed successfully, exiting");
     process.exit(0);
   } catch (error: any) {
@@ -258,8 +291,9 @@ async function main() {
       "Error in create notes routine script:",
       error.response?.data || error
     );
-    // Clear the global timeout and exit with error
-    clearTimeout(globalTimeout);
+    // Clear all timeouts and exit with error
+    clearTimeout(softTimeout);
+    clearTimeout(hardTimeout);
     process.exit(1);
   }
 }
