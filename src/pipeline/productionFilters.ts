@@ -75,21 +75,31 @@ async function runFilter(
     let prompt = filterPrompt.replace(/\{note\}/g, note);
     prompt = prompt.replace(/\{post\}/g, post);
     
-    const response = await openrouter.chat.completions.create({
-      model: 'anthropic/claude-sonnet-4',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a Community Notes filter evaluator. Respond with ONLY the single word "PASS" or "FAIL" based on the criteria given. Do not include any other text, punctuation, or explanation.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.1,
-      max_tokens: 10
+    // Create a timeout promise
+    const timeoutMs = 30000; // 30 seconds per filter (very generous)
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`Filter timed out after ${timeoutMs}ms`)), timeoutMs);
     });
+    
+    // Race between API call and timeout
+    const response = await Promise.race([
+      openrouter.chat.completions.create({
+        model: 'anthropic/claude-sonnet-4',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a Community Notes filter evaluator. Respond with ONLY the single word "PASS" or "FAIL" based on the criteria given. Do not include any other text, punctuation, or explanation.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 10
+      }),
+      timeoutPromise
+    ]) as any;
     
     const rawResult = response.choices[0]?.message?.content || '';
     const trimmed = rawResult.trim().toUpperCase();
@@ -140,12 +150,32 @@ export async function runProductionFilters(
 ): Promise<{ passed: boolean; results: FilterResult[] }> {
   console.log(`[ProductionFilters] Running ${PRODUCTION_FILTERS.length} filters`);
   
-  // Run all filters in parallel
-  const results = await Promise.all(
-    PRODUCTION_FILTERS.map(filter => 
-      runFilter(filter.prompt, filter.name, noteText, postText)
-    )
-  );
+  // Set overall timeout for all filters (45 seconds total)
+  const overallTimeoutMs = 45000;
+  const overallTimeoutPromise = new Promise<FilterResult[]>((_, reject) => {
+    setTimeout(() => reject(new Error(`All filters timed out after ${overallTimeoutMs}ms`)), overallTimeoutMs);
+  });
+  
+  // Run all filters in parallel with overall timeout
+  let results: FilterResult[];
+  try {
+    results = await Promise.race([
+      Promise.all(
+        PRODUCTION_FILTERS.map(filter => 
+          runFilter(filter.prompt, filter.name, noteText, postText)
+        )
+      ),
+      overallTimeoutPromise
+    ]) as FilterResult[];
+  } catch (error: any) {
+    console.error('[ProductionFilters] Timeout or error running filters:', error.message);
+    // Return all failed if timeout
+    results = PRODUCTION_FILTERS.map(f => ({
+      name: f.name,
+      passed: false,
+      error: 'Filters timed out'
+    }));
+  }
   
   // Log summary
   const passed = results.filter(r => r.passed).length;
