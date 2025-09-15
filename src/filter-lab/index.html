@@ -375,6 +375,12 @@
             <option value="all">All Recent Notes</option>
           </select>
           <button class="control-btn" onclick="loadNotes()">Load Notes</button>
+          <select id="sampleSize" style="min-width: 100px;">
+            <option value="10">Run on 10</option>
+            <option value="25">Run on 25</option>
+            <option value="50">Run on 50</option>
+            <option value="all">Run on All</option>
+          </select>
           <button class="control-btn primary" onclick="runFilters()" id="runBtn" disabled>Run Filters</button>
         </div>
         
@@ -605,12 +611,23 @@ Note to evaluate:
         return;
       }
       
+      // Get sample size
+      const sampleSizeValue = document.getElementById('sampleSize').value;
+      let notesToRun = notes;
+      
+      if (sampleSizeValue !== 'all') {
+        const sampleSize = parseInt(sampleSizeValue);
+        // Get random sample
+        const shuffled = [...notes].sort(() => Math.random() - 0.5);
+        notesToRun = shuffled.slice(0, Math.min(sampleSize, notes.length));
+      }
+      
       const resultsSection = document.getElementById('resultsSection');
       const resultsGrid = document.getElementById('resultsGrid');
       const runBtn = document.getElementById('runBtn');
       
       resultsSection.style.display = 'block';
-      resultsGrid.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Running filters...</p></div>';
+      resultsGrid.innerHTML = `<div class="loading"><div class="loading-spinner"></div><p>Running ${activeFilters.length} filters on ${notesToRun.length} notes...</p></div>`;
       runBtn.disabled = true;
       
       try {
@@ -619,7 +636,7 @@ Note to evaluate:
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             filters: activeFilters,
-            notes: notes
+            notes: notesToRun
           })
         });
         
@@ -657,12 +674,17 @@ Note to evaluate:
         });
       });
       
-      summary.innerHTML = Object.entries(passRates).map(([name, stats]) => `
+      summary.innerHTML = `
         <div class="stat-item">
-          <span class="stat-label">${escapeHtml(name)}</span>
-          <span class="stat-value">${stats.pass}/${stats.total}</span>
+          <span class="stat-label">Notes Tested</span>
+          <span class="stat-value">${results.results.length}</span>
         </div>
-      `).join('');
+        ${Object.entries(passRates).map(([name, stats]) => `
+          <div class="stat-item">
+            <span class="stat-label">${escapeHtml(name)}</span>
+            <span class="stat-value">${stats.pass}/${stats.total}</span>
+          </div>
+        `).join('')}`;
       
       resultsGrid.appendChild(summary);
       
