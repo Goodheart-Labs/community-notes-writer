@@ -19,42 +19,36 @@ const openrouter = new OpenAI({
 // Hardcoded production filters
 const PRODUCTION_FILTERS = [
   {
-    name: "Opinion vs Fact",
-    prompt: `Is the original post making a factual claim?
+    name: "Fact filter",
+    prompt: `Consider:
+Is the original post making a factual claim?
 Or is it expressing a subjective opinion, prediction, or interpretation?
+If it is a famous public figure then we can be a bit more loose in what a factual claim is.
 Community Notes should primarily address factual inaccuracies
 A rhetorical question makes it more likely to be an opinion
 
-Original post:
-{post}
-
-Respond with only "PASS" if the post makes a factual claim that can be fact-checked, or "FAIL" if it's primarily opinion/prediction/interpretation.`
-  },
-  {
-    name: "No Harassment",
-    prompt: `Check if the Community Note contains harassment, abuse, or unnecessarily hostile language.
+Respond with only "PASS" if the note is a factual claim or "FAIL" if it is an opinion or sarcasm.
 
 Note to evaluate:
-{note}
-
-Respond with only "PASS" if the note is appropriate and professional, or "FAIL" if it contains harassment/abuse.`
+{post}`
   },
   {
-    name: "Avoid Negative Claims",
+    name: "Positive claims filter",
     prompt: `Determine if this Community Note claims at any point that someone *didn't* do something.
 
 Consider:
 Does it say that someone didn't say something?
 Does it say that someone didn't do something?
 If the source referenced is a specific factcheck that backs up the negative claim, you may "PASS" it, but otherwise "FAIL"
+Even if the note is mostly positive claims, if it contains a single negative claim, it should "FAIL"
 
 Note to evaluate:
 {note}
 
-Respond with only "PASS" if it is solely comprised of positive claims (or the single additional claim above), or "FAIL" in all other cases.`
+Respond with only "PASS" if it is solely comprised of positive claims (or the single additional caveat above), or "FAIL" in all other cases.`
   },
   {
-    name: "Substantive Disagreement",
+    name: "Substantive disagreement filter",
     prompt: `Consider:
 Do the original post and community note actually disagree?
 It isn't enough to be providing some context, the context and original post must substantively conflict.

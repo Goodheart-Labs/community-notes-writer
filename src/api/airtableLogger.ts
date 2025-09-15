@@ -12,8 +12,6 @@ interface AirtableLogEntry {
   "HarassmentAbuse score"?: string;
   "UrlValidity score"?: string;
   "ClaimOpinion score"?: string;
-  "Filter Results"?: string;
-  "Filters Passed"?: boolean;
 }
 
 export class AirtableLogger {
@@ -125,14 +123,6 @@ export class AirtableLogger {
       if (entry["Posted to X"] !== undefined) {
         fields["Posted to X"] = entry["Posted to X"];
       }
-      
-      if (entry["Filter Results"]) {
-        fields["Filter Results"] = entry["Filter Results"];
-      }
-      
-      if (entry["Filters Passed"] !== undefined) {
-        fields["Filters Passed"] = entry["Filters Passed"];
-      }
 
       await this.base(this.tableName).create([
         {
@@ -181,14 +171,6 @@ export class AirtableLogger {
         if (entry["Posted to X"] !== undefined) {
           fields["Posted to X"] = entry["Posted to X"];
         }
-        
-        if (entry["Filter Results"]) {
-          fields["Filter Results"] = entry["Filter Results"];
-        }
-        
-        if (entry["Filters Passed"] !== undefined) {
-          fields["Filters Passed"] = entry["Filters Passed"];
-        }
 
         return { fields };
       });
@@ -212,7 +194,8 @@ function formatFullResult(
   post: any,
   searchContextResult: any,
   noteResult: any,
-  checkResult: any
+  checkResult: any,
+  filterResults?: string
 ): string {
   const checkYes = checkResult && checkResult.trim().toUpperCase() === "YES";
 
@@ -247,6 +230,13 @@ function formatFullResult(
   result += `- Check result: ${checkResult || "NO CHECK"}\n`;
   result += `- Would be posted: ${checkYes ? "YES" : "NO"}\n\n`;
 
+  // Filter results (if available)
+  if (filterResults) {
+    result += `PRODUCTION FILTERS:\n`;
+    result += filterResults.split('\n').map(line => `- ${line}`).join('\n');
+    result += `\n\n`;
+  }
+
   // Summary
   result += `SUMMARY:\n`;
   result += `- Final status: ${noteResult.status}\n`;
@@ -269,8 +259,7 @@ export function createLogEntry(
   botName: string = "first-bot",
   commit?: string,
   postedToX: boolean = false,
-  filterResults?: string,
-  filtersPassed?: boolean
+  filterResults?: string
 ): AirtableLogEntry {
   // Create the tweet URL
   const tweetUrl = `https://twitter.com/i/status/${post.id}`;
@@ -283,7 +272,8 @@ export function createLogEntry(
     post,
     searchContextResult,
     noteResult,
-    checkResult
+    checkResult,
+    filterResults
   );
 
   // Get the final note text (matching what gets submitted to Twitter)
@@ -311,14 +301,6 @@ export function createLogEntry(
 
   if (commit) {
     logEntry.commit = commit;
-  }
-  
-  if (filterResults) {
-    logEntry["Filter Results"] = filterResults;
-  }
-  
-  if (filtersPassed !== undefined) {
-    logEntry["Filters Passed"] = filtersPassed;
   }
 
   return logEntry;

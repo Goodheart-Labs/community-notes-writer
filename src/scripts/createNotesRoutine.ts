@@ -264,8 +264,7 @@ async function main() {
           currentBranch,
           commit,
           postedToX,
-          filterResults || undefined,
-          filtersPassed || undefined
+          filterResults || undefined
         );
         logEntries.push(logEntry);
       });
