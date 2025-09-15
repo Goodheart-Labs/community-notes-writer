@@ -750,10 +750,12 @@ Note to evaluate:
         noteResult.innerHTML = `
           <div class="note-meta">
             <span>Note #${index + 1}</span>
+            ${result.tweetUrl ? `<a href="${escapeHtml(result.tweetUrl)}" target="_blank" style="color: #4299e1; text-decoration: none; hover: underline;">View Tweet →</a>` : ''}
             <span class="note-status ${result.wouldBePosted ? 'posted' : 'not-posted'}">
               ${result.wouldBePosted ? 'Would Post' : 'Would Not Post'}
             </span>
           </div>
+          ${result.tweetText ? `<div style="padding: 0.75rem; background: #f7fafc; border-radius: 6px; margin-bottom: 0.75rem; font-size: 0.875rem; color: #4a5568;">Original: ${escapeHtml(result.tweetText)}</div>` : ''}
           <div class="note-text">${escapeHtml(result.note)}</div>
           <div class="filter-results">
             ${Object.entries(result.filterResults).map(([filterName, status]) => `

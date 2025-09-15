@@ -66,6 +66,8 @@ interface FilterResult {
   note: string;
   wouldBePosted: boolean;
   filterResults: { [filterName: string]: 'PASS' | 'FAIL' | 'ERROR' };
+  tweetUrl?: string;
+  tweetText?: string;
 }
 
 // Fetch notes from Airtable
@@ -244,7 +246,9 @@ app.post('/api/filter-lab/run', async (req: Request, res: Response) => {
       results.push({
         note: note.text,
         wouldBePosted: note.wouldBePosted,
-        filterResults
+        filterResults,
+        tweetUrl: note.url,
+        tweetText: note.tweetText
       });
     }
     
