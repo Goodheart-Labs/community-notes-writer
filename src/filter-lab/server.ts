@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import Airtable from 'airtable';
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 
 dotenv.config();
 
@@ -17,9 +17,14 @@ const PORT = process.env.FILTER_LAB_PORT || 3003;
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname)));
 
-// Initialize Anthropic
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+// Initialize OpenRouter client using OpenAI SDK
+const openrouter = new OpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+  defaultHeaders: {
+    'HTTP-Referer': 'https://github.com/Goodheart-Labs/community-notes-writer',
+    'X-Title': 'Community Notes Filter Lab',
+  }
 });
 
 // Initialize Airtable
@@ -158,22 +163,23 @@ async function runFilter(filter: Filter, note: string, post: string = ''): Promi
     let prompt = filter.prompt.replace(/\{note\}/g, note);
     prompt = prompt.replace(/\{post\}/g, post || '[No original post available]');
     
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 10,
-      temperature: 0.3,
-      system: 'You are a Community Notes filter evaluator. Respond with only "PASS" or "FAIL" based on the criteria given.',
+    const response = await openrouter.chat.completions.create({
+      model: 'anthropic/claude-sonnet-4',
       messages: [
+        {
+          role: 'system',
+          content: 'You are a Community Notes filter evaluator. Respond with only "PASS" or "FAIL" based on the criteria given.'
+        },
         {
           role: 'user',
           content: prompt
         }
-      ]
+      ],
+      temperature: 0.3,
+      max_tokens: 10
     });
     
-    const result = response.content[0].type === 'text' 
-      ? response.content[0].text.trim().toUpperCase()
-      : '';
+    const result = response.choices[0]?.message?.content?.trim().toUpperCase();
     
     if (result === 'PASS' || result === 'FAIL') {
       return result as 'PASS' | 'FAIL';
@@ -278,5 +284,5 @@ app.get('/', (req: Request, res: Response) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`Filter Lab server running on http://localhost:${PORT}`);
-  console.log(`Using Claude 3.5 Sonnet for filter evaluation`);
+  console.log(`Using OpenRouter with Claude Sonnet 4 for filter evaluation`);
 });
