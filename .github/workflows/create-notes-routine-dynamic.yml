@@ -33,7 +33,7 @@ jobs:
   fetch-and-submit:
     needs: discover-branches
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     strategy:
       matrix:
         branch: ${{ fromJson(needs.discover-branches.outputs.branches) }}
