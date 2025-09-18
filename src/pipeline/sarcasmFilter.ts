@@ -13,7 +13,7 @@ export interface SarcasmResult {
 
 const sarcasmSchema = z.object({
   score: z.number().min(0).max(1).describe("0 = definitely sarcastic/rhetorical/joke, 1 = definitely sincere factual claim"),
-  reasoning: z.string().describe("Brief explanation of why this score was given"),
+  reasoning: z.string().describe("One sentence explanation of why this score was given"),
 });
 
 export async function checkSarcasm(tweetText: string, quoteContext?: string): Promise<SarcasmResult> {
@@ -42,15 +42,18 @@ Return a score from 0 to 1:
 
 If it's a personal opinion about a non-public figure, score it low (0.2-0.3) since we shouldn't fact-check personal opinions.
 
-IMPORTANT: Respond with valid JSON only, no other text.`;
+IMPORTANT: Return ONLY a JSON object with:
+- score: a number between 0 and 1
+- reasoning: a single string (one sentence) explaining the score`;
 
   try {
     const { object } = await generateObject({
       model: openrouter("anthropic/claude-3.5-sonnet"),
       schema: sarcasmSchema,
       prompt,
-      temperature: 0.3,
+      temperature: 0.2,
       mode: 'json',
+      system: 'You are a JSON API that returns exactly the requested format. The reasoning field must be a simple string, not an object.',
     });
 
     return {

@@ -15,9 +15,8 @@ export interface UrlCheckResult {
 
 const urlCheckSchema = z.object({
   score: z.number().min(0).max(1).describe("0 = no URL, 0.3 = bad URL, 0.6 = OK source, 1 = excellent citation"),
-  reasoning: z.string().describe("Brief explanation of the URL quality"),
+  reasoning: z.string().describe("One sentence explanation of the URL quality"),
   hasUrl: z.boolean().describe("Whether any URL is present"),
-  urlQuality: z.string().optional().describe("Quality assessment of the URL if present"),
 });
 
 export async function checkUrlValidity(noteText: string, url: string): Promise<UrlCheckResult> {
@@ -42,7 +41,10 @@ Consider:
 - Is it a primary source or secondary reporting?
 - Is there an archive/wayback machine link for permanence?
 
-IMPORTANT: Respond with valid JSON only, no other text.`;
+IMPORTANT: Return ONLY a JSON object with:
+- score: a number between 0 and 1
+- reasoning: a single string (one sentence)
+- hasUrl: boolean`;
 
   try {
     const { object } = await generateObject({
@@ -57,7 +59,6 @@ IMPORTANT: Respond with valid JSON only, no other text.`;
       score: object.score,
       reasoning: object.reasoning,
       hasUrl: object.hasUrl,
-      urlQuality: object.urlQuality,
     };
   } catch (error) {
     console.error("[urlChecker] Error checking URL:", error);

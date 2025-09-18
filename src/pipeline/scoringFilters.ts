@@ -19,8 +19,8 @@ export interface AllFilterScores {
 }
 
 const scoreSchema = z.object({
-  score: z.number().min(0).max(1),
-  reasoning: z.string(),
+  score: z.number().min(0).max(1).describe("Score between 0 and 1"),
+  reasoning: z.string().describe("One sentence explanation"),
 });
 
 // Positive claims filter (converted to decimal)
@@ -41,9 +41,9 @@ Scoring:
 - 0.7: Mostly positive with minimal negative
 - 1.0: Entirely positive claims (what DID happen)
 
-Return a score from 0 to 1.
-
-IMPORTANT: Respond with valid JSON only, no other text.`;
+IMPORTANT: Return ONLY a JSON object with:
+- score: a number between 0 and 1
+- reasoning: a single string (one sentence)`;
 
   try {
     const { object } = await generateObject({
@@ -93,9 +93,9 @@ Scoring:
 - 0.7: Clear disagreement on main points
 - 1.0: Complete substantive disagreement
 
-Return a score from 0 to 1.
-
-IMPORTANT: Respond with valid JSON only, no other text.`;
+IMPORTANT: Return ONLY a JSON object with:
+- score: a number between 0 and 1
+- reasoning: a single string (one sentence)`;
 
   try {
     const { object } = await generateObject({
