@@ -40,7 +40,9 @@ Consider:
 - Is the source reputable and authoritative?
 - Does the source directly support the claims in the note?
 - Is it a primary source or secondary reporting?
-- Is there an archive/wayback machine link for permanence?`;
+- Is there an archive/wayback machine link for permanence?
+
+IMPORTANT: Respond with valid JSON only, no other text.`;
 
   try {
     const { object } = await generateObject({
@@ -48,6 +50,7 @@ Consider:
       schema: urlCheckSchema,
       prompt,
       temperature: 0.2,
+      mode: 'json',
     });
 
     return {

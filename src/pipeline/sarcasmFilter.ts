@@ -40,7 +40,9 @@ Return a score from 0 to 1:
 - 0.6-0.8: Likely sincere claim
 - 0.8-1.0: Definitely sincere factual claim
 
-If it's a personal opinion about a non-public figure, score it low (0.2-0.3) since we shouldn't fact-check personal opinions.`;
+If it's a personal opinion about a non-public figure, score it low (0.2-0.3) since we shouldn't fact-check personal opinions.
+
+IMPORTANT: Respond with valid JSON only, no other text.`;
 
   try {
     const { object } = await generateObject({
@@ -48,6 +50,7 @@ If it's a personal opinion about a non-public figure, score it low (0.2-0.3) sin
       schema: sarcasmSchema,
       prompt,
       temperature: 0.3,
+      mode: 'json',
     });
 
     return {

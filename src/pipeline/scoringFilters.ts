@@ -41,7 +41,9 @@ Scoring:
 - 0.7: Mostly positive with minimal negative
 - 1.0: Entirely positive claims (what DID happen)
 
-Return a score from 0 to 1.`;
+Return a score from 0 to 1.
+
+IMPORTANT: Respond with valid JSON only, no other text.`;
 
   try {
     const { object } = await generateObject({
@@ -49,6 +51,7 @@ Return a score from 0 to 1.`;
       schema: scoreSchema,
       prompt,
       temperature: 0.2,
+      mode: 'json',
     });
 
     return {
@@ -90,7 +93,9 @@ Scoring:
 - 0.7: Clear disagreement on main points
 - 1.0: Complete substantive disagreement
 
-Return a score from 0 to 1.`;
+Return a score from 0 to 1.
+
+IMPORTANT: Respond with valid JSON only, no other text.`;
 
   try {
     const { object } = await generateObject({
@@ -98,6 +103,7 @@ Return a score from 0 to 1.`;
       schema: scoreSchema,
       prompt,
       temperature: 0.2,
+      mode: 'json',
     });
 
     return {

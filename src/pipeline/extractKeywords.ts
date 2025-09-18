@@ -41,7 +41,9 @@ Focus on:
 Avoid:
 - Common words like "the", "is", "are"
 - Opinions or subjective statements
-- Generic terms without context`;
+- Generic terms without context
+
+IMPORTANT: Respond with valid JSON only, no other text.`;
 
   try {
     const { object } = await generateObject({
@@ -49,6 +51,7 @@ Avoid:
       schema: keywordSchema,
       prompt,
       temperature: 0.2,
+      mode: 'json',
     });
 
     return {
