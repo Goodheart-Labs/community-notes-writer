@@ -15,6 +15,7 @@
       "Bash(git rebase:*)",
       "Bash(git checkout:*)",
       "Bash(git pull:*)",
+      "Bash(git merge:*)",
       "Bash(for dir in src/tools/*/)",
       "Bash(ls:*)",
       "Bash(done)"

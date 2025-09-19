@@ -1,18 +1,7 @@
 import axios from "axios";
 import { getOAuth1Headers } from "../api/getOAuthToken";
 import Airtable from "airtable";
-
-interface NoteStatusEntry {
-  "Tweet URL": string;
-  "Note ID": string;
-  "Status": string;
-  "Classification": string;
-  "Trustworthy Sources": boolean;
-  "Misleading Tags": string[];
-  "Note Text": string;
-  "Note URL": string;
-  "Last Updated": string;
-}
+import { NoteStatusEntry } from "./backfillNoteStatus";
 
 interface ExistingNote {
   id: string;
@@ -49,28 +38,33 @@ class NoteStatusUpdater {
     try {
       const tweetUrl = this.constructTweetUrl(note.info.post_id);
       const noteUrl = this.constructNoteUrl(note.id);
-      const currentTimestamp = new Date().toISOString().split('T')[0]; // Just YYYY-MM-DD
+      const currentTimestamp = new Date().toISOString().split("T")[0]; // Just YYYY-MM-DD
 
       const fields: NoteStatusEntry = {
         "Tweet URL": tweetUrl,
         "Note ID": note.id,
-        "Status": note.status || "unknown",
-        "Classification": note.info?.classification || "",
+        Status: note.status || "unknown",
+        Classification: note.info?.classification || "",
         "Trustworthy Sources": note.info?.trustworthy_sources || false,
         "Misleading Tags": note.info?.misleading_tags || [],
         "Note Text": note.info?.text || "",
         "Note URL": noteUrl,
-        "Last Updated": currentTimestamp,
+        "Last Updated": currentTimestamp || "",
       };
 
-      await this.base(this.tableName).create(fields);
-      console.log(`[NoteStatusUpdater] Added new note ${note.id} with status: ${note.status}`);
+      this.base(this.tableName).create(fields);
+      console.log(
+        `[NoteStatusUpdater] Added new note ${note.id} with status: ${note.status}`
+      );
     } catch (error) {
       console.error(`[NoteStatusUpdater] Error adding note ${note.id}:`, error);
     }
   }
 
-  async updateExistingNote(note: any, existingNote: ExistingNote): Promise<void> {
+  async updateExistingNote(
+    note: any,
+    existingNote: ExistingNote
+  ): Promise<void> {
     const newStatus = note.status || "unknown";
 
     // Only update if status has changed
@@ -79,21 +73,29 @@ class NoteStatusUpdater {
     }
 
     try {
-      const currentTimestamp = new Date().toISOString().split('T')[0]; // Just YYYY-MM-DD
+      const currentTimestamp = new Date().toISOString().split("T")[0]; // Just YYYY-MM-DD
 
       const updateFields = {
-        "Status": newStatus,
+        Status: newStatus,
         "Last Updated": currentTimestamp,
         // Update other fields that might have changed
-        "Classification": note.info?.classification || "",
+        Classification: note.info?.classification || "",
         "Trustworthy Sources": note.info?.trustworthy_sources || false,
         "Misleading Tags": note.info?.misleading_tags || [],
       };
 
-      await this.base(this.tableName).update(existingNote.recordId, updateFields);
-      console.log(`[NoteStatusUpdater] Updated note ${note.id}: ${existingNote.status} → ${newStatus}`);
+      await this.base(this.tableName).update(
+        existingNote.recordId,
+        updateFields
+      );
+      console.log(
+        `[NoteStatusUpdater] Updated note ${note.id}: ${existingNote.status} → ${newStatus}`
+      );
     } catch (error) {
-      console.error(`[NoteStatusUpdater] Error updating note ${note.id}:`, error);
+      console.error(
+        `[NoteStatusUpdater] Error updating note ${note.id}:`,
+        error
+      );
     }
   }
 
@@ -122,17 +124,24 @@ class NoteStatusUpdater {
           fetchNextPage();
         });
 
-      console.log(`[NoteStatusUpdater] Found ${existingNotes.size} existing notes in Airtable`);
+      console.log(
+        `[NoteStatusUpdater] Found ${existingNotes.size} existing notes in Airtable`
+      );
       return existingNotes;
     } catch (error) {
-      console.error("[NoteStatusUpdater] Error fetching existing notes:", error);
+      console.error(
+        "[NoteStatusUpdater] Error fetching existing notes:",
+        error
+      );
       return new Map();
     }
   }
 }
 
 async function fetchRecentNotes(maxPages: number = 3): Promise<any[]> {
-  console.log(`[updateNoteStatus] Fetching recent community notes (${maxPages} pages)...`);
+  console.log(
+    `[updateNoteStatus] Fetching recent community notes (${maxPages} pages)...`
+  );
 
   const allNotes: any[] = [];
   let nextToken: string | undefined;
@@ -147,7 +156,7 @@ async function fetchRecentNotes(maxPages: number = 3): Promise<any[]> {
       const params = new URLSearchParams({
         max_results: "100",
         test_mode: "false",
-        "note.fields": "id,info,status,test_result"
+        "note.fields": "id,info,status,test_result",
       });
 
       if (nextToken) {
@@ -168,7 +177,9 @@ async function fetchRecentNotes(maxPages: number = 3): Promise<any[]> {
 
       if (data.data && data.data.length > 0) {
         allNotes.push(...data.data);
-        console.log(`[updateNoteStatus] Page ${pageCount}: Found ${data.data.length} notes (total: ${allNotes.length})`);
+        console.log(
+          `[updateNoteStatus] Page ${pageCount}: Found ${data.data.length} notes (total: ${allNotes.length})`
+        );
       } else {
         console.log(`[updateNoteStatus] Page ${pageCount}: No notes found`);
         break;
@@ -182,14 +193,18 @@ async function fetchRecentNotes(maxPages: number = 3): Promise<any[]> {
       }
 
       // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
-    console.log(`[updateNoteStatus] Fetch complete! Found ${allNotes.length} total notes across ${pageCount} pages`);
+    console.log(
+      `[updateNoteStatus] Fetch complete! Found ${allNotes.length} total notes across ${pageCount} pages`
+    );
     return allNotes;
-
   } catch (error: any) {
-    console.error("[updateNoteStatus] Error fetching notes:", error.response?.data || error.message);
+    console.error(
+      "[updateNoteStatus] Error fetching notes:",
+      error.response?.data || error.message
+    );
     return allNotes;
   }
 }
@@ -233,7 +248,7 @@ async function updateNoteStatus() {
       }
 
       // Small delay to avoid overwhelming Airtable
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
 
     console.log("\n" + "=".repeat(80));
@@ -244,7 +259,6 @@ async function updateNoteStatus() {
     console.log(`Status updates: ${updatedCount}`);
     console.log(`Unchanged: ${unchangedCount}`);
     console.log("=".repeat(80));
-
   } catch (error) {
     console.error("[updateNoteStatus] Fatal error:", error);
   }

@@ -173,7 +173,7 @@ ${searchResults}
 Citations:
 \`\`\`
 ${citations.join("\n")}
-\`\`\``; 
+\`\`\``;
 
 export const writeNoteWithSearch = writeNoteWithSearchGoal.register({
   name: "write note with search v1",
@@ -245,11 +245,11 @@ export async function writeNoteWithSearchFn(
           // URL counts as 1 character in Community Notes
           charCount = parsed.note.length + 1 + 1; // +1 for space, +1 for URL
         }
-        
+
         if (charCount <= 280) {
           return parsed;
         }
-        
+
         // Store for potential retry
         previousParsed = parsed;
 
@@ -262,7 +262,9 @@ export async function writeNoteWithSearchFn(
         }
       } else {
         // For non-posted notes, just return the result without character limit check
-        console.log(`Note status: ${parsed.status} - not enforcing character limit`);
+        console.log(
+          `Note status: ${parsed.status} - not enforcing character limit`
+        );
         return parsed;
       }
     }
