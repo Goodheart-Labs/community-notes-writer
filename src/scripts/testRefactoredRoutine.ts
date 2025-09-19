@@ -14,6 +14,7 @@ import { extractKeywords } from "../pipeline/extractKeywords";
 import { searchWithKeywords } from "../pipeline/searchWithKeywords";
 import { checkUrlValidity } from "../pipeline/urlChecker";
 import { runScoringFilters } from "../pipeline/scoringFilters";
+import { checkCharacterLimit } from "../pipeline/characterLimitChecker";
 import PQueue from "p-queue";
 import { execSync } from "child_process";
 
@@ -122,7 +123,25 @@ async function runTestPipeline(post: any, idx: number): Promise<PipelineResult |
       };
     }
 
-    // 5. RUN SCORING FILTERS
+    // 5. CHECK CHARACTER LIMIT
+    console.log(`[TEST ${idx + 1}] Checking character limit...`);
+    const charLimitResult = checkCharacterLimit(noteResult.note);
+    console.log(`[TEST ${idx + 1}] → Characters: ${charLimitResult.characterCount}/${charLimitResult.limit} - ${charLimitResult.valid ? 'PASS' : 'FAIL'}`);
+    
+    if (!charLimitResult.valid) {
+      console.log(`[TEST ${idx + 1}] ❌ FAILED: Note exceeds 280 character limit`);
+      return {
+        post,
+        sarcasmScore: sarcasmResult.score,
+        keywords,
+        searchContextResult: searchResult,
+        noteResult,
+        allScoresPassed: false,
+        skipReason: `Character limit exceeded: ${charLimitResult.characterCount} > ${charLimitResult.limit}`,
+      };
+    }
+    
+    // 6. RUN SCORING FILTERS
     console.log(`[TEST ${idx + 1}] Running scoring filters...`);
     
     // URL Check
@@ -139,10 +158,11 @@ async function runTestPipeline(post: any, idx: number): Promise<PipelineResult |
     };
     
     // Check thresholds
-    const allPassed = scores.url > 0.5 && scores.positive > 0.5 && scores.disagreement > 0.5;
+    const allPassed = scores.url > 0.5 && scores.positive > 0.5 && scores.disagreement > 0.5 && charLimitResult.valid;
     
     console.log(`[TEST ${idx + 1}] SCORES SUMMARY:`);
     console.log(`[TEST ${idx + 1}]   Sarcasm: ${sarcasmResult.score.toFixed(2)} ✓`);
+    console.log(`[TEST ${idx + 1}]   Character Limit: ${charLimitResult.characterCount}/${charLimitResult.limit} ${charLimitResult.valid ? '✓' : '✗'}`);
     console.log(`[TEST ${idx + 1}]   URL: ${scores.url.toFixed(2)} ${scores.url > 0.5 ? '✓' : '✗'}`);
     console.log(`[TEST ${idx + 1}]   Positive: ${scores.positive.toFixed(2)} ${scores.positive > 0.5 ? '✓' : '✗'}`);
     console.log(`[TEST ${idx + 1}]   Disagreement: ${scores.disagreement.toFixed(2)} ${scores.disagreement > 0.5 ? '✓' : '✗'}`);
