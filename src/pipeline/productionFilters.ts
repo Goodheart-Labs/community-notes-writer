@@ -8,7 +8,7 @@ interface FilterResult {
 
 // Initialize OpenRouter client
 const openrouter = new OpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY,
+  apiKey: process.env.OPENROUTER_API_KEY?.trim(),
   baseURL: 'https://openrouter.ai/api/v1',
   defaultHeaders: {
     'HTTP-Referer': 'https://github.com/Goodheart-Labs/community-notes-writer',

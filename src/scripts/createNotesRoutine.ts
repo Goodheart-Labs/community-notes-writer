@@ -10,20 +10,20 @@ import { execSync } from "child_process";
 
 const maxPosts = 10; // Maximum posts to process per run
 const concurrencyLimit = 3; // Process 3 posts at a time to avoid rate limiting
-const SOFT_TIMEOUT_MS = 8 * 60 * 1000; // 8 minutes - stop processing new items
-const HARD_TIMEOUT_MS = 9 * 60 * 1000; // 9 minutes - force exit
+const SOFT_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes - stop processing new items
+const HARD_TIMEOUT_MS = 25 * 60 * 1000; // 25 minutes - force exit
 
 let shouldStopProcessing = false;
 
 // Soft timeout - stop accepting new work
 const softTimeout = setTimeout(() => {
-  console.log("[main] Soft timeout reached (8 minutes), stopping new processing");
+  console.log("[main] Soft timeout reached (20 minutes), stopping new processing");
   shouldStopProcessing = true;
 }, SOFT_TIMEOUT_MS);
 
 // Hard timeout - force exit
 const hardTimeout = setTimeout(() => {
-  console.log("[main] Hard timeout reached (9 minutes), forcing exit");
+  console.log("[main] Hard timeout reached (25 minutes), forcing exit");
   process.exit(1);
 }, HARD_TIMEOUT_MS);
 

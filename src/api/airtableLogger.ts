@@ -95,33 +95,12 @@ export class AirtableLogger {
 
   async logEntry(entry: AirtableLogEntry): Promise<void> {
     try {
-      const fields: any = {
-        URL: entry.URL,
-        "Bot name": entry["Bot name"],
-        "Initial tweet body": entry["Initial tweet body"],
-        "Full Result": entry["Full Result"],
-        "Final note": entry["Final note"],
-        "Would be posted": entry["Would be posted"],
-      };
-
-      if (entry.commit) {
-        fields.commit = entry.commit;
-      }
+      // Pass through all fields from the entry
+      const fields: any = { ...entry };
       
-      if (entry["HarassmentAbuse score"]) {
-        fields["HarassmentAbuse score"] = entry["HarassmentAbuse score"];
-      }
-      
-      if (entry["UrlValidity score"]) {
-        fields["UrlValidity score"] = entry["UrlValidity score"];
-      }
-      
-      if (entry["ClaimOpinion score"]) {
-        fields["ClaimOpinion score"] = entry["ClaimOpinion score"];
-      }
-      
-      if (entry["Posted to X"] !== undefined) {
-        fields["Posted to X"] = entry["Posted to X"];
+      // Ensure required fields are present
+      if (!fields.URL || !fields["Bot name"]) {
+        console.warn("[AirtableLogger] Missing required fields in entry:", entry);
       }
 
       await this.base(this.tableName).create([
@@ -143,33 +122,12 @@ export class AirtableLogger {
 
     try {
       const records = entries.map((entry) => {
-        const fields: any = {
-          URL: entry.URL,
-          "Bot name": entry["Bot name"],
-          "Initial tweet body": entry["Initial tweet body"],
-          "Full Result": entry["Full Result"],
-          "Final note": entry["Final note"],
-          "Would be posted": entry["Would be posted"],
-        };
-
-        if (entry.commit) {
-          fields.commit = entry.commit;
-        }
+        // Pass through all fields from the entry
+        const fields: any = { ...entry };
         
-        if (entry["HarassmentAbuse score"]) {
-          fields["HarassmentAbuse score"] = entry["HarassmentAbuse score"];
-        }
-        
-        if (entry["UrlValidity score"]) {
-          fields["UrlValidity score"] = entry["UrlValidity score"];
-        }
-        
-        if (entry["ClaimOpinion score"]) {
-          fields["ClaimOpinion score"] = entry["ClaimOpinion score"];
-        }
-        
-        if (entry["Posted to X"] !== undefined) {
-          fields["Posted to X"] = entry["Posted to X"];
+        // Ensure required fields are present
+        if (!fields.URL || !fields["Bot name"]) {
+          console.warn("[AirtableLogger] Missing required fields in entry:", entry);
         }
 
         return { fields };

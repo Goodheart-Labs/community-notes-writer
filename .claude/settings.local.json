@@ -14,7 +14,10 @@
       "Bash(git push:*)",
       "Bash(git rebase:*)",
       "Bash(git checkout:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(for dir in src/tools/*/)",
+      "Bash(ls:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

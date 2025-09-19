@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Community Notes Viewer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .header {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .controls {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    
+    label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    select, input {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      background: white;
+    }
+    
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .checkbox-group input {
+      width: auto;
+    }
+    
+    .checkbox-group label {
+      font-size: 14px;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    
+    button {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+    }
+    
+    .stats {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
+    }
+    
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #667eea;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .notes-container {
+      display: grid;
+      gap: 20px;
+    }
+    
+    .note-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s;
+    }
+    
+    .note-card:hover {
+      transform: translateY(-2px);
+    }
+    
+    .note-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .note-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    .badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .badge.branch {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+    
+    .badge.posted {
+      background: #e8f5e9;
+      color: #388e3c;
+    }
+    
+    .badge.would-post {
+      background: #fff3e0;
+      color: #f57c00;
+    }
+    
+    .badge.rejected {
+      background: #ffebee;
+      color: #c62828;
+    }
+    
+    .tweet-text {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    .note-text {
+      background: #e8f5e9;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 14px;
+      line-height: 1.6;
+      font-weight: 500;
+    }
+    
+    .filter-scores {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .score-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px;
+      background: #f5f5f5;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    
+    .score-label {
+      color: #666;
+    }
+    
+    .score-value {
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .score-value.pass {
+      color: #388e3c;
+    }
+    
+    .score-value.fail {
+      color: #c62828;
+    }
+    
+    .keywords {
+      background: #fff3e0;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-size: 13px;
+    }
+    
+    .reasoning {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.6;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .reasoning h4 {
+      margin-bottom: 10px;
+      color: #666;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: white;
+      font-size: 18px;
+    }
+    
+    .error {
+      background: #ffebee;
+      color: #c62828;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    
+    .note-link {
+      color: #667eea;
+      text-decoration: none;
+      font-size: 12px;
+    }
+    
+    .note-link:hover {
+      text-decoration: underline;
+    }
+    
+    .timestamp {
+      color: #999;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔍 Community Notes Viewer</h1>
+      <p class="subtitle">Browse and analyze Community Notes from Airtable</p>
+    </div>
+    
+    <div class="controls">
+      <div class="control-group">
+        <label>Branch Filter</label>
+        <select id="branchFilter">
+          <option value="all">All Branches</option>
+          <option value="main">main</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <label>Max Results</label>
+        <input type="number" id="limitInput" value="50" min="1" max="500">
+      </div>
+      
+      <div class="checkbox-group">
+        <input type="checkbox" id="onlyPosted">
+        <label for="onlyPosted">Only Posted to X</label>
+      </div>
+      
+      <div class="checkbox-group">
+        <input type="checkbox" id="onlyWouldPost">
+        <label for="onlyWouldPost">Only Would Be Posted</label>
+      </div>
+      
+      <button onclick="loadNotes()">Refresh</button>
+    </div>
+    
+    <div class="stats" id="stats">
+      <div class="stat">
+        <div class="stat-value" id="totalCount">0</div>
+        <div class="stat-label">Total Notes</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="postedCount">0</div>
+        <div class="stat-label">Posted to X</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="wouldPostCount">0</div>
+        <div class="stat-label">Would Be Posted</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="rejectedCount">0</div>
+        <div class="stat-label">Rejected</div>
+      </div>
+    </div>
+    
+    <div class="notes-container" id="notesContainer">
+      <div class="loading">Loading notes...</div>
+    </div>
+  </div>
+  
+  <script>
+    let allNotes = [];
+    
+    // Load branches on page load
+    async function loadBranches() {
+      try {
+        const response = await fetch('/api/branches');
+        const data = await response.json();
+        
+        const select = document.getElementById('branchFilter');
+        // Keep 'all' and 'main'
+        select.innerHTML = '<option value="all">All Branches</option>';
+        
+        data.branches.forEach(branch => {
+          const option = document.createElement('option');
+          option.value = branch;
+          option.textContent = branch;
+          select.appendChild(option);
+        });
+      } catch (error) {
+        console.error('Failed to load branches:', error);
+      }
+    }
+    
+    async function loadNotes() {
+      const container = document.getElementById('notesContainer');
+      container.innerHTML = '<div class="loading">Loading notes...</div>';
+      
+      const branch = document.getElementById('branchFilter').value;
+      const limit = document.getElementById('limitInput').value;
+      const onlyPosted = document.getElementById('onlyPosted').checked;
+      const onlyWouldPost = document.getElementById('onlyWouldPost').checked;
+      
+      try {
+        const params = new URLSearchParams({
+          branch,
+          limit,
+          onlyPosted,
+          onlyWouldPost,
+        });
+        
+        const response = await fetch(`/api/notes?${params}`);
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.message || 'Failed to load notes');
+        }
+        
+        allNotes = data.notes;
+        displayNotes(allNotes);
+        updateStats(allNotes);
+        
+      } catch (error) {
+        container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+        console.error('Failed to load notes:', error);
+      }
+    }
+    
+    function updateStats(notes) {
+      const posted = notes.filter(n => n.postedToX).length;
+      const wouldPost = notes.filter(n => n.wouldBePosted === 1).length;
+      const rejected = notes.filter(n => !n.wouldBePosted && !n.postedToX).length;
+      
+      document.getElementById('totalCount').textContent = notes.length;
+      document.getElementById('postedCount').textContent = posted;
+      document.getElementById('wouldPostCount').textContent = wouldPost;
+      document.getElementById('rejectedCount').textContent = rejected;
+    }
+    
+    function displayNotes(notes) {
+      const container = document.getElementById('notesContainer');
+      
+      if (notes.length === 0) {
+        container.innerHTML = '<div class="error">No notes found matching your criteria</div>';
+        return;
+      }
+      
+      container.innerHTML = notes.map(note => {
+        // Parse reasoning from full result
+        let reasoning = '';
+        if (note.fullResult) {
+          const lines = note.fullResult.split('\\n');
+          const reasoningStart = lines.findIndex(line => 
+            line.includes('SKIP REASON') || 
+            line.includes('STATUS') || 
+            line.includes('FILTER')
+          );
+          if (reasoningStart !== -1) {
+            reasoning = lines.slice(reasoningStart, reasoningStart + 10).join('\\n');
+          }
+        }
+        
+        // Determine status badges
+        const badges = [];
+        badges.push(`<span class="badge branch">${note.botName || 'Unknown'}</span>`);
+        
+        if (note.postedToX) {
+          badges.push('<span class="badge posted">Posted to X</span>');
+        } else if (note.wouldBePosted === 1) {
+          badges.push('<span class="badge would-post">Would Post</span>');
+        } else {
+          badges.push('<span class="badge rejected">Rejected</span>');
+        }
+        
+        // Build filter scores HTML
+        let scoresHtml = '';
+        const scores = [
+          { label: 'Not Sarcasm', value: note.notSarcasmFilter, threshold: 0.5 },
+          { label: 'Character Count', value: note.characterCountFilter, threshold: 0.5 },
+          { label: 'Positive Claims', value: note.positiveClaimsFilter, threshold: 0.5 },
+          { label: 'Significant Correction', value: note.significantCorrectionFilter, threshold: 0.5 },
+        ];
+        
+        const validScores = scores.filter(s => s.value !== undefined && s.value !== null);
+        if (validScores.length > 0) {
+          scoresHtml = `
+            <div class="filter-scores">
+              ${validScores.map(s => `
+                <div class="score-item">
+                  <span class="score-label">${s.label}:</span>
+                  <span class="score-value ${s.value > s.threshold ? 'pass' : 'fail'}">
+                    ${typeof s.value === 'number' ? s.value.toFixed(2) : s.value}
+                  </span>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+        
+        // Keywords
+        let keywordsHtml = '';
+        if (note.keywordsExtracted) {
+          keywordsHtml = `
+            <div class="keywords">
+              <strong>Keywords:</strong> ${note.keywordsExtracted}
+            </div>
+          `;
+        }
+        
+        // Tweet text (from tweetBody if available, otherwise from tweetText)
+        let tweetContent = note.tweetText || '';
+        if (note.tweetBody && note.tweetBody.text) {
+          tweetContent = note.tweetBody.text;
+        }
+        
+        return `
+          <div class="note-card">
+            <div class="note-header">
+              <div class="note-meta">
+                ${badges.join('')}
+                ${note.createdTime ? `<span class="timestamp">${new Date(note.createdTime).toLocaleString()}</span>` : ''}
+              </div>
+              <a href="${note.url}" target="_blank" class="note-link">View on X →</a>
+            </div>
+            
+            ${tweetContent ? `
+              <div class="tweet-text">
+                <strong>Tweet:</strong><br>
+                ${tweetContent}
+              </div>
+            ` : ''}
+            
+            ${note.finalNote ? `
+              <div class="note-text">
+                <strong>Community Note:</strong><br>
+                ${note.finalNote}
+              </div>
+            ` : ''}
+            
+            ${keywordsHtml}
+            ${scoresHtml}
+            
+            ${reasoning ? `
+              <div class="reasoning">
+                <h4>Processing Details:</h4>
+                <pre>${reasoning}</pre>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+    
+    // Initialize
+    loadBranches();
+    loadNotes();
+  </script>
+</body>
+</html>
