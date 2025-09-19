@@ -20,9 +20,7 @@ let shouldStopProcessing = false;
 
 // Soft timeout - stop accepting new work
 const softTimeout = setTimeout(() => {
-  console.log(
-    "[main] Soft timeout reached (20 minutes), stopping new processing"
-  );
+  console.log("[main] Soft timeout reached (20 minutes), stopping new processing");
   shouldStopProcessing = true;
 }, SOFT_TIMEOUT_MS);
 
