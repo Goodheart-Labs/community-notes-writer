@@ -44,6 +44,10 @@ interface PipelineResult {
   keywords?: any;
   searchContextResult?: any;
   noteResult?: any;
+  characterLimit?: {
+    valid: boolean;
+    characterCount: number;
+  };
   scores?: {
     url: number;
     positive: number;
@@ -136,6 +140,10 @@ async function runTestPipeline(post: any, idx: number): Promise<PipelineResult |
         keywords,
         searchContextResult: searchResult,
         noteResult,
+        characterLimit: {
+          valid: charLimitResult.valid,
+          characterCount: charLimitResult.characterCount,
+        },
         allScoresPassed: false,
         skipReason: `Character limit exceeded: ${charLimitResult.characterCount} > ${charLimitResult.limit}`,
       };
@@ -179,6 +187,10 @@ async function runTestPipeline(post: any, idx: number): Promise<PipelineResult |
       keywords,
       searchContextResult: searchResult,
       noteResult,
+      characterLimit: {
+        valid: charLimitResult.valid,
+        characterCount: charLimitResult.characterCount,
+      },
       scores,
       allScoresPassed: allPassed,
       skipReason: allPassed ? undefined : "Failed score thresholds",
@@ -195,7 +207,6 @@ function createTestLogEntry(
   branchName: string
 ): any {
   const url = `https://twitter.com/i/status/${result.post.id}`;
-  const tweetText = result.post.text || "";
   
   // Build the full result text with scores
   let fullResult = `TEST RUN - NO TWITTER POST\n\n`;
@@ -229,11 +240,17 @@ function createTestLogEntry(
   return {
     URL: url,
     "Bot name": `TEST-${branchName}`,
-    "Initial tweet body": tweetText.substring(0, 500),
+    "Initial post text": result.post.text || "", // Just the text
+    "Initial tweet body": JSON.stringify(result.post), // Full JSON object
     "Full Result": fullResult,
     "Final note": result.noteResult?.note || "",
     "Would be posted": result.allScoresPassed ? 1 : 0,
     "Posted to X": false, // Always false in test mode
+    // Add filter columns
+    "Character count filter": result.characterLimit?.valid ? 1 : 0,
+    "Not sarcasm filter": result.sarcasmScore && result.sarcasmScore > 0.5 ? 1 : 0,
+    "Positive claims only filter": result.scores?.positive > 0.5 ? 1 : 0,
+    "Significant correction filter": result.scores?.disagreement > 0.5 ? 1 : 0,
     // Add score fields if columns exist
     "Sarcasm Score": result.sarcasmScore,
     "URL Score": result.scores?.url,
