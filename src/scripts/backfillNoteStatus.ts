@@ -1,12 +1,13 @@
 import axios from "axios";
 import { getOAuth1Headers } from "../api/getOAuthToken";
 import Airtable from "airtable";
+import type { FieldSet } from "airtable";
 
-interface NoteStatusEntry {
+export interface NoteStatusEntry extends FieldSet {
   "Tweet URL": string;
   "Note ID": string;
-  "Status": string;
-  "Classification": string;
+  Status: string;
+  Classification: string;
   "Trustworthy Sources": boolean;
   "Misleading Tags": string[];
   "Note Text": string;
@@ -43,22 +44,24 @@ class NoteStatusLogger {
     try {
       const tweetUrl = this.constructTweetUrl(note.info.post_id);
       const noteUrl = this.constructNoteUrl(note.id);
-      const currentTimestamp = new Date().toISOString().split('T')[0]; // Just YYYY-MM-DD
+      const currentTimestamp = new Date().toISOString().split("T")[0]; // Just YYYY-MM-DD
 
       const fields: NoteStatusEntry = {
         "Tweet URL": tweetUrl,
         "Note ID": note.id,
-        "Status": note.status || "unknown",
-        "Classification": note.info?.classification || "",
+        Status: note.status || "unknown",
+        Classification: note.info?.classification || "",
         "Trustworthy Sources": note.info?.trustworthy_sources || false,
         "Misleading Tags": note.info?.misleading_tags || [],
         "Note Text": note.info?.text || "",
         "Note URL": noteUrl,
-        "Last Updated": currentTimestamp,
+        "Last Updated": currentTimestamp || "",
       };
 
-      await this.base(this.tableName).create(fields);
-      console.log(`[NoteStatusLogger] Added note ${note.id} with status: ${note.status}`);
+      this.base(this.tableName).create(fields);
+      console.log(
+        `[NoteStatusLogger] Added note ${note.id} with status: ${note.status}`
+      );
     } catch (error) {
       console.error(`[NoteStatusLogger] Error adding note ${note.id}:`, error);
     }
@@ -81,17 +84,24 @@ class NoteStatusLogger {
           fetchNextPage();
         });
 
-      console.log(`[NoteStatusLogger] Found ${noteIds.size} existing notes in Airtable`);
+      console.log(
+        `[NoteStatusLogger] Found ${noteIds.size} existing notes in Airtable`
+      );
       return noteIds;
     } catch (error) {
-      console.error("[NoteStatusLogger] Error fetching existing note IDs:", error);
+      console.error(
+        "[NoteStatusLogger] Error fetching existing note IDs:",
+        error
+      );
       return new Set();
     }
   }
 }
 
 async function fetchAllNotes(): Promise<any[]> {
-  console.log("[backfillNoteStatus] Starting backfill of all community notes...");
+  console.log(
+    "[backfillNoteStatus] Starting backfill of all community notes..."
+  );
 
   const allNotes: any[] = [];
   let nextToken: string | undefined;
@@ -106,7 +116,7 @@ async function fetchAllNotes(): Promise<any[]> {
       const params = new URLSearchParams({
         max_results: "100", // Maximum allowed
         test_mode: "false",
-        "note.fields": "id,info,status,test_result"
+        "note.fields": "id,info,status,test_result",
       });
 
       if (nextToken) {
@@ -127,7 +137,9 @@ async function fetchAllNotes(): Promise<any[]> {
 
       if (data.data && data.data.length > 0) {
         allNotes.push(...data.data);
-        console.log(`[backfillNoteStatus] Page ${pageCount}: Found ${data.data.length} notes (total: ${allNotes.length})`);
+        console.log(
+          `[backfillNoteStatus] Page ${pageCount}: Found ${data.data.length} notes (total: ${allNotes.length})`
+        );
       } else {
         console.log(`[backfillNoteStatus] Page ${pageCount}: No notes found`);
       }
@@ -136,19 +148,24 @@ async function fetchAllNotes(): Promise<any[]> {
 
       // Add a small delay to avoid rate limiting
       if (nextToken) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
-
     } while (nextToken);
 
-    console.log(`[backfillNoteStatus] Backfill complete! Found ${allNotes.length} total notes across ${pageCount} pages`);
+    console.log(
+      `[backfillNoteStatus] Backfill complete! Found ${allNotes.length} total notes across ${pageCount} pages`
+    );
     return allNotes;
-
   } catch (error: any) {
-    console.error("[backfillNoteStatus] Error fetching notes:", error.response?.data || error.message);
+    console.error(
+      "[backfillNoteStatus] Error fetching notes:",
+      error.response?.data || error.message
+    );
 
     if (error.response?.status === 429) {
-      console.log("[backfillNoteStatus] Rate limited. You may need to retry later.");
+      console.log(
+        "[backfillNoteStatus] Rate limited. You may need to retry later."
+      );
     }
 
     return allNotes; // Return what we have so far
@@ -171,9 +188,11 @@ async function backfillNoteStatus() {
     }
 
     // Filter out notes we already have
-    const newNotes = allNotes.filter(note => !existingNoteIds.has(note.id));
+    const newNotes = allNotes.filter((note) => !existingNoteIds.has(note.id));
 
-    console.log(`[backfillNoteStatus] Processing ${newNotes.length} new notes (${existingNoteIds.size} already exist)`);
+    console.log(
+      `[backfillNoteStatus] Processing ${newNotes.length} new notes (${existingNoteIds.size} already exist)`
+    );
 
     // Add notes to Airtable
     let successCount = 0;
@@ -188,14 +207,20 @@ async function backfillNoteStatus() {
 
         // Progress indicator
         if ((i + 1) % 10 === 0) {
-          console.log(`[backfillNoteStatus] Progress: ${i + 1}/${newNotes.length} notes processed`);
+          console.log(
+            `[backfillNoteStatus] Progress: ${i + 1}/${
+              newNotes.length
+            } notes processed`
+          );
         }
 
         // Small delay to avoid overwhelming Airtable
-        await new Promise(resolve => setTimeout(resolve, 200));
-
+        await new Promise((resolve) => setTimeout(resolve, 200));
       } catch (error) {
-        console.error(`[backfillNoteStatus] Failed to add note ${note.id}:`, error);
+        console.error(
+          `[backfillNoteStatus] Failed to add note ${note.id}:`,
+          error
+        );
         errorCount++;
       }
     }
@@ -209,7 +234,6 @@ async function backfillNoteStatus() {
     console.log(`Successfully added: ${successCount}`);
     console.log(`Errors: ${errorCount}`);
     console.log("=".repeat(80));
-
   } catch (error) {
     console.error("[backfillNoteStatus] Fatal error:", error);
   }

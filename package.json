@@ -30,7 +30,7 @@
     "typescript": "^5"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit --project tsconfig.json",
     "typecheck-elo": "cd src/tools/elo-rating-web && tsc --noEmit",
     "test-airtable": "bun run src/test-airtable-logger.ts",
     "routine": "bun run src/scripts/createNotesRoutine.ts",

@@ -1,10 +1,13 @@
 import { fetchEligiblePosts } from "../api/fetchEligiblePosts";
 import { versionOneFn as searchV1 } from "../pipeline/searchContextGoal";
-import { writeNoteWithSearchFn as writeV1 } from "../pipeline/writeNoteWithSearchGoal";
+import { writeNoteWithSearchFn } from "../pipeline/writeNoteWithSearchGoal";
 import { check as checkV1 } from "../pipeline/check";
 import { AirtableLogger, createLogEntry } from "../api/airtableLogger";
 import { getOriginalTweetContent } from "../utils/retweetUtils";
-import { runProductionFilters, formatFilterResults } from "../pipeline/productionFilters";
+import {
+  runProductionFilters,
+  formatFilterResults,
+} from "../pipeline/productionFilters";
 import PQueue from "p-queue";
 import { execSync } from "child_process";
 
@@ -17,7 +20,9 @@ let shouldStopProcessing = false;
 
 // Soft timeout - stop accepting new work
 const softTimeout = setTimeout(() => {
-  console.log("[main] Soft timeout reached (20 minutes), stopping new processing");
+  console.log(
+    "[main] Soft timeout reached (20 minutes), stopping new processing"
+  );
   shouldStopProcessing = true;
 }, SOFT_TIMEOUT_MS);
 
@@ -34,33 +39,42 @@ async function runPipeline(post: any, idx: number) {
   try {
     // Get the original tweet content (handling retweets)
     const originalContent = getOriginalTweetContent(post);
-    
-    console.log(`[runPipeline] Processing ${originalContent.isRetweet ? 'retweet' : 'original tweet'} for post #${idx + 1}`);
-    
+
+    console.log(
+      `[runPipeline] Processing ${
+        originalContent.isRetweet ? "retweet" : "original tweet"
+      } for post #${idx + 1}`
+    );
+
     // Check if the post contains video media
-    const hasVideo = post.media?.some((m: any) => m.type === 'video') || 
-                    post.referenced_tweet_data?.media?.some((m: any) => m.type === 'video');
-    
+    const hasVideo =
+      post.media?.some((m: any) => m.type === "video") ||
+      post.referenced_tweet_data?.media?.some((m: any) => m.type === "video");
+
     if (hasVideo) {
-      console.log(`[runPipeline] Skipping post #${idx + 1} (ID: ${post.id}) - contains video media`);
-      
+      console.log(
+        `[runPipeline] Skipping post #${idx + 1} (ID: ${
+          post.id
+        }) - contains video media`
+      );
+
       // Return a special result for video posts that will still be logged to Airtable
       return {
         post,
         searchContextResult: {
           text: originalContent.text,
           searchResults: "SKIPPED - Post contains video media",
-          citations: []
+          citations: [],
         },
         noteResult: {
           status: "SKIPPED - VIDEO CONTENT",
           note: "Video content is not currently supported for Community Notes generation",
-          url: ""
+          url: "",
         },
-        checkResult: "NO - VIDEO CONTENT"
+        checkResult: "NO - VIDEO CONTENT",
       };
     }
-    
+
     const searchContextResult = await searchV1(
       {
         text: originalContent.text,
@@ -76,7 +90,7 @@ async function runPipeline(post: any, idx: number) {
       })`
     );
 
-    const noteResult = await writeV1(
+    const noteResult = await writeNoteWithSearchFn(
       {
         text: searchContextResult.text,
         searchResults: searchContextResult.searchResults,
@@ -116,40 +130,50 @@ async function main() {
   try {
     // Get current branch name
     let currentBranch = "unknown";
-    
+
     // First check if we're in GitHub Actions and use the branch from environment
     if (process.env.GITHUB_BRANCH_NAME) {
       currentBranch = process.env.GITHUB_BRANCH_NAME;
-      console.log(`[main] Running in GitHub Actions, using branch from env: ${currentBranch}`);
+      console.log(
+        `[main] Running in GitHub Actions, using branch from env: ${currentBranch}`
+      );
     } else {
       // Fallback to git command for local development
       try {
-        currentBranch = execSync("git rev-parse --abbrev-ref HEAD", { encoding: "utf8" }).trim();
+        currentBranch = execSync("git rev-parse --abbrev-ref HEAD", {
+          encoding: "utf8",
+        }).trim();
       } catch (error) {
-        console.warn("[main] Could not determine current branch, assuming main");
+        console.warn(
+          "[main] Could not determine current branch, assuming main"
+        );
         currentBranch = "main";
       }
     }
-    
+
     // Determine if we should run in simulation mode (skip actual submission)
     const shouldSubmitNotes = currentBranch === "main";
-    
+
     console.log(`[main] Current branch: ${currentBranch}`);
     console.log(`[main] Should submit notes: ${shouldSubmitNotes}`);
-    
+
     if (!shouldSubmitNotes) {
-      console.log(`[main] Running in SIMULATION MODE - notes will be generated and logged but not submitted to X.com`);
+      console.log(
+        `[main] Running in SIMULATION MODE - notes will be generated and logged but not submitted to X.com`
+      );
     }
-    
+
     // Get commit hash from environment variable (available in GitHub Actions)
     const commit = process.env.GITHUB_SHA;
-    
+
     // Initialize Airtable logger
     const airtableLogger = new AirtableLogger();
     const logEntries: any[] = [];
 
     // Get existing URLs from Airtable for this specific bot
-    const existingUrls = await airtableLogger.getExistingUrlsForBot(currentBranch);
+    const existingUrls = await airtableLogger.getExistingUrlsForBot(
+      currentBranch
+    );
 
     // Convert URLs to post IDs (extract ID from URL)
     const skipPostIds = new Set<string>();
@@ -158,7 +182,9 @@ async function main() {
       if (match && match[1]) skipPostIds.add(match[1]);
     });
 
-    console.log(`[main] Skipping ${skipPostIds.size} already-processed posts for bot '${currentBranch}'`);
+    console.log(
+      `[main] Skipping ${skipPostIds.size} already-processed posts for bot '${currentBranch}'`
+    );
 
     let posts = await fetchEligiblePosts(maxPosts, skipPostIds, 3); // Fetch up to 3 pages to get at least 10 posts
 
@@ -183,10 +209,14 @@ async function main() {
     for (const [idx, post] of posts.entries()) {
       // Check for soft timeout before adding new tasks
       if (shouldStopProcessing) {
-        console.log(`[main] Soft timeout reached, skipping remaining ${posts.length - idx} posts`);
+        console.log(
+          `[main] Soft timeout reached, skipping remaining ${
+            posts.length - idx
+          } posts`
+        );
         break;
       }
-      
+
       queue.add(async () => {
         const r = await runPipeline(post, idx);
         if (!r) return;
@@ -207,16 +237,14 @@ async function main() {
         ) {
           // Run production filters before posting
           const noteText = r.noteResult.note + " " + r.noteResult.url;
-          const postText = r.post.text || r.post.full_text || '';
-          
+          const postText = r.post.text || r.post.full_text || "";
+
           const filterRun = await runProductionFilters(noteText, postText);
           filterResults = formatFilterResults(filterRun.results);
           filtersPassed = filterRun.passed;
-          
+
           if (!filtersPassed) {
-            console.log(
-              `[main] Filters blocked note for post ${r.post.id}`
-            );
+            console.log(`[main] Filters blocked note for post ${r.post.id}`);
           } else if (shouldSubmitNotes) {
             try {
               // Submit the note using the same info as in your submitNote.ts
