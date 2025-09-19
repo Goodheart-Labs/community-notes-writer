@@ -133,7 +133,7 @@ async function main() {
 
     // First check if we're in GitHub Actions and use the branch from environment
     if (process.env.GITHUB_BRANCH_NAME) {
-      currentBranch = process.env.GITHUB_BRANCH_NAME;
+      currentBranch = process.env.GITHUB_BRANCH_NAME.trim().toLowerCase();
       console.log(
         `[main] Running in GitHub Actions, using branch from env: ${currentBranch}`
       );
@@ -142,7 +142,7 @@ async function main() {
       try {
         currentBranch = execSync("git rev-parse --abbrev-ref HEAD", {
           encoding: "utf8",
-        }).trim();
+        }).trim().toLowerCase();
       } catch (error) {
         console.warn(
           "[main] Could not determine current branch, assuming main"

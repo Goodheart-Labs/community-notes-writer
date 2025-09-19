@@ -243,11 +243,11 @@ async function main() {
     let currentBranch = "refactor";
     try {
       if (process.env.GITHUB_BRANCH_NAME) {
-        currentBranch = process.env.GITHUB_BRANCH_NAME;
+        currentBranch = process.env.GITHUB_BRANCH_NAME.trim().toLowerCase();
       } else {
         currentBranch = execSync("git rev-parse --abbrev-ref HEAD", {
           encoding: "utf8",
-        }).trim();
+        }).trim().toLowerCase();
       }
     } catch (error) {
       console.warn("[main] Could not determine branch");
