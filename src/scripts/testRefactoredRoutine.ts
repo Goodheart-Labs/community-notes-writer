@@ -253,27 +253,44 @@ function createTestLogEntry(
     fullResult += `URL: ${result.noteResult.url}`;
   }
   
-  return {
+  const entry: any = {
     URL: url,
     "Bot name": `TEST-${branchName}`,
-    "Initial post text": result.post.text || "", // Just the text
     "Initial tweet body": JSON.stringify(result.post), // Full JSON object
     "Full Result": fullResult,
     "Final note": result.noteResult?.note || "",
     "Would be posted": result.allScoresPassed ? 1 : 0,
     "Posted to X": false, // Always false in test mode
-    // Add filter columns
-    "Character count filter": result.characterLimit?.valid ? 1 : 0,
-    "Not sarcasm filter": result.sarcasmScore && result.sarcasmScore > 0.5 ? 1 : 0,
-    "Positive claims only filter": result.scores?.positive > 0.5 ? 1 : 0,
-    "Significant correction filter": result.scores?.disagreement > 0.5 ? 1 : 0,
-    // Add score fields if columns exist
-    "Sarcasm Score": result.sarcasmScore,
-    "URL Score": result.scores?.url,
-    "Positive Score": result.scores?.positive,
-    "Disagreement Score": result.scores?.disagreement,
-    "Keywords Extracted": result.keywords ? result.keywords.keywords.join(", ") : "",
   };
+  
+  // Add optional fields only if they have values
+  if (result.post.text) {
+    entry["Initial post text"] = result.post.text;
+  }
+  
+  // Add the filter columns as decimal scores (all are 0.0 to 1.0)
+  if (result.sarcasmScore !== undefined) {
+    entry["Not sarcasm filter"] = result.sarcasmScore;
+  }
+  
+  if (result.characterLimit) {
+    // Could calculate a score based on how much under the limit, but for now binary
+    entry["Character count filter"] = result.characterLimit.valid ? 1.0 : 0.0;
+  }
+  
+  if (result.scores?.positive !== undefined) {
+    entry["Positive claims only filter"] = result.scores.positive;
+  }
+  
+  if (result.scores?.disagreement !== undefined) {
+    entry["Significant correction filter"] = result.scores.disagreement;
+  }
+  
+  if (result.keywords && result.keywords.keywords) {
+    entry["Keywords extracted"] = result.keywords.keywords.join(", ");
+  }
+  
+  return entry;
 }
 
 async function main() {
