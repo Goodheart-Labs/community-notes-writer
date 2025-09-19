@@ -25,6 +25,22 @@ import { writeNoteWithSearchFn as writeV1 } from "../pipeline/writeNoteWithSearc
 // Configuration - same as GitHub Action
 const maxPosts = parseInt(process.env.MAX_POSTS || "10"); // Same default as production
 const concurrencyLimit = 3; // Same as production
+const SOFT_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes - stop processing new items
+const HARD_TIMEOUT_MS = 25 * 60 * 1000; // 25 minutes - force exit
+
+let shouldStopProcessing = false;
+
+// Soft timeout - stop accepting new work
+const softTimeout = setTimeout(() => {
+  console.log("[TEST] Soft timeout reached (20 minutes), stopping new processing");
+  shouldStopProcessing = true;
+}, SOFT_TIMEOUT_MS);
+
+// Hard timeout - force exit
+const hardTimeout = setTimeout(() => {
+  console.log("[TEST] Hard timeout reached (25 minutes), forcing exit");
+  process.exit(1);
+}, HARD_TIMEOUT_MS);
 
 console.log(`
 ================================================================================
@@ -293,6 +309,8 @@ async function main() {
     const posts = await fetchEligiblePosts(maxPosts, skipPostIds, 2);
     if (!posts.length) {
       console.log("\n[TEST] No new eligible posts found.");
+      clearTimeout(softTimeout);
+      clearTimeout(hardTimeout);
       process.exit(0);
     }
     
@@ -304,6 +322,12 @@ async function main() {
     const results: PipelineResult[] = [];
     
     for (const [idx, post] of posts.entries()) {
+      // Check for soft timeout before adding new tasks
+      if (shouldStopProcessing) {
+        console.log(`[TEST] Soft timeout reached, skipping remaining ${posts.length - idx} posts`);
+        break;
+      }
+      
       queue.add(async () => {
         const result = await runTestPipeline(post, idx);
         if (result) {
@@ -342,10 +366,14 @@ async function main() {
     }
     
     console.log("\n[TEST] Test complete!");
+    clearTimeout(softTimeout);
+    clearTimeout(hardTimeout);
     process.exit(0);
     
   } catch (error) {
     console.error("\n[TEST] Fatal error:", error);
+    clearTimeout(softTimeout);
+    clearTimeout(hardTimeout);
     process.exit(1);
   }
 }
