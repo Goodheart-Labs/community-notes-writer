@@ -30,7 +30,7 @@ ${fullContext}
 Instructions:
 - Keywords: Extract 3-5 most important search terms (not common words)
 - Claims: Identify specific factual claims that can be verified
-- Entities: List specific people, organizations, places, or events mentioned
+- Entities: List specific people, organizations, places, or events mentioned as a FLAT ARRAY of strings
 
 Focus on:
 - Specific facts and figures
@@ -43,7 +43,10 @@ Avoid:
 - Opinions or subjective statements
 - Generic terms without context
 
-IMPORTANT: Respond with valid JSON only, no other text.`;
+IMPORTANT: 
+- The entities field must be a simple array of strings like ["Person Name", "Organization", "Place"]
+- Do NOT return an object with nested properties for entities
+- Respond with valid JSON only, no other text`;
 
   try {
     const { object } = await generateObject({

@@ -220,20 +220,21 @@ function createLogEntryWithScores(
   return {
     URL: url,
     "Bot name": branchName,
-    "Initial tweet body": tweetText.substring(0, 500),
+    "Initial post text": tweetText,  // The actual tweet text
+    "Initial tweet body": JSON.stringify(result.post),  // The full JSON object
     "Full Result": fullResult,
     "Final note": result.noteResult?.note || "",
     "Would be posted": result.allScoresPassed ? 1 : 0,
     "Posted to X": postedToX,
-    commit: commit || "",
-    // Add score fields if columns exist
-    "Sarcasm Score": result.sarcasmScore,
-    "URL Score": result.scores?.url,
-    "Positive Score": result.scores?.positive,
-    "Disagreement Score": result.scores?.disagreement,
-    "Keywords Extracted": result.keywords
+    // Use the correct filter column names (if they exist)
+    "Not sarcasm filter": result.sarcasmScore,
+    "Positive claims only filter": result.scores?.positive,
+    "Significant correction filter": result.scores?.disagreement,
+    "Keywords extracted": result.keywords
       ? result.keywords.keywords.join(", ")
       : "",
+    // Character count
+    "Character count": result.noteResult?.note?.length || 0,
   };
 }
 
