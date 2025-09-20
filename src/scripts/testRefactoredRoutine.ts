@@ -326,9 +326,10 @@ function createTestLogEntry(result: PipelineResult, branchName: string): any {
   if (result.sarcasmScore !== undefined) {
     entry["Not sarcasm filter"] = result.sarcasmScore;
   }
-
+  
+  // Character count filter might be needed if it's a separate writable field
+  // (different from the computed "Character count" field)
   if (result.characterLimit) {
-    // Could calculate a score based on how much under the limit, but for now binary
     entry["Character count filter"] = result.characterLimit.valid ? 1.0 : 0.0;
   }
 

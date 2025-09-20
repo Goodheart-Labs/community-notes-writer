@@ -233,8 +233,7 @@ function createLogEntryWithScores(
     "Keywords extracted": result.keywords
       ? result.keywords.keywords.join(", ")
       : "",
-    // Character count
-    "Character count": result.noteResult?.note?.length || 0,
+    // Character count is computed in Airtable, don't write to it
   };
 }
 
