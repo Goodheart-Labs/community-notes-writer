@@ -108,13 +108,35 @@ async function runRefactoredPipeline(
     );
     console.log(`[pipeline] Search complete`);
 
+    const citations = searchResult.citations || [];
+
+    // If there are no citations, skip the rest of the pipeline
+    if (citations.length === 0) {
+      console.log(
+        `[pipeline] No citations found, skipping the rest of the pipeline`
+      );
+      return {
+        post,
+        verifiableFactScore: verifiableFactResult.score,
+        keywords,
+        searchContextResult: searchResult,
+        noteResult: {
+          status: "NO CITATIONS",
+          note: "No citations found",
+          url: "",
+        },
+        allScoresPassed: false,
+        skipReason: "No citations found",
+      };
+    }
+
     // 4. WRITE NOTE (using existing implementation for now)
     console.log(`[pipeline] Writing note...`);
     const noteResult = await writeNoteWithSearchFn(
       {
         text: searchResult.text,
         searchResults: searchResult.searchResults,
-        citations: searchResult.citations || [],
+        citations,
       },
       { model: "anthropic/claude-sonnet-4" }
     );
@@ -222,11 +244,16 @@ function createLogEntryWithScores(
   if (result.searchContextResult) {
     fullResult += `SEARCH RESULTS:\n${result.searchContextResult.searchResults}\n\n`;
 
-    if (result.searchContextResult.citations && result.searchContextResult.citations.length > 0) {
+    if (
+      result.searchContextResult.citations &&
+      result.searchContextResult.citations.length > 0
+    ) {
       fullResult += `CITATIONS:\n`;
-      result.searchContextResult.citations.forEach((citation: string, index: number) => {
-        fullResult += `[${index + 1}] ${citation}\n`;
-      });
+      result.searchContextResult.citations.forEach(
+        (citation: string, index: number) => {
+          fullResult += `[${index + 1}] ${citation}\n`;
+        }
+      );
       fullResult += `\n`;
     }
   }
