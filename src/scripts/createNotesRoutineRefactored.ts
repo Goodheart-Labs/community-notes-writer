@@ -53,7 +53,9 @@ async function runRefactoredPipeline(
     // Extract image URL if present
     let imageUrl: string | undefined;
     if (post.media && post.media.length > 0) {
-      const imageMedia = post.media.find((media: any) => media.type === "photo");
+      const imageMedia = post.media.find(
+        (media: any) => media.type === "photo"
+      );
       if (imageMedia && imageMedia.url) {
         imageUrl = imageMedia.url;
       }
@@ -67,9 +69,9 @@ async function runRefactoredPipeline(
       imageUrl
     );
     console.log(
-      `[pipeline] Verifiable fact score: ${verifiableFactResult.score.toFixed(2)} - ${
-        verifiableFactResult.reasoning
-      }`
+      `[pipeline] Verifiable fact score: ${verifiableFactResult.score.toFixed(
+        2
+      )} - ${verifiableFactResult.reasoning}`
     );
 
     if (verifiableFactResult.score <= 0.5) {
@@ -219,6 +221,14 @@ function createLogEntryWithScores(
 
   if (result.searchContextResult) {
     fullResult += `SEARCH RESULTS:\n${result.searchContextResult.searchResults}\n\n`;
+
+    if (result.searchContextResult.citations && result.searchContextResult.citations.length > 0) {
+      fullResult += `CITATIONS:\n`;
+      result.searchContextResult.citations.forEach((citation: string, index: number) => {
+        fullResult += `[${index + 1}] ${citation}\n`;
+      });
+      fullResult += `\n`;
+    }
   }
 
   if (result.noteResult) {
@@ -230,8 +240,8 @@ function createLogEntryWithScores(
   return {
     URL: url,
     "Bot name": branchName,
-    "Initial post text": tweetText,  // The actual tweet text
-    "Initial tweet body": JSON.stringify(result.post),  // The full JSON object
+    "Initial post text": tweetText, // The actual tweet text
+    "Initial tweet body": JSON.stringify(result.post), // The full JSON object
     "Full Result": fullResult,
     "Final note": result.noteResult?.note || "",
     "Would be posted": result.allScoresPassed ? 1 : 0,
@@ -257,7 +267,9 @@ async function main() {
       } else {
         currentBranch = execSync("git rev-parse --abbrev-ref HEAD", {
           encoding: "utf8",
-        }).trim().toLowerCase();
+        })
+          .trim()
+          .toLowerCase();
       }
     } catch (error) {
       console.warn("[main] Could not determine branch");
