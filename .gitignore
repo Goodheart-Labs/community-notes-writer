@@ -49,3 +49,6 @@ src/prompt-lab/research-cache.json
 
 # Claude settings
 .claude
+
+# Data exports (research files)
+data-export-*

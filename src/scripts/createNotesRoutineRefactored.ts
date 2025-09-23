@@ -1,7 +1,7 @@
 import { fetchEligiblePosts } from "../api/fetchEligiblePosts";
 import { AirtableLogger } from "../api/airtableLogger";
 import { getOriginalTweetContent } from "../utils/retweetUtils";
-import { checkSarcasm } from "../pipeline/sarcasmFilter";
+import { checkVerifiableFacts } from "../pipeline/sarcasmFilter";
 import { extractKeywords } from "../pipeline/extractKeywords";
 import { searchWithKeywords } from "../pipeline/searchWithKeywords";
 import { checkUrlValidity } from "../pipeline/urlChecker";
@@ -22,7 +22,7 @@ let shouldStopProcessing = false;
 
 interface PipelineResult {
   post: any;
-  sarcasmScore?: number;
+  verifiableFactScore?: number;
   keywords?: any;
   searchContextResult?: any;
   noteResult?: any;
@@ -50,29 +50,39 @@ async function runRefactoredPipeline(
     const originalContent = getOriginalTweetContent(post);
     const quoteContext = originalContent.retweetContext;
 
-    // 1. SARCASM FILTER (Early exit)
-    console.log(`[pipeline] Running sarcasm filter...`);
-    const sarcasmResult = await checkSarcasm(
+    // Extract image URL if present
+    let imageUrl: string | undefined;
+    if (post.media && post.media.length > 0) {
+      const imageMedia = post.media.find((media: any) => media.type === "photo");
+      if (imageMedia && imageMedia.url) {
+        imageUrl = imageMedia.url;
+      }
+    }
+
+    // 1. VERIFIABLE FACT FILTER (Early exit)
+    console.log(`[pipeline] Running verifiable fact filter...`);
+    const verifiableFactResult = await checkVerifiableFacts(
       originalContent.text,
-      quoteContext
+      quoteContext,
+      imageUrl
     );
     console.log(
-      `[pipeline] Sarcasm score: ${sarcasmResult.score.toFixed(2)} - ${
-        sarcasmResult.reasoning
+      `[pipeline] Verifiable fact score: ${verifiableFactResult.score.toFixed(2)} - ${
+        verifiableFactResult.reasoning
       }`
     );
 
-    if (sarcasmResult.score <= 0.5) {
+    if (verifiableFactResult.score <= 0.5) {
       console.log(
-        `[pipeline] Post filtered for sarcasm (score: ${sarcasmResult.score.toFixed(
+        `[pipeline] Post filtered for non-verifiable content (score: ${verifiableFactResult.score.toFixed(
           2
         )})`
       );
       return {
         post,
-        sarcasmScore: sarcasmResult.score,
+        verifiableFactScore: verifiableFactResult.score,
         allScoresPassed: false,
-        skipReason: `Sarcasm filter: ${sarcasmResult.reasoning}`,
+        skipReason: `Verifiable fact filter: ${verifiableFactResult.reasoning}`,
       };
     }
 
@@ -113,7 +123,7 @@ async function runRefactoredPipeline(
       console.log(`[pipeline] Skipping - status: ${noteResult.status}`);
       return {
         post,
-        sarcasmScore: sarcasmResult.score,
+        verifiableFactScore: verifiableFactResult.score,
         keywords,
         searchContextResult: searchResult,
         noteResult,
@@ -156,7 +166,7 @@ async function runRefactoredPipeline(
 
     return {
       post,
-      sarcasmScore: sarcasmResult.score,
+      verifiableFactScore: verifiableFactResult.score,
       keywords,
       searchContextResult: searchResult,
       noteResult,
@@ -180,8 +190,8 @@ function createLogEntryWithScores(
   const tweetText = result.post.text || "";
 
   // Build the full result text with scores
-  let fullResult = `SARCASM SCORE: ${
-    result.sarcasmScore?.toFixed(2) || "N/A"
+  let fullResult = `VERIFIABLE FACT SCORE: ${
+    result.verifiableFactScore?.toFixed(2) || "N/A"
   }\n\n`;
 
   if (result.keywords) {
@@ -227,7 +237,7 @@ function createLogEntryWithScores(
     "Would be posted": result.allScoresPassed ? 1 : 0,
     "Posted to X": postedToX,
     // Use the correct filter column names (if they exist)
-    "Not sarcasm filter": result.sarcasmScore,
+    "Not sarcasm filter": result.verifiableFactScore,
     "Positive claims only filter": result.scores?.positive,
     "Significant correction filter": result.scores?.disagreement,
     "Keywords extracted": result.keywords
