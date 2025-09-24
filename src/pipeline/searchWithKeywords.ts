@@ -63,10 +63,9 @@ IMPORTANT:
     });
 
     const searchResults = result.choices?.[0]?.message?.content || "";
-    
-    // Extract URLs from the search results
-    const urlRegex = /https?:\/\/[^\s]+/g;
-    const citations = searchResults.match(urlRegex) || [];
+
+    // Get citations from Perplexity response (they're in result.citations, not in the text)
+    const citations = result.citations || [];
 
     return {
       text: input.originalText,
