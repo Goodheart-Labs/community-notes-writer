@@ -34,15 +34,11 @@ interface NoteEntry {
   createdTime?: string;
   // Filter scores
   notSarcasmFilter?: number;
+  urlFilter?: number;
   characterCountFilter?: number;
   positiveClaimsFilter?: number;
   significantCorrectionFilter?: number;
   keywordsExtracted?: string;
-  // Legacy scores
-  sarcasmScore?: number;
-  urlScore?: number;
-  positiveScore?: number;
-  disagreementScore?: number;
 }
 
 // Fetch notes from Airtable with optional filters
@@ -99,15 +95,11 @@ app.get('/api/notes', async (req: Request, res: Response) => {
           'Created',
           // Filter columns
           'Not sarcasm filter',
+          'URL filter',
           'Character count filter',
           'Positive claims only filter',
           'Significant correction filter',
-          'Keywords extracted',
-          // Score columns (if they exist)
-          'Sarcasm Score',
-          'URL Score',
-          'Positive Score',
-          'Disagreement Score'
+          'Keywords extracted'
         ],
       })
       .eachPage((records, fetchNextPage) => {
@@ -124,15 +116,11 @@ app.get('/api/notes', async (req: Request, res: Response) => {
             createdTime: record.get('Created') as string,
             // Filter scores
             notSarcasmFilter: record.get('Not sarcasm filter') as number,
+            urlFilter: record.get('URL filter') as number,
             characterCountFilter: record.get('Character count filter') as number,
             positiveClaimsFilter: record.get('Positive claims only filter') as number,
             significantCorrectionFilter: record.get('Significant correction filter') as number,
             keywordsExtracted: record.get('Keywords extracted') as string,
-            // Legacy scores
-            sarcasmScore: record.get('Sarcasm Score') as number,
-            urlScore: record.get('URL Score') as number,
-            positiveScore: record.get('Positive Score') as number,
-            disagreementScore: record.get('Disagreement Score') as number,
           };
           
           // Try to parse tweet body if it's a JSON string

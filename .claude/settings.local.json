@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun build:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run prompt-lab:fetch:*)",
+      "Bash(npm run:*)",
+      "Bash(bun run:*)",
+      "Bash(bun pm ls:*)",
+      "Bash(bun test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git rebase:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

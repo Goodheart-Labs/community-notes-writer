@@ -25,21 +25,23 @@ const scoreSchema = z.object({
 
 // Positive claims filter (converted to decimal)
 export async function checkPositiveClaims(noteText: string): Promise<FilterScore> {
-  const prompt = `Evaluate if this Community Note uses positive framing (says what DID happen) rather than negative claims (what DIDN'T happen).
+  const prompt = `Evaluate if this Community Note uses positive framing (says only what DID happen) rather than any negative claims (what DIDN'T happen).
 
 Note to evaluate: "${noteText}"
 
 Consider:
-- Does it say someone DIDN'T say/do something? (negative claim)
+- Does it say someone DIDN'T say or do something at all (negative claim) 
+- Does it say someone DIDN'T do something at all (negative claim)
 - Does it focus on what actually happened? (positive claim)
 - If it references a specific fact-check backing up a negative claim, that's more acceptable
+- A claim that something something else happened is not a negative claim. If they ducks flew away, that's a positive claim. There were no ducks is a negative claim.
 
 Scoring:
-- 0.0: Entirely negative claims ("This didn't happen", "They never said")
-- 0.3: Mostly negative with some positive
-- 0.5: Mix of negative and positive
-- 0.7: Mostly positive with minimal negative
-- 1.0: Entirely positive claims (what DID happen)
+- 0.0: Any negative claims ("This didn't happen", "They never said")
+- 0.3: One or more ambiguous claims "This might have happened"
+- 0.5: Unclear if all claims are positive
+- 0.7: All positive claims
+- 1.0: Unambiguously positive claims only
 
 IMPORTANT: Return ONLY a JSON object with:
 - score: a number between 0 and 1
