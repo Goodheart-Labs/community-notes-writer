@@ -14,8 +14,7 @@
       "Bash(git push:*)",
       "Bash(git rebase:*)",
       "Bash(git checkout:*)",
-      "Bash(git pull:*)",
-      "Bash(git ls-tree:*)"
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": []
