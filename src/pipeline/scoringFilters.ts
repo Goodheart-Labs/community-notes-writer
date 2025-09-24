@@ -34,6 +34,7 @@ Consider:
 - Does it say someone DIDN'T do something at all (negative claim)
 - Does it focus on what actually happened? (positive claim)
 - If it references a specific fact-check backing up a negative claim, that's more acceptable
+- A claim that something something else happened is not a negative claim. If they ducks flew away, that's a positive claim. There were no ducks is a negative claim.
 
 Scoring:
 - 0.0: Any negative claims ("This didn't happen", "They never said")
