@@ -25,26 +25,20 @@ export async function searchWithKeywords(
     ...input.keywords.entities,
   ].join(", ");
 
-  const claimsText = input.keywords.claims.length > 0 
-    ? `Claims to verify: ${input.keywords.claims.join("; ")}` 
+  const claimsText = input.keywords.claims.length > 0
+    ? `Specific claims: ${input.keywords.claims.join("; ")}`
     : "";
 
-  const systemPrompt = `You are a fact-checking research tool. Search the web for information about the following keywords and claims.
+  const systemPrompt = `Search the web for information about: ${searchQuery}
+
+${claimsText}
+${input.quoteContext ? `Context: ${input.quoteContext}` : ""}
+
+Tweet text: "${input.originalText}"
 
 Today's date: ${input.date}
 
-Keywords to research: ${searchQuery}
-${claimsText}
-${input.quoteContext ? `Quote tweet context: ${input.quoteContext}` : ""}
-
-Original tweet for reference: "${input.originalText}"
-
-IMPORTANT:
-1. Focus on finding recent, authoritative sources
-2. Look for information that either supports or contradicts the claims
-3. Consider the date context - if something is claimed to have happened "yesterday" or "last week", calculate the actual dates
-4. Provide specific URLs for all sources
-5. Be concise and factual`;
+Find recent news, reports, or official statements about this specific topic.`;
 
   try {
     const result = await llm.create({
@@ -56,7 +50,7 @@ IMPORTANT:
         },
         {
           role: "user",
-          content: `Research these keywords and verify these claims. Provide factual information with sources.`,
+          content: searchQuery,
         },
       ],
       temperature: 0.3,
