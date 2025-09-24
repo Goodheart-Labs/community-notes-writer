@@ -25,9 +25,10 @@ export async function searchWithKeywords(
     ...input.keywords.entities,
   ].join(", ");
 
-  const claimsText = input.keywords.claims.length > 0
-    ? `Specific claims: ${input.keywords.claims.join("; ")}`
-    : "";
+  const claimsText =
+    input.keywords.claims.length > 0
+      ? `Specific claims: ${input.keywords.claims.join("; ")}`
+      : "";
 
   const systemPrompt = `Search the web for information about: ${searchQuery}
 
@@ -59,7 +60,7 @@ Find recent news, reports, or official statements about this specific topic.`;
     const searchResults = result.choices?.[0]?.message?.content || "";
 
     // Get citations from Perplexity response (they're in result.citations, not in the text)
-    const citations = result.citations || [];
+    const citations = (result as any).citations || [];
 
     return {
       text: input.originalText,

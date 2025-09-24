@@ -9,7 +9,7 @@
 import { fetchEligiblePosts } from "../api/fetchEligiblePosts";
 import { AirtableLogger } from "../api/airtableLogger";
 import { getOriginalTweetContent } from "../utils/retweetUtils";
-import { checkSarcasm } from "../pipeline/sarcasmFilter";
+import { checkSarcasm } from "../pipeline/checkVerifiableFacts";
 import { extractKeywords } from "../pipeline/extractKeywords";
 import { searchWithKeywords } from "../pipeline/searchWithKeywords";
 import { checkUrlValidity } from "../pipeline/urlChecker";
@@ -326,7 +326,7 @@ function createTestLogEntry(result: PipelineResult, branchName: string): any {
   if (result.sarcasmScore !== undefined) {
     entry["Not sarcasm filter"] = result.sarcasmScore;
   }
-  
+
   // Character count filter might be needed if it's a separate writable field
   // (different from the computed "Character count" field)
   if (result.characterLimit) {

@@ -1,7 +1,10 @@
 import { fetchEligiblePosts } from "../api/fetchEligiblePosts";
 import { AirtableLogger } from "../api/airtableLogger";
 import { getOriginalTweetContent } from "../utils/retweetUtils";
-import { checkVerifiableFacts } from "../pipeline/sarcasmFilter";
+import {
+  checkVerifiableFacts,
+  VerifiableFactResult,
+} from "../pipeline/checkVerifiableFacts";
 import { extractKeywords } from "../pipeline/extractKeywords";
 import { searchWithKeywords } from "../pipeline/searchWithKeywords";
 import { checkUrlValidity } from "../pipeline/urlChecker";
@@ -22,7 +25,7 @@ let shouldStopProcessing = false;
 
 interface PipelineResult {
   post: any;
-  verifiableFactScore?: number;
+  verifiableFactResult?: VerifiableFactResult;
   keywords?: any;
   searchContextResult?: any;
   noteResult?: any;
@@ -68,6 +71,7 @@ async function runRefactoredPipeline(
       quoteContext,
       imageUrl
     );
+
     console.log(
       `[pipeline] Verifiable fact score: ${verifiableFactResult.score.toFixed(
         2
@@ -82,7 +86,7 @@ async function runRefactoredPipeline(
       );
       return {
         post,
-        verifiableFactScore: verifiableFactResult.score,
+        verifiableFactResult,
         allScoresPassed: false,
         skipReason: `Verifiable fact filter: ${verifiableFactResult.reasoning}`,
       };
@@ -117,7 +121,7 @@ async function runRefactoredPipeline(
       );
       return {
         post,
-        verifiableFactScore: verifiableFactResult.score,
+        verifiableFactResult,
         keywords,
         searchContextResult: searchResult,
         noteResult: {
@@ -147,7 +151,7 @@ async function runRefactoredPipeline(
       console.log(`[pipeline] Skipping - status: ${noteResult.status}`);
       return {
         post,
-        verifiableFactScore: verifiableFactResult.score,
+        verifiableFactResult,
         keywords,
         searchContextResult: searchResult,
         noteResult,
@@ -190,7 +194,7 @@ async function runRefactoredPipeline(
 
     return {
       post,
-      verifiableFactScore: verifiableFactResult.score,
+      verifiableFactResult,
       keywords,
       searchContextResult: searchResult,
       noteResult,
@@ -215,7 +219,12 @@ function createLogEntryWithScores(
 
   // Build the full result text with scores
   let fullResult = `VERIFIABLE FACT SCORE: ${
-    result.verifiableFactScore?.toFixed(2) || "N/A"
+    result.verifiableFactResult?.score?.toFixed(2) || "N/A"
+  }\n\n`;
+
+  // add reasoning
+  fullResult += `REASONING: ${
+    result.verifiableFactResult?.reasoning || "N/A"
   }\n\n`;
 
   if (result.keywords) {
@@ -274,7 +283,7 @@ function createLogEntryWithScores(
     "Would be posted": result.allScoresPassed ? 1 : 0,
     "Posted to X": postedToX,
     // Use the correct filter column names (if they exist)
-    "Not sarcasm filter": result.verifiableFactScore,
+    "Not sarcasm filter": result.verifiableFactResult?.score,
     "Positive claims only filter": result.scores?.positive,
     "Significant correction filter": result.scores?.disagreement,
     "Keywords extracted": result.keywords
