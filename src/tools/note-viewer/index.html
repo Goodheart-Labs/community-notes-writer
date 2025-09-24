@@ -455,9 +455,27 @@
         <label for="hasUrlScore">Has URL Score</label>
       </div>
 
+      <div class="checkbox-group">
+        <input type="checkbox" id="hasPositiveClaims">
+        <label for="hasPositiveClaims">Has Positive Claims Score</label>
+      </div>
+
       <button onclick="loadNotes()">Refresh</button>
     </div>
-    
+
+    <div class="export-controls" style="margin: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; display: none;" id="exportControls">
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <span id="selectedCount" style="font-weight: 600;">0 notes selected</span>
+        <button onclick="selectAll()" style="padding: 5px 10px;">Select All</button>
+        <button onclick="deselectAll()" style="padding: 5px 10px;">Deselect All</button>
+        <select id="exportFormat" style="padding: 5px;">
+          <option value="json">JSON</option>
+          <option value="csv">CSV</option>
+        </select>
+        <button onclick="downloadSelected()" style="padding: 5px 15px; background: #007bff; color: white; border: none; border-radius: 4px;">Download Selected</button>
+      </div>
+    </div>
+
     <div class="stats" id="stats">
       <div class="stat">
         <div class="stat-value" id="totalCount">0</div>
@@ -484,7 +502,9 @@
   
   <script>
     let allNotes = [];
-    
+    let selectedNotes = new Set();
+    let displayedNotes = [];
+
     // Load branches on page load
     async function loadBranches() {
       try {
@@ -527,6 +547,7 @@
       const onlyPosted = document.getElementById('onlyPosted').checked;
       const onlyWouldPost = document.getElementById('onlyWouldPost').checked;
       const hasUrlScore = document.getElementById('hasUrlScore').checked;
+      const hasPositiveClaims = document.getElementById('hasPositiveClaims').checked;
 
       try {
         const params = new URLSearchParams({
@@ -545,16 +566,28 @@
         
         allNotes = data.notes;
 
-        // Filter by URL score if checkbox is checked
+        // Apply client-side filters
         let filteredNotes = allNotes;
+
+        // Filter by URL score if checkbox is checked
         if (hasUrlScore) {
-          filteredNotes = allNotes.filter(note =>
+          filteredNotes = filteredNotes.filter(note =>
             note.urlFilter !== undefined &&
             note.urlFilter !== null &&
             note.urlFilter !== ''
           );
         }
 
+        // Filter by positive claims score if checkbox is checked
+        if (hasPositiveClaims) {
+          filteredNotes = filteredNotes.filter(note =>
+            note.positiveClaimsFilter !== undefined &&
+            note.positiveClaimsFilter !== null &&
+            note.positiveClaimsFilter !== ''
+          );
+        }
+
+        displayedNotes = filteredNotes;
         displayNotes(filteredNotes);
         updateStats(filteredNotes);
         
@@ -727,9 +760,10 @@
         }
 
         return `
-          <div class="note-card">
+          <div class="note-card" data-note-id="${note.id}">
             <div class="note-header">
               <div class="note-meta">
+                <input type="checkbox" class="note-select" data-note-id="${note.id}" onchange="toggleNoteSelection('${note.id}')" style="margin-right: 10px;">
                 ${badges.join('')}
                 ${note.createdTime ? `<span class="timestamp">${new Date(note.createdTime).toLocaleString()}</span>` : ''}
                 <a href="${note.url}" target="_blank" class="tweet-link-button">View Tweet →</a>
@@ -764,8 +798,116 @@
           </div>
         `;
       }).join('');
+
+      // Show/hide export controls based on whether we have notes
+      document.getElementById('exportControls').style.display = notes.length > 0 ? 'block' : 'none';
+      updateSelectedCount();
     }
-    
+
+    // Selection functions
+    function toggleNoteSelection(noteId) {
+      if (selectedNotes.has(noteId)) {
+        selectedNotes.delete(noteId);
+      } else {
+        selectedNotes.add(noteId);
+      }
+      updateSelectedCount();
+    }
+
+    function selectAll() {
+      displayedNotes.forEach(note => selectedNotes.add(note.id));
+      document.querySelectorAll('.note-select').forEach(checkbox => {
+        checkbox.checked = true;
+      });
+      updateSelectedCount();
+    }
+
+    function deselectAll() {
+      selectedNotes.clear();
+      document.querySelectorAll('.note-select').forEach(checkbox => {
+        checkbox.checked = false;
+      });
+      updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+      document.getElementById('selectedCount').textContent = `${selectedNotes.size} notes selected`;
+    }
+
+    // Download functions
+    function downloadSelected() {
+      if (selectedNotes.size === 0) {
+        alert('Please select at least one note to download');
+        return;
+      }
+
+      const format = document.getElementById('exportFormat').value;
+      const selectedData = displayedNotes.filter(note => selectedNotes.has(note.id));
+
+      if (format === 'json') {
+        downloadJSON(selectedData);
+      } else if (format === 'csv') {
+        downloadCSV(selectedData);
+      }
+    }
+
+    function downloadJSON(data) {
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `community_notes_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadCSV(data) {
+      // Define CSV headers
+      const headers = [
+        'ID', 'URL', 'Bot Name', 'Tweet Text', 'Final Note',
+        'Would Be Posted', 'Posted to X', 'Created Time',
+        'Not Sarcasm Score', 'URL Score', 'Character Count Score',
+        'Positive Claims Score', 'Significant Correction Score',
+        'Keywords Extracted'
+      ];
+
+      // Convert data to CSV rows
+      const rows = data.map(note => [
+        note.id || '',
+        note.url || '',
+        note.botName || '',
+        (note.tweetText || '').replace(/"/g, '""'), // Escape quotes
+        (note.finalNote || '').replace(/"/g, '""'),
+        note.wouldBePosted || '',
+        note.postedToX || '',
+        note.createdTime || '',
+        note.notSarcasmFilter || '',
+        note.urlFilter || '',
+        note.characterCountFilter || '',
+        note.positiveClaimsFilter || '',
+        note.significantCorrectionFilter || '',
+        (note.keywordsExtracted || '').replace(/"/g, '""')
+      ]);
+
+      // Create CSV content
+      let csv = headers.join(',') + '\n';
+      csv += rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+      // Download
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `community_notes_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
     // Initialize
     loadBranches();
     loadNotes();

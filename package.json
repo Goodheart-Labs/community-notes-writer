@@ -49,6 +49,7 @@
     "bad-miss": "bun src/tools/bad-miss-analysis/server.ts",
     "filter-lab": "bun src/tools/filter-lab/server.ts",
     "note-viewer": "bun --watch src/tools/note-viewer/server.ts",
-    "test:log": "bun src/scripts/runTestsAndLog.ts"
+    "test:log": "bun src/scripts/runTestsAndLog.ts",
+    "test:positive-filter": "bun src/scripts/testPositiveFilter.ts"
   }
 }
