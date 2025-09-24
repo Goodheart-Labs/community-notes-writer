@@ -34,6 +34,7 @@ interface NoteEntry {
   createdTime?: string;
   // Filter scores
   notSarcasmFilter?: number;
+  urlFilter?: number;
   characterCountFilter?: number;
   positiveClaimsFilter?: number;
   significantCorrectionFilter?: number;
@@ -94,6 +95,7 @@ app.get('/api/notes', async (req: Request, res: Response) => {
           'Created',
           // Filter columns
           'Not sarcasm filter',
+          'URL filter',
           'Character count filter',
           'Positive claims only filter',
           'Significant correction filter',
@@ -114,6 +116,7 @@ app.get('/api/notes', async (req: Request, res: Response) => {
             createdTime: record.get('Created') as string,
             // Filter scores
             notSarcasmFilter: record.get('Not sarcasm filter') as number,
+            urlFilter: record.get('URL filter') as number,
             characterCountFilter: record.get('Character count filter') as number,
             positiveClaimsFilter: record.get('Positive claims only filter') as number,
             significantCorrectionFilter: record.get('Significant correction filter') as number,

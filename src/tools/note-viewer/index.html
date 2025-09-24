@@ -16,19 +16,21 @@
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
       color: #333;
+      margin: 0;
+      padding: 0;
     }
     
     .container {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 20px;
+      max-width: 100%;
+      margin: 0;
+      padding: 8px;
     }
-    
+
     .header {
       background: white;
       border-radius: 12px;
-      padding: 30px;
-      margin-bottom: 30px;
+      padding: 20px;
+      margin-bottom: 20px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     }
     
@@ -46,11 +48,11 @@
     .controls {
       background: white;
       border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 30px;
+      padding: 15px;
+      margin-bottom: 15px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
       display: flex;
-      gap: 20px;
+      gap: 15px;
       flex-wrap: wrap;
       align-items: center;
     }
@@ -110,11 +112,11 @@
     .stats {
       background: white;
       border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 30px;
+      padding: 15px;
+      margin-bottom: 15px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
       display: flex;
-      gap: 30px;
+      gap: 20px;
       flex-wrap: wrap;
     }
     
@@ -160,16 +162,18 @@
     .note-header {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
       margin-bottom: 15px;
       flex-wrap: wrap;
       gap: 10px;
     }
-    
+
     .note-meta {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
+      align-items: center;
+      flex: 1;
     }
     
     .badge {
@@ -207,9 +211,53 @@
       font-size: 14px;
       line-height: 1.6;
       word-wrap: break-word;
-      word-break: break-word;
+      word-break: normal;
       white-space: pre-wrap;
       overflow-wrap: break-word;
+    }
+
+    .tweet-media {
+      margin-top: 15px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .tweet-media img {
+      width: 50%;
+      max-width: 400px;
+      height: auto;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .tweet-media img:hover {
+      transform: scale(1.02);
+    }
+
+    @media (max-width: 600px) {
+      .tweet-media img {
+        width: 100%;
+      }
+    }
+
+    .tweet-link-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 13px;
+      transition: transform 0.2s;
+      margin-left: 10px;
+    }
+
+    .tweet-link-button:hover {
+      transform: translateY(-2px);
     }
 
     .note-text {
@@ -221,7 +269,7 @@
       line-height: 1.6;
       font-weight: 500;
       word-wrap: break-word;
-      word-break: break-word;
+      word-break: normal;
       white-space: pre-wrap;
       overflow-wrap: break-word;
     }
@@ -231,6 +279,10 @@
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 10px;
       margin-bottom: 15px;
+      background: #f0f4f8;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
     }
     
     .score-item {
@@ -261,13 +313,26 @@
     
     .keywords {
       background: #fff3e0;
-      padding: 10px;
+      padding: 12px;
       border-radius: 6px;
       margin-bottom: 15px;
       font-size: 13px;
       word-wrap: break-word;
       overflow-wrap: break-word;
-      line-height: 1.5;
+      line-height: 1.6;
+    }
+
+    .keywords > div {
+      margin-bottom: 8px;
+    }
+
+    .keywords > div:last-child {
+      margin-bottom: 0;
+    }
+
+    .keywords strong {
+      color: #e65100;
+      font-weight: 600;
     }
     
     .reasoning {
@@ -315,8 +380,10 @@
       color: #667eea;
       text-decoration: none;
       font-size: 12px;
+      word-break: break-all;
+      overflow-wrap: break-word;
     }
-    
+
     .note-link:hover {
       text-decoration: underline;
     }
@@ -324,6 +391,31 @@
     .timestamp {
       color: #999;
       font-size: 12px;
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      .container {
+        padding: 5px;
+      }
+
+      .note-card {
+        padding: 12px;
+        border-radius: 8px;
+      }
+
+      .header, .controls, .stats {
+        padding: 15px;
+        margin-bottom: 15px;
+      }
+
+      h1 {
+        font-size: 22px;
+      }
+
+      .notes-container {
+        gap: 10px;
+      }
     }
   </style>
 </head>
@@ -357,7 +449,12 @@
         <input type="checkbox" id="onlyWouldPost">
         <label for="onlyWouldPost">Only Would Be Posted</label>
       </div>
-      
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="hasUrlScore">
+        <label for="hasUrlScore">Has URL Score</label>
+      </div>
+
       <button onclick="loadNotes()">Refresh</button>
     </div>
     
@@ -409,6 +506,18 @@
       }
     }
     
+    // Helper function to make URLs clickable in text
+    function linkifyUrls(text) {
+      if (!text) return '';
+      // Match URLs starting with http/https
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      return text.replace(urlRegex, (url) => {
+        // Remove trailing punctuation that might not be part of the URL
+        const cleanUrl = url.replace(/[.,;!?]+$/, '');
+        return `<a href="${cleanUrl}" target="_blank" style="color: #667eea; overflow-wrap: anywhere;">${cleanUrl}</a>`;
+      });
+    }
+
     async function loadNotes() {
       const container = document.getElementById('notesContainer');
       container.innerHTML = '<div class="loading">Loading notes...</div>';
@@ -417,7 +526,8 @@
       const limit = document.getElementById('limitInput').value;
       const onlyPosted = document.getElementById('onlyPosted').checked;
       const onlyWouldPost = document.getElementById('onlyWouldPost').checked;
-      
+      const hasUrlScore = document.getElementById('hasUrlScore').checked;
+
       try {
         const params = new URLSearchParams({
           branch,
@@ -434,8 +544,19 @@
         }
         
         allNotes = data.notes;
-        displayNotes(allNotes);
-        updateStats(allNotes);
+
+        // Filter by URL score if checkbox is checked
+        let filteredNotes = allNotes;
+        if (hasUrlScore) {
+          filteredNotes = allNotes.filter(note =>
+            note.urlFilter !== undefined &&
+            note.urlFilter !== null &&
+            note.urlFilter !== ''
+          );
+        }
+
+        displayNotes(filteredNotes);
+        updateStats(filteredNotes);
         
       } catch (error) {
         container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
@@ -447,11 +568,28 @@
       const posted = notes.filter(n => n.postedToX).length;
       const wouldPost = notes.filter(n => n.wouldBePosted === 1).length;
       const rejected = notes.filter(n => !n.wouldBePosted && !n.postedToX).length;
-      
+      const hasUrl = notes.filter(n => n.urlFilter !== undefined && n.urlFilter !== null && n.urlFilter !== '').length;
+
       document.getElementById('totalCount').textContent = notes.length;
       document.getElementById('postedCount').textContent = posted;
       document.getElementById('wouldPostCount').textContent = wouldPost;
       document.getElementById('rejectedCount').textContent = rejected;
+
+      // Update or add URL score count
+      let urlStatElement = document.getElementById('urlCount');
+      if (!urlStatElement) {
+        // Create new stat element for URL scores
+        const statsContainer = document.getElementById('stats');
+        const newStat = document.createElement('div');
+        newStat.className = 'stat';
+        newStat.innerHTML = `
+          <div class="stat-value" id="urlCount">${hasUrl}</div>
+          <div class="stat-label">Has URL Score</div>
+        `;
+        statsContainer.appendChild(newStat);
+      } else {
+        urlStatElement.textContent = hasUrl;
+      }
     }
     
     function displayNotes(notes) {
@@ -463,17 +601,45 @@
       }
       
       container.innerHTML = notes.map(note => {
-        // Parse reasoning from full result
+        // Parse reasoning, keywords, and URL from full result
         let reasoning = '';
+        let keywords = '';
+        let entities = '';
+        let claims = '';
+        let noteUrl = '';
+
         if (note.fullResult) {
-          const lines = note.fullResult.split('\\n');
-          const reasoningStart = lines.findIndex(line => 
-            line.includes('SKIP REASON') || 
-            line.includes('STATUS') || 
+          const lines = note.fullResult.split('\n');
+
+          // Find keywords section
+          const keywordsIndex = lines.findIndex(line => line.includes('KEYWORDS EXTRACTED'));
+          if (keywordsIndex !== -1) {
+            for (let i = keywordsIndex + 1; i < Math.min(keywordsIndex + 5, lines.length); i++) {
+              const line = lines[i];
+              if (line.startsWith('- Keywords:')) {
+                keywords = line.replace('- Keywords:', '').trim();
+              } else if (line.startsWith('- Entities:')) {
+                entities = line.replace('- Entities:', '').trim();
+              } else if (line.startsWith('- Claims:')) {
+                claims = line.replace('- Claims:', '').trim();
+              }
+            }
+          }
+
+          // Find the URL for the note
+          const urlLine = lines.find(line => line.startsWith('URL: '));
+          if (urlLine) {
+            noteUrl = urlLine.replace('URL: ', '').trim();
+          }
+
+          // Find reasoning section
+          const reasoningStart = lines.findIndex(line =>
+            line.includes('SKIP REASON') ||
+            line.includes('STATUS') ||
             line.includes('FILTER')
           );
           if (reasoningStart !== -1) {
-            reasoning = lines.slice(reasoningStart, reasoningStart + 10).join('\\n');
+            reasoning = lines.slice(reasoningStart, reasoningStart + 10).join('\n');
           }
         }
         
@@ -493,68 +659,100 @@
         let scoresHtml = '';
         const scores = [
           { label: 'Not Sarcasm', value: note.notSarcasmFilter, threshold: 0.5 },
+          { label: 'URL Valid', value: note.urlFilter, threshold: 0.5 },
           { label: 'Character Count', value: note.characterCountFilter, threshold: 0.5 },
           { label: 'Positive Claims', value: note.positiveClaimsFilter, threshold: 0.5 },
           { label: 'Significant Correction', value: note.significantCorrectionFilter, threshold: 0.5 },
         ];
-        
+
         const validScores = scores.filter(s => s.value !== undefined && s.value !== null);
-        if (validScores.length > 0) {
-          scoresHtml = `
-            <div class="filter-scores">
-              ${validScores.map(s => `
-                <div class="score-item">
-                  <span class="score-label">${s.label}:</span>
-                  <span class="score-value ${s.value > s.threshold ? 'pass' : 'fail'}">
-                    ${typeof s.value === 'number' ? s.value.toFixed(2) : s.value}
-                  </span>
-                </div>
-              `).join('')}
-            </div>
-          `;
-        }
+
+        // Always show the scores section with whatever scores are available
+        scoresHtml = `
+          <div class="filter-scores" style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-top: 10px; border: 1px solid #dee2e6;">
+            <h4 style="margin: 0 0 10px 0; color: #495057; font-size: 14px; font-weight: 600;">Filter Scores:</h4>
+            ${validScores.length > 0 ? validScores.map(s => `
+              <div class="score-item" style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+                <span class="score-label" style="color: #6c757d; font-size: 13px;">${s.label}:</span>
+                <span class="score-value ${s.value >= s.threshold ? 'pass' : 'fail'}" style="font-weight: 600; margin-left: 5px; color: ${s.value >= s.threshold ? '#28a745' : '#dc3545'};">
+                  ${typeof s.value === 'number' ? s.value.toFixed(2) : s.value}
+                </span>
+              </div>
+            `).join('') : '<span style="color: #6c757d; font-size: 13px;">No filter scores available for this note</span>'}
+          </div>
+        `;
         
-        // Keywords
-        let keywordsHtml = '';
-        if (note.keywordsExtracted) {
-          keywordsHtml = `
+        // Keywords, Entities, and Claims
+        let extractedInfoHtml = '';
+        if (keywords || entities || claims || note.keywordsExtracted) {
+          extractedInfoHtml = `
             <div class="keywords">
-              <strong>Keywords:</strong> ${note.keywordsExtracted}
+              ${keywords ? `<div><strong>Keywords:</strong> ${keywords}</div>` : (note.keywordsExtracted ? `<div><strong>Keywords:</strong> ${note.keywordsExtracted}</div>` : '')}
+              ${entities ? `<div><strong>Entities:</strong> ${entities}</div>` : ''}
+              ${claims ? `<div><strong>Claims:</strong> ${claims}</div>` : ''}
             </div>
           `;
         }
         
         // Tweet text (from tweetBody if available, otherwise from tweetText)
         let tweetContent = note.tweetText || '';
-        if (note.tweetBody && note.tweetBody.text) {
-          tweetContent = note.tweetBody.text;
+        let tweetMedia = [];
+        if (note.tweetBody) {
+          if (note.tweetBody.text) {
+            tweetContent = note.tweetBody.text;
+          }
+          // Extract media if available
+          if (note.tweetBody.media && Array.isArray(note.tweetBody.media)) {
+            tweetMedia = note.tweetBody.media;
+          }
         }
-        
+
+        // Format media HTML
+        let mediaHtml = '';
+        if (tweetMedia.length > 0) {
+          const images = tweetMedia
+            .filter(m => m.type === 'photo' || m.url)
+            .map(m => {
+              const imageUrl = m.url || m.media_url_https || m.media_url;
+              if (imageUrl) {
+                return `<img src="${imageUrl}" alt="Tweet media" onclick="window.open('${imageUrl}', '_blank')">`;
+              }
+              return '';
+            })
+            .filter(img => img);
+
+          if (images.length > 0) {
+            mediaHtml = `<div class="tweet-media">${images.join('')}</div>`;
+          }
+        }
+
         return `
           <div class="note-card">
             <div class="note-header">
               <div class="note-meta">
                 ${badges.join('')}
                 ${note.createdTime ? `<span class="timestamp">${new Date(note.createdTime).toLocaleString()}</span>` : ''}
+                <a href="${note.url}" target="_blank" class="tweet-link-button">View Tweet →</a>
               </div>
-              <a href="${note.url}" target="_blank" class="note-link">View on X →</a>
             </div>
-            
+
             ${tweetContent ? `
               <div class="tweet-text">
                 <strong>Tweet:</strong><br>
-                ${tweetContent}
+                ${linkifyUrls(tweetContent)}
+                ${mediaHtml}
               </div>
             ` : ''}
             
             ${note.finalNote ? `
               <div class="note-text">
                 <strong>Community Note:</strong><br>
-                ${note.finalNote}
+                ${linkifyUrls(note.finalNote)}
+                ${noteUrl ? `<br><br>${linkifyUrls(noteUrl)}` : ''}
               </div>
             ` : ''}
             
-            ${keywordsHtml}
+            ${extractedInfoHtml}
             ${scoresHtml}
             
             ${reasoning ? `
