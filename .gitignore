@@ -46,3 +46,6 @@ src/elo-rating-web/*.js
 # Prompt lab history
 src/prompt-lab/prompt-history.log
 src/prompt-lab/research-cache.json
+
+# Data exports (research files)
+data-export-*

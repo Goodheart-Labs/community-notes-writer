@@ -85,9 +85,13 @@ export async function fetchEligiblePosts(
 
     // Get next token for pagination
     nextToken = response.data.meta?.next_token;
+    
+    // Calculate how many were filtered for video
+    const totalBeforeFilter = response.data.data?.length || 0;
+    const videosFiltered = totalBeforeFilter - allPosts.length;
 
     console.log(
-      `[fetchEligiblePosts] Page ${pageCount}: found ${allPosts.length} total posts, ${newPosts.length} new eligible posts`
+      `[fetchEligiblePosts] Page ${pageCount}: ${totalBeforeFilter} posts from API, ${videosFiltered} videos filtered, ${allPosts.length} non-video posts, ${newPosts.length} new eligible`
     );
 
     // If no more pages, break
@@ -105,7 +109,7 @@ export async function fetchEligiblePosts(
   return allEligiblePosts.slice(0, maxResults);
 }
 
-function parsePostsResponse(data: any): Post[] {
+function parsePostsResponse(data: any, filterVideos: boolean = true): Post[] {
   const posts: Post[] = [];
   const mediaMap = new Map<string, any>();
   const referencedTweetsMap = new Map<string, any>();
@@ -125,10 +129,16 @@ function parsePostsResponse(data: any): Post[] {
   if (data.data) {
     for (const tweet of data.data) {
       const media = [];
+      let hasVideo = false;
+      
       if (tweet.attachments?.media_keys) {
         for (const mediaKey of tweet.attachments.media_keys) {
           const mediaData = mediaMap.get(mediaKey);
           if (mediaData) {
+            // Check if this media is a video
+            if (mediaData.type === 'video' || mediaData.type === 'animated_gif') {
+              hasVideo = true;
+            }
             media.push({
               media_key: mediaData.media_key,
               type: mediaData.type,
@@ -141,6 +151,12 @@ function parsePostsResponse(data: any): Post[] {
             });
           }
         }
+      }
+      
+      // Skip this tweet if it has video and we're filtering videos
+      if (filterVideos && hasVideo) {
+        console.log(`[fetchEligiblePosts] Filtering out video tweet: ${tweet.id}`);
+        continue;
       }
       // Get referenced tweet data if this is a retweet or quoted tweet
       let referencedTweetData: ReferencedTweetData | undefined;

@@ -7,6 +7,7 @@ interface AirtableLogEntry {
   "Full Result": string;
   "Final note": string;
   "Would be posted": number;
+  "Posted to X"?: boolean;
   commit?: string;
   "HarassmentAbuse score"?: string;
   "UrlValidity score"?: string;
@@ -94,29 +95,12 @@ export class AirtableLogger {
 
   async logEntry(entry: AirtableLogEntry): Promise<void> {
     try {
-      const fields: any = {
-        URL: entry.URL,
-        "Bot name": entry["Bot name"],
-        "Initial tweet body": entry["Initial tweet body"],
-        "Full Result": entry["Full Result"],
-        "Final note": entry["Final note"],
-        "Would be posted": entry["Would be posted"],
-      };
-
-      if (entry.commit) {
-        fields.commit = entry.commit;
-      }
+      // Pass through all fields from the entry
+      const fields: any = { ...entry };
       
-      if (entry["HarassmentAbuse score"]) {
-        fields["HarassmentAbuse score"] = entry["HarassmentAbuse score"];
-      }
-      
-      if (entry["UrlValidity score"]) {
-        fields["UrlValidity score"] = entry["UrlValidity score"];
-      }
-      
-      if (entry["ClaimOpinion score"]) {
-        fields["ClaimOpinion score"] = entry["ClaimOpinion score"];
+      // Ensure required fields are present
+      if (!fields.URL || !fields["Bot name"]) {
+        console.warn("[AirtableLogger] Missing required fields in entry:", entry);
       }
 
       await this.base(this.tableName).create([
@@ -138,29 +122,12 @@ export class AirtableLogger {
 
     try {
       const records = entries.map((entry) => {
-        const fields: any = {
-          URL: entry.URL,
-          "Bot name": entry["Bot name"],
-          "Initial tweet body": entry["Initial tweet body"],
-          "Full Result": entry["Full Result"],
-          "Final note": entry["Final note"],
-          "Would be posted": entry["Would be posted"],
-        };
-
-        if (entry.commit) {
-          fields.commit = entry.commit;
-        }
+        // Pass through all fields from the entry
+        const fields: any = { ...entry };
         
-        if (entry["HarassmentAbuse score"]) {
-          fields["HarassmentAbuse score"] = entry["HarassmentAbuse score"];
-        }
-        
-        if (entry["UrlValidity score"]) {
-          fields["UrlValidity score"] = entry["UrlValidity score"];
-        }
-        
-        if (entry["ClaimOpinion score"]) {
-          fields["ClaimOpinion score"] = entry["ClaimOpinion score"];
+        // Ensure required fields are present
+        if (!fields.URL || !fields["Bot name"]) {
+          console.warn("[AirtableLogger] Missing required fields in entry:", entry);
         }
 
         return { fields };
@@ -185,7 +152,8 @@ function formatFullResult(
   post: any,
   searchContextResult: any,
   noteResult: any,
-  checkResult: any
+  checkResult: any,
+  filterResults?: string
 ): string {
   const checkYes = checkResult && checkResult.trim().toUpperCase() === "YES";
 
@@ -220,6 +188,13 @@ function formatFullResult(
   result += `- Check result: ${checkResult || "NO CHECK"}\n`;
   result += `- Would be posted: ${checkYes ? "YES" : "NO"}\n\n`;
 
+  // Filter results (if available)
+  if (filterResults) {
+    result += `PRODUCTION FILTERS:\n`;
+    result += filterResults.split('\n').map(line => `- ${line}`).join('\n');
+    result += `\n\n`;
+  }
+
   // Summary
   result += `SUMMARY:\n`;
   result += `- Final status: ${noteResult.status}\n`;
@@ -240,7 +215,9 @@ export function createLogEntry(
   noteResult: any,
   checkResult: any,
   botName: string = "first-bot",
-  commit?: string
+  commit?: string,
+  postedToX: boolean = false,
+  filterResults?: string
 ): AirtableLogEntry {
   // Create the tweet URL
   const tweetUrl = `https://twitter.com/i/status/${post.id}`;
@@ -253,7 +230,8 @@ export function createLogEntry(
     post,
     searchContextResult,
     noteResult,
-    checkResult
+    checkResult,
+    filterResults
   );
 
   // Get the final note text (matching what gets submitted to Twitter)
@@ -276,6 +254,7 @@ export function createLogEntry(
     "Full Result": fullResult,
     "Final note": finalNote,
     "Would be posted": wouldBePosted,
+    "Posted to X": postedToX,
   };
 
   if (commit) {

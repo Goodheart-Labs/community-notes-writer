@@ -1,12 +1,12 @@
 {
   "dependencies": {
-    "@ai-sdk/openai": "^1.3.23",
+    "@ai-sdk/openai": "latest",
     "@clack/prompts": "^0.11.0",
-    "@openrouter/ai-sdk-provider": "^1.0.0-beta.1",
+    "@openrouter/ai-sdk-provider": "latest",
     "@tonerow/agent-framework": "0.1.0",
     "@types/express": "^5.0.3",
     "@types/p-queue": "^3.2.1",
-    "ai": "^4",
+    "ai": "latest",
     "airtable": "^0.12.2",
     "axios": "^1.10.0",
     "dotenv": "^17.2.1",
@@ -30,17 +30,22 @@
     "typescript": "^5"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "typecheck-elo": "cd src/elo-rating-web && tsc --noEmit",
+    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "typecheck-elo": "cd src/tools/elo-rating-web && tsc --noEmit",
     "test-airtable": "bun run src/test-airtable-logger.ts",
     "routine": "bun run src/scripts/createNotesRoutine.ts",
     "test": "bun run src/scripts/run.ts",
-    "build-elo": "cd src/elo-rating-web && bun build ./app.ts ./airtableClient.ts ./eloCalculator.ts ./types.ts ./cacheManager.ts --outdir ./dist --target browser",
-    "serve-elo": "bun run src/elo-rating-web/server.ts",
+    "test-tweet": "bun run src/scripts/testSpecificTweet.ts",
+    "fetch-notes": "bun run src/scripts/fetchOurNotes.ts",
+    "backfill-notes": "bun run src/scripts/backfillNoteStatus.ts",
+    "update-notes": "bun run src/scripts/updateNoteStatus.ts",
+    "build-elo": "cd src/tools/elo-rating-web && bun build ./app.ts ./airtableClient.ts ./eloCalculator.ts ./types.ts ./cacheManager.ts --outdir ./dist --target browser",
+    "serve-elo": "bun run src/tools/elo-rating-web/server.ts",
     "elo": "bun run build-elo && bun run serve-elo",
-    "prompt-lab": "bun src/prompt-lab/server.ts",
-    "prompt-lab:fetch": "bun src/prompt-lab/fetchAirtableData.ts",
-    "bad-miss": "bun src/bad-miss-analysis/server.ts",
+    "prompt-lab": "bun src/tools/prompt-lab/server.ts",
+    "prompt-lab:fetch": "bun src/tools/prompt-lab/fetchAirtableData.ts",
+    "bad-miss": "bun src/tools/bad-miss-analysis/server.ts",
+    "filter-lab": "bun src/tools/filter-lab/server.ts",
     "note-viewer": "bun src/tools/note-viewer/server.ts"
   }
 }

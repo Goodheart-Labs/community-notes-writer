@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Filter Lab - Community Notes</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    .header h1 {
+      color: #2d3748;
+      margin-bottom: 0.5rem;
+    }
+    
+    .header p {
+      color: #718096;
+    }
+    
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+    
+    @media (max-width: 1024px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .filters-section, .notes-section {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .filter-item {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: #f7fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+    
+    .filter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    
+    .filter-name {
+      font-weight: 600;
+      color: #4a5568;
+    }
+    
+    .filter-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .filter-toggle {
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      border: 1px solid #cbd5e0;
+      background: white;
+      color: #4a5568;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .filter-toggle.active {
+      background: #48bb78;
+      color: white;
+      border-color: #48bb78;
+    }
+    
+    .filter-remove {
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid #fc8181;
+      background: white;
+      color: #fc8181;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .filter-remove:hover {
+      background: #fc8181;
+      color: white;
+    }
+    
+    .filter-prompt {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 6px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 0.875rem;
+      resize: vertical;
+    }
+    
+    .add-filter-btn {
+      width: 100%;
+      padding: 0.75rem;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .add-filter-btn:hover {
+      background: #5a67d8;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .control-btn {
+      flex: 1;
+      padding: 0.75rem;
+      border-radius: 6px;
+      border: 1px solid #cbd5e0;
+      background: white;
+      color: #4a5568;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .control-btn:hover {
+      background: #f7fafc;
+    }
+    
+    .control-btn.primary {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+    
+    .control-btn.primary:hover {
+      background: #5a67d8;
+    }
+    
+    .control-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .stats {
+      display: flex;
+      gap: 2rem;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: #f7fafc;
+      border-radius: 6px;
+    }
+    
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .stat-label {
+      font-size: 0.875rem;
+      color: #718096;
+    }
+    
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #2d3748;
+    }
+    
+    .results-section {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    .results-grid {
+      display: grid;
+      gap: 1rem;
+    }
+    
+    .note-result {
+      padding: 1.5rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fcfcfc;
+    }
+    
+    .note-text {
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: white;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    
+    .filter-results {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    
+    .filter-result {
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    
+    .filter-result.pass {
+      background: #c6f6d5;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+    }
+    
+    .filter-result.fail {
+      background: #fed7d7;
+      color: #742a2a;
+      border: 1px solid #fc8181;
+    }
+    
+    .filter-result.skip {
+      background: #e2e8f0;
+      color: #4a5568;
+      border: 1px solid #cbd5e0;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: #718096;
+    }
+    
+    .loading-spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: #718096;
+    }
+    
+    .empty-state-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.3;
+    }
+    
+    select {
+      padding: 0.75rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 6px;
+      background: white;
+      color: #4a5568;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    
+    .note-meta {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+      font-size: 0.875rem;
+      color: #718096;
+    }
+    
+    .note-status {
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    
+    .note-status.posted {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+    
+    .note-status.not-posted {
+      background: #feebc8;
+      color: #7c2d12;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔬 Filter Lab</h1>
+      <p>Test multiple filter prompts against Community Notes to see which pass through</p>
+    </div>
+    
+    <div class="main-grid">
+      <!-- Filters Section -->
+      <div class="filters-section">
+        <h2 class="section-title">Filter Prompts</h2>
+        
+        <div id="filtersList">
+          <!-- Default filters will be added here -->
+        </div>
+        
+        <button class="add-filter-btn" onclick="addNewFilter()">+ Add New Filter</button>
+        <button class="control-btn" onclick="resetToDefaults()" style="margin-top: 0.5rem;">Reset to Default Filters</button>
+      </div>
+      
+      <!-- Notes Section -->
+      <div class="notes-section">
+        <h2 class="section-title">Test Notes</h2>
+        
+        <div class="controls">
+          <select id="dataSource">
+            <option value="recent">Recent Posted Notes</option>
+            <option value="badmiss">Bad Misses</option>
+            <option value="all">All Recent Notes</option>
+          </select>
+          <button class="control-btn" onclick="loadNotes()">Load Notes</button>
+          <select id="sampleSize" style="min-width: 100px;">
+            <option value="10">Run on 10</option>
+            <option value="25">Run on 25</option>
+            <option value="50">Run on 50</option>
+            <option value="all">Run on All</option>
+          </select>
+          <button class="control-btn primary" onclick="runFilters()" id="runBtn" disabled>Run Filters</button>
+        </div>
+        
+        <div class="stats" id="stats" style="display: none;">
+          <div class="stat-item">
+            <span class="stat-label">Total Notes</span>
+            <span class="stat-value" id="totalNotes">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Active Filters</span>
+            <span class="stat-value" id="activeFilters">0</span>
+          </div>
+        </div>
+        
+        <div id="notesPreview" class="empty-state">
+          <div class="empty-state-icon">📝</div>
+          <p>Load notes to test your filters</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Results Section -->
+    <div class="results-section" id="resultsSection" style="display: none;">
+      <h2 class="section-title">Filter Results</h2>
+      <div id="resultsGrid" class="results-grid">
+        <!-- Results will be displayed here -->
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    const API_BASE = window.location.origin;
+    let filters = [];
+    let notes = [];
+    let filterIdCounter = 0;
+    
+    // Default filters (will be loaded from server)
+    let defaultFilters = [];
+    
+    // Load default filters from server
+    async function loadDefaultFilters() {
+      try {
+        const response = await fetch(`${API_BASE}/api/filter-lab/default-filters`);
+        const data = await response.json();
+        if (data.filters && data.filters.length > 0) {
+          // Add IDs to the loaded filters
+          filterIdCounter = 0;
+          defaultFilters = data.filters.map(f => ({
+            ...f,
+            id: filterIdCounter++
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading default filters:', error);
+        // Fallback to hardcoded defaults if server fails
+        defaultFilters = [
+          {
+            id: filterIdCounter++,
+            name: 'Harassment Check',
+            active: true,
+            prompt: 'Check if the Community Note contains harassment or abuse.\n\nNote to evaluate:\n{note}\n\nRespond with only "PASS" or "FAIL".'
+          }
+        ];
+      }
+    }
+    
+    // Save filters to localStorage
+    function saveFilters() {
+      localStorage.setItem('filterLabFilters', JSON.stringify(filters));
+    }
+    
+    // Load filters from localStorage
+    function loadFilters() {
+      const saved = localStorage.getItem('filterLabFilters');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          // Validate the structure
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Reset filter IDs to avoid conflicts
+            filterIdCounter = 0;
+            filters = parsed.map(f => ({
+              ...f,
+              id: filterIdCounter++
+            }));
+            return true;
+          }
+        } catch (e) {
+          console.error('Error loading saved filters:', e);
+        }
+      }
+      return false;
+    }
+    
+    // Initialize
+    async function init() {
+      // Load default filters first
+      await loadDefaultFilters();
+      
+      // Try to load saved filters, fall back to defaults
+      if (!loadFilters()) {
+        filters = [...defaultFilters];
+      }
+      renderFilters();
+    }
+    
+    // Render filters
+    function renderFilters() {
+      const filtersList = document.getElementById('filtersList');
+      filtersList.innerHTML = '';
+      
+      filters.forEach(filter => {
+        const filterEl = document.createElement('div');
+        filterEl.className = 'filter-item';
+        filterEl.innerHTML = `
+          <div class="filter-header">
+            <input type="text" class="filter-name" value="${escapeHtml(filter.name)}" 
+                   onchange="updateFilterName(${filter.id}, this.value)">
+            <div class="filter-actions">
+              <button class="filter-toggle ${filter.active ? 'active' : ''}" 
+                      onclick="toggleFilter(${filter.id})">
+                ${filter.active ? 'Active' : 'Inactive'}
+              </button>
+              <button class="filter-remove" onclick="removeFilter(${filter.id})">×</button>
+            </div>
+          </div>
+          <textarea class="filter-prompt" 
+                    placeholder="Enter filter prompt. Use {note} for the note text and {post} for the original tweet."
+                    onchange="updateFilterPrompt(${filter.id}, this.value)">${escapeHtml(filter.prompt)}</textarea>
+        `;
+        filtersList.appendChild(filterEl);
+      });
+      
+      updateStats();
+    }
+    
+    // Add new filter
+    function addNewFilter() {
+      filters.push({
+        id: filterIdCounter++,
+        name: `Filter ${filters.length + 1}`,
+        active: true,
+        prompt: 'Original post:\n{post}\n\nNote to evaluate:\n{note}\n\nRespond with only "PASS" or "FAIL".'
+      });
+      renderFilters();
+      saveFilters();
+    }
+    
+    // Update filter name
+    function updateFilterName(id, name) {
+      const filter = filters.find(f => f.id === id);
+      if (filter) {
+        filter.name = name;
+        saveFilters();
+      }
+    }
+    
+    // Update filter prompt
+    function updateFilterPrompt(id, prompt) {
+      const filter = filters.find(f => f.id === id);
+      if (filter) {
+        filter.prompt = prompt;
+        saveFilters();
+      }
+    }
+    
+    // Toggle filter
+    function toggleFilter(id) {
+      const filter = filters.find(f => f.id === id);
+      if (filter) {
+        filter.active = !filter.active;
+        renderFilters();
+        saveFilters();
+      }
+    }
+    
+    // Remove filter
+    function removeFilter(id) {
+      filters = filters.filter(f => f.id !== id);
+      renderFilters();
+      saveFilters();
+    }
+    
+    // Reset to default filters
+    async function resetToDefaults() {
+      if (confirm('This will replace all your current filters with the defaults. Continue?')) {
+        // Reload defaults from server to get latest version
+        await loadDefaultFilters();
+        filterIdCounter = 0;
+        filters = defaultFilters.map(f => ({
+          ...f,
+          id: filterIdCounter++
+        }));
+        renderFilters();
+        saveFilters();
+      }
+    }
+    
+    // Load notes
+    async function loadNotes() {
+      const dataSource = document.getElementById('dataSource').value;
+      const notesPreview = document.getElementById('notesPreview');
+      const runBtn = document.getElementById('runBtn');
+      
+      notesPreview.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Loading notes...</p></div>';
+      runBtn.disabled = true;
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/filter-lab/notes?source=${dataSource}`);
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        notes = data.notes;
+        
+        if (notes.length === 0) {
+          notesPreview.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🤷</div><p>No notes found</p></div>';
+        } else {
+          notesPreview.innerHTML = `
+            <div style="color: #4a5568; margin-bottom: 1rem;">
+              Loaded ${notes.length} notes (showing first 3)
+            </div>
+            ${notes.slice(0, 3).map(note => `
+              <div style="margin-bottom: 1rem; padding: 1rem; background: #f9f9f9; border-radius: 6px;">
+                ${note.tweetText ? `<div style="color: #718096; font-size: 0.875rem; margin-bottom: 0.5rem;">Post: ${escapeHtml(note.tweetText.substring(0, 100))}...</div>` : ''}
+                <div class="note-text">
+                  ${escapeHtml(note.text.substring(0, 200))}${note.text.length > 200 ? '...' : ''}
+                </div>
+              </div>
+            `).join('')}
+          `;
+          runBtn.disabled = false;
+        }
+        
+        updateStats();
+      } catch (error) {
+        console.error('Error loading notes:', error);
+        notesPreview.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+      }
+    }
+    
+    // Run filters
+    async function runFilters() {
+      const activeFilters = filters.filter(f => f.active);
+      
+      if (activeFilters.length === 0) {
+        alert('Please activate at least one filter');
+        return;
+      }
+      
+      if (notes.length === 0) {
+        alert('Please load notes first');
+        return;
+      }
+      
+      // Get sample size
+      const sampleSizeValue = document.getElementById('sampleSize').value;
+      let notesToRun = notes;
+      
+      if (sampleSizeValue !== 'all') {
+        const sampleSize = parseInt(sampleSizeValue);
+        // Get random sample
+        const shuffled = [...notes].sort(() => Math.random() - 0.5);
+        notesToRun = shuffled.slice(0, Math.min(sampleSize, notes.length));
+      }
+      
+      const resultsSection = document.getElementById('resultsSection');
+      const resultsGrid = document.getElementById('resultsGrid');
+      const runBtn = document.getElementById('runBtn');
+      
+      resultsSection.style.display = 'block';
+      resultsGrid.innerHTML = `<div class="loading"><div class="loading-spinner"></div><p>Running ${activeFilters.length} filters on ${notesToRun.length} notes...</p></div>`;
+      runBtn.disabled = true;
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/filter-lab/run`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filters: activeFilters,
+            notes: notesToRun
+          })
+        });
+        
+        const results = await response.json();
+        
+        if (results.error) {
+          throw new Error(results.error);
+        }
+        
+        displayResults(results);
+      } catch (error) {
+        console.error('Error running filters:', error);
+        resultsGrid.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+      } finally {
+        runBtn.disabled = false;
+      }
+    }
+    
+    // Display results
+    function displayResults(results) {
+      const resultsGrid = document.getElementById('resultsGrid');
+      resultsGrid.innerHTML = '';
+      
+      // Summary statistics
+      const summary = document.createElement('div');
+      summary.className = 'stats';
+      summary.style.marginBottom = '2rem';
+      
+      const passRates = {};
+      results.results.forEach(result => {
+        Object.entries(result.filterResults).forEach(([filterName, passed]) => {
+          if (!passRates[filterName]) passRates[filterName] = { pass: 0, total: 0 };
+          passRates[filterName].total++;
+          if (passed === 'PASS') passRates[filterName].pass++;
+        });
+      });
+      
+      summary.innerHTML = `
+        <div class="stat-item">
+          <span class="stat-label">Notes Tested</span>
+          <span class="stat-value">${results.results.length}</span>
+        </div>
+        ${Object.entries(passRates).map(([name, stats]) => `
+          <div class="stat-item">
+            <span class="stat-label">${escapeHtml(name)}</span>
+            <span class="stat-value">${stats.pass}/${stats.total}</span>
+          </div>
+        `).join('')}`;
+      
+      resultsGrid.appendChild(summary);
+      
+      // Show any errors at the top
+      const allErrors = results.results.flatMap(r => 
+        r.filterErrors ? Object.entries(r.filterErrors).map(([filter, error]) => ({ filter, error })) : []
+      );
+      
+      if (allErrors.length > 0) {
+        const errorSection = document.createElement('div');
+        errorSection.style.cssText = 'background: #fed7d7; border: 1px solid #fc8181; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;';
+        errorSection.innerHTML = `
+          <h3 style="color: #c53030; margin: 0 0 0.5rem 0;">⚠️ Filter Errors Detected</h3>
+          <ul style="margin: 0; padding-left: 1.5rem; color: #742a2a;">
+            ${[...new Set(allErrors.map(e => `${e.filter}: ${e.error}`))].map(e => `<li>${escapeHtml(e)}</li>`).join('')}
+          </ul>
+        `;
+        resultsGrid.appendChild(errorSection);
+      }
+      
+      // Individual results
+      results.results.forEach((result, index) => {
+        const noteResult = document.createElement('div');
+        noteResult.className = 'note-result';
+        
+        noteResult.innerHTML = `
+          <div class="note-meta">
+            <span>Note #${index + 1}</span>
+            ${result.tweetUrl ? `<a href="${escapeHtml(result.tweetUrl)}" target="_blank" style="color: #4299e1; text-decoration: none; hover: underline;">View Tweet →</a>` : ''}
+            <span class="note-status ${result.wouldBePosted ? 'posted' : 'not-posted'}">
+              ${result.wouldBePosted ? 'Would Post' : 'Would Not Post'}
+            </span>
+          </div>
+          ${result.tweetText ? `<div style="padding: 0.75rem; background: #f7fafc; border-radius: 6px; margin-bottom: 0.75rem; font-size: 0.875rem; color: #4a5568;">Original: ${escapeHtml(result.tweetText)}</div>` : ''}
+          <div class="note-text">${escapeHtml(result.note)}</div>
+          <div class="filter-results">
+            ${Object.entries(result.filterResults).map(([filterName, status]) => {
+              const errorMsg = result.filterErrors && result.filterErrors[filterName];
+              return `
+                <span class="filter-result ${status.toLowerCase()}" ${errorMsg ? `title="${escapeHtml(errorMsg)}" style="cursor: help;"` : ''}>
+                  ${escapeHtml(filterName)}: ${status}
+                  ${errorMsg ? '⚠️' : ''}
+                </span>
+              `;
+            }).join('')}
+          </div>
+        `;
+        
+        resultsGrid.appendChild(noteResult);
+      });
+    }
+    
+    // Update statistics
+    function updateStats() {
+      document.getElementById('totalNotes').textContent = notes.length;
+      document.getElementById('activeFilters').textContent = filters.filter(f => f.active).length;
+      document.getElementById('stats').style.display = notes.length > 0 ? 'flex' : 'none';
+    }
+    
+    // Utility function
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+    
+    // Initialize on load
+    init();
+  </script>
+</body>
+</html>

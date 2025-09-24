@@ -1,5 +1,11 @@
 import { AirtableRecord, Tweet, Note } from './types';
 
+// Helper function to escape strings for Airtable formulas
+function escapeAirtableString(str: string): string {
+  // In Airtable formulas, single quotes are escaped by doubling them
+  return str.replace(/'/g, "''");
+}
+
 export class AirtableClient {
   private apiKey: string;
   private baseId: string;
@@ -25,11 +31,11 @@ export class AirtableClient {
     // Format progress message based on time period
     let progressMsg = '';
     if (daysBack < 1) {
-      progressMsg = `Fetching records from the last ${Math.round(hoursBack)} hours...`;
+      progressMsg = `Fetching main branch posted notes from the last ${Math.round(hoursBack)} hours...`;
     } else if (daysBack === 1) {
-      progressMsg = `Fetching records from the last 24 hours...`;
+      progressMsg = `Fetching main branch posted notes from the last 24 hours...`;
     } else {
-      progressMsg = `Fetching records from the last ${daysBack} days...`;
+      progressMsg = `Fetching main branch posted notes from the last ${daysBack} days...`;
     }
     this.onProgress?.(progressMsg);
     
@@ -40,9 +46,9 @@ export class AirtableClient {
     do {
       // Use encodeURIComponent for table name
       const encodedTableName = encodeURIComponent(this.tableName);
-      // Filter by date and final note
+      // Filter by date, final note, and main branch posted posts only
       const dateStr = startDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
-      const filterFormula = `AND({Final note} != '', IS_AFTER({Created}, '${dateStr}'))`;
+      const filterFormula = `AND({Final note} != '', IS_AFTER({Created}, '${dateStr}'), {Bot name} = 'main', {Would be posted} = 1)`;
       const url = `https://api.airtable.com/v0/${this.baseId}/${encodedTableName}?` + 
         `filterByFormula=${encodeURIComponent(filterFormula)}` +
         `&pageSize=100` +
@@ -139,6 +145,66 @@ export class AirtableClient {
       }
     } while (offset);
     
+    // Now fetch other branch attempts for these tweets
+    this.onProgress?.('Fetching other branch attempts for comparison...');
+    const tweetUrls = Array.from(tweets.keys()).map(id => tweets.get(id)!.url);
+    
+    if (tweetUrls.length > 0) {
+      // Fetch other branches for the same URLs
+      for (const url of tweetUrls) {
+        const filterFormula = `AND({URL} = '${escapeAirtableString(url)}', {Bot name} != 'main', {Final note} != '')`;
+        const otherBranchUrl = `https://api.airtable.com/v0/${this.baseId}/${encodeURIComponent(this.tableName)}?` + 
+          `filterByFormula=${encodeURIComponent(filterFormula)}` +
+          `&pageSize=100`;
+        
+        try {
+          const response = await fetch(otherBranchUrl, {
+            headers: {
+              'Authorization': `Bearer ${this.apiKey}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const tweetId = this.extractTweetId(url);
+            
+            if (tweetId && tweets.has(tweetId)) {
+              const tweet = tweets.get(tweetId)!;
+              
+              data.records.forEach((record: AirtableRecord) => {
+                const fields = record.fields;
+                
+                // Extract status from Full Result
+                let status = 'Unknown';
+                try {
+                  const fullResult = fields["Full Result"] || '';
+                  const statusMatch = fullResult.match(/Final status:\s*([^\n]+)/);
+                  if (statusMatch) {
+                    status = statusMatch[1].trim();
+                  }
+                } catch (e) {
+                  // Ignore
+                }
+                
+                // Add other branch notes
+                tweet.notes.push({
+                  recordId: record.id,
+                  botName: fields["Bot name"],
+                  text: fields["Final note"],
+                  status: status,
+                  wouldBePosted: fields["Would be posted"] === 1,
+                  wouldNathanPost: fields["Would Nathan have posted?"]
+                });
+              });
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching other branches for ${url}:`, error);
+        }
+      }
+    }
+    
     // Filter tweets with multiple notes from different bots
     this.onProgress?.('Filtering tweets with multiple bot attempts...');
     const tweetsArray = Array.from(tweets.values());
@@ -147,8 +213,8 @@ export class AirtableClient {
       return uniqueBots.size >= 2;
     });
     
-    console.log(`Found ${tweetsArray.length} total tweets, ${filteredTweets.length} with multiple bot attempts`);
-    this.onProgress?.(`Found ${filteredTweets.length} tweets with multiple bot attempts out of ${tweetsArray.length} total tweets`);
+    console.log(`Found ${tweetsArray.length} main branch posted tweets, ${filteredTweets.length} with other branch attempts`);
+    this.onProgress?.(`Found ${filteredTweets.length} tweets with multiple branch attempts out of ${tweetsArray.length} main branch posts`);
     return filteredTweets;
   }
 
