@@ -32,8 +32,7 @@ const promptTemplate = ({
 CRITICAL ANALYSIS STEPS:
 1. IDENTIFY THE SPECIFIC CLAIM: What exact factual assertion is the post making?
 2. CONSIDER POSSIBLE CONFLICT: Do the search results suggest that significant additional context is required
-3. CHOOSE SOURCES: Choose 1 - 3 sources you are going to include
-4. SOURCE RELEVANCE: Do the sources directly address all aspects of the additional context (literally check the sentences in the research and which sources you've chosen)?
+3. CHOOSE SOURCE: Choose the most authoritative and directly relevant source URL from the citations that best supports the additional context
 
 Please write the note in the following fashion:
 - Give the additional relevant context.
@@ -43,9 +42,7 @@ Please write the note in the following fashion:
 - *DO NOT* refer to sources that you have not provided a link to. 
 - The note *MUST* be fewer than 280 characters, with URLS only counting as 1
 
-If the context supports the original claim, please respond with "TWEET NOT SIGNIFICANTLY INCORRECT" rather than "CORRECTION WITH TRUSTWORTHY CITATION". 
-
-Please start by responding with one of the following statuses "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "CORRECTION WITH TRUSTWORTHY CITATION" "CORRECTION WITHOUT TRUSTWORTHY CITATION"
+Please start by responding with one of the following statuses "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "NO SUPPORTING SOURCE FOUND" "CORRECTION WITH TRUSTWORTHY CITATION"
 
 Note examples:
 
@@ -69,13 +66,13 @@ Bad note:
 
 Post falsely claims UP is #1 in factories (15.91%) and GVA (25.03%). ASI 2023-24 shows UP ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03%.
 
-[Link]
+[link]
 
 Good note:
 
 ASI 2023-24 shows Uttar Pradesh ranks 4th in factories with 8.51%, behind Tamil Nadu, Gujarat, Maharashtra. UP's GVA share is 7%, not 25.03% as claimed.
 
-[Link]
+[link]
 
 Explanation:
 
@@ -85,7 +82,7 @@ Bad note:
 
 This photograph is not from Rudy Giuliani's car accident. News reports describe Giuliani being "struck from behind at high speed," while this image shows a head-on collision that doesn't match the incident description.
 
-[Link]
+[link]
 
 Good note
 
@@ -95,7 +92,7 @@ Explanation:
 
 We don't say what the photo is or is not. Instead we give context for why the photo is likely wrong. 
 
-[Link]
+[link]
 
 Output format:
 
@@ -173,7 +170,7 @@ ${searchResults}
 Citations:
 \`\`\`
 ${citations.join("\n")}
-\`\`\``; 
+\`\`\``;
 
 export const writeNoteWithSearch = writeNoteWithSearchGoal.register({
   name: "write note with search v1",
@@ -245,11 +242,11 @@ export async function writeNoteWithSearchFn(
           // URL counts as 1 character in Community Notes
           charCount = parsed.note.length + 1 + 1; // +1 for space, +1 for URL
         }
-        
+
         if (charCount <= 280) {
           return parsed;
         }
-        
+
         // Store for potential retry
         previousParsed = parsed;
 
@@ -262,7 +259,9 @@ export async function writeNoteWithSearchFn(
         }
       } else {
         // For non-posted notes, just return the result without character limit check
-        console.log(`Note status: ${parsed.status} - not enforcing character limit`);
+        console.log(
+          `Note status: ${parsed.status} - not enforcing character limit`
+        );
         return parsed;
       }
     }
