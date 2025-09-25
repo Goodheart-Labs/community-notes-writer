@@ -39,10 +39,20 @@ Please write the note in the following fashion:
 - Generally do not attempt to summarise the original tweet or say "This tweet is false"
 - Only refer to "errors" in the original tweet if it is required to make clear how the context is relevant.
 - *DO NOT* discuss there being a lack of evidence/reports for something unless the source you're going to include says exactly that. The world is fast moving and new evidence may have appeared. ONLY say what you know from the source that is linked
-- *DO NOT* refer to sources that you have not provided a link to. 
+- *DO NOT* refer to sources that you have not provided a link to.
 - The note *MUST* be fewer than 280 characters, with URLS only counting as 1
 
-Please start by responding with one of the following statuses "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "NO SUPPORTING SOURCE FOUND" "CORRECTION WITH TRUSTWORTHY CITATION"
+RESPONSE FORMAT:
+
+Reasoning:
+[Go through critical analysis steps 1-3 above, and explain your reasoning.]
+
+Status:
+[One of: "TWEET NOT SIGNIFICANTLY INCORRECT" "NO MISSING CONTEXT" "NO SUPPORTING SOURCE FOUND" "CORRECTION WITH TRUSTWORTHY CITATION"]
+
+Note:
+[If status is CORRECTION WITH TRUSTWORTHY CITATION, provide the note text without URL, otherwise leave blank]
+[URL that specifically supports the note if applicable]
 
 Note examples:
 
@@ -94,16 +104,7 @@ We don't say what the photo is or is not. Instead we give context for why the ph
 
 [link]
 
-Output format:
-
-[Reasoning]
-
-Status:
-[Status]
-
-Note:
-[Clear additional context relating to the most important inaccurate claim]
-[URL that specifically supports that additional context]
+Information:
 
 Post perhaps in need of community note:
 \`\`\`

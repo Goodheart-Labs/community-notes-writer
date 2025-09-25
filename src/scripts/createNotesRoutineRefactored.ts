@@ -34,6 +34,11 @@ interface PipelineResult {
     positive: number;
     disagreement: number;
   };
+  filterDetails?: {
+    url: { score: number; reasoning: string };
+    positive: { score: number; reasoning: string };
+    disagreement: { score: number; reasoning: string };
+  };
   allScoresPassed: boolean;
   skipReason?: string;
 }
@@ -179,6 +184,12 @@ async function runRefactoredPipeline(
       disagreement: filterScores.disagreement.score,
     };
 
+    const filterDetails = {
+      url: { score: urlScore.score, reasoning: urlScore.reasoning },
+      positive: { score: filterScores.positive.score, reasoning: filterScores.positive.reasoning },
+      disagreement: { score: filterScores.disagreement.score, reasoning: filterScores.disagreement.reasoning },
+    };
+
     // Check thresholds
     const allPassed =
       scores.url > 0.5 && scores.positive > 0.5 && scores.disagreement > 0.5;
@@ -199,6 +210,7 @@ async function runRefactoredPipeline(
       searchContextResult: searchResult,
       noteResult,
       scores,
+      filterDetails,
       allScoresPassed: allPassed,
       skipReason: allPassed ? undefined : "Failed score thresholds",
     };
@@ -234,15 +246,21 @@ function createLogEntryWithScores(
     fullResult += `- Claims: ${result.keywords.claims.join("; ")}\n\n`;
   }
 
-  if (result.scores) {
+  if (result.scores && result.filterDetails) {
     fullResult += `FILTER SCORES:\n`;
     fullResult += `- URL Score: ${result.scores.url.toFixed(2)}\n`;
-    fullResult += `- Positive Claims Score: ${result.scores.positive.toFixed(
-      2
-    )}\n`;
-    fullResult += `- Disagreement Score: ${result.scores.disagreement.toFixed(
-      2
-    )}\n`;
+    fullResult += `  Reasoning: ${result.filterDetails.url.reasoning}\n`;
+    fullResult += `- Positive Claims Score: ${result.scores.positive.toFixed(2)}\n`;
+    fullResult += `  Reasoning: ${result.filterDetails.positive.reasoning}\n`;
+    fullResult += `- Disagreement Score: ${result.scores.disagreement.toFixed(2)}\n`;
+    fullResult += `  Reasoning: ${result.filterDetails.disagreement.reasoning}\n`;
+    fullResult += `- All Passed: ${result.allScoresPassed}\n\n`;
+  } else if (result.scores) {
+    // Fallback for old format
+    fullResult += `FILTER SCORES:\n`;
+    fullResult += `- URL Score: ${result.scores.url.toFixed(2)}\n`;
+    fullResult += `- Positive Claims Score: ${result.scores.positive.toFixed(2)}\n`;
+    fullResult += `- Disagreement Score: ${result.scores.disagreement.toFixed(2)}\n`;
     fullResult += `- All Passed: ${result.allScoresPassed}\n\n`;
   }
 
@@ -288,6 +306,10 @@ function createLogEntryWithScores(
     "Significant correction filter": result.scores?.disagreement,
     "Keywords extracted": result.keywords
       ? result.keywords.keywords.join(", ")
+      : "",
+    // Add filter reasoning for debugging
+    "Filter Reasoning": result.filterDetails
+      ? `URL: ${result.filterDetails.url.reasoning}\nPositive: ${result.filterDetails.positive.reasoning}\nDisagreement: ${result.filterDetails.disagreement.reasoning}`
       : "",
     // Character count is computed in Airtable, don't write to it
   };
