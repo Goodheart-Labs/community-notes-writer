@@ -60,6 +60,11 @@ AIRTABLE_TABLE_NAME=your_table_name
 
 # AI Services
 OPENROUTER_API_KEY=your_openrouter_key
+
+# Optional: X API Bearer Token for note evaluation
+# If provided, notes will be evaluated using X's API before submission
+# Notes with claim_opinion_score < -0.5 will be skipped
+X_BEARER_TOKEN=your_bearer_token_here
 ```
 
 ### 3. Airtable Setup
