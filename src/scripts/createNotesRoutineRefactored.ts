@@ -14,6 +14,7 @@ import { evaluateNoteWithXAPI } from "../pipeline/evaluateNoteXAPI";
 import PQueue from "p-queue";
 import { execSync } from "child_process";
 import { writeNoteWithSearchFn } from "../pipeline/writeNoteWithSearchGoal";
+import { considerForRerun, RerunQueueLogger } from "../pipeline/considerForRerun";
 
 const maxPosts = parseInt(process.env.MAX_POSTS || "10");
 const concurrencyLimit = 3;
@@ -25,7 +26,7 @@ const HARD_TIMEOUT_MS = 9 * 60 * 1000;
 
 let shouldStopProcessing = false;
 
-interface PipelineResult {
+export interface PipelineResult {
   post: any;
   verifiableFactResult?: VerifiableFactResult;
   keywords?: any;
@@ -420,7 +421,20 @@ async function main() {
       if (match && match[1]) skipPostIds.add(match[1]);
     });
 
+    // Get tweets from rerun queue - these should be processed even if already processed before
+    const rerunQueueLogger = new RerunQueueLogger();
+    const rerunQueueTweetIds = await rerunQueueLogger.getRerunQueueTweetIds();
+
+    // Remove rerun queue tweets from skip list so they get processed again
+    rerunQueueTweetIds.forEach((tweetId) => {
+      if (skipPostIds.has(tweetId)) {
+        skipPostIds.delete(tweetId);
+        console.log(`[main] Allowing rerun for tweet ID: ${tweetId}`);
+      }
+    });
+
     console.log(`[main] Skipping ${skipPostIds.size} already-processed posts`);
+    console.log(`[main] Found ${rerunQueueTweetIds.size} tweets in rerun queue`);
 
     // Fetch eligible posts
     const posts = await fetchEligiblePosts(maxPosts, skipPostIds, 3);
@@ -452,29 +466,36 @@ async function main() {
         let postedToX = false;
 
         // Submit to Twitter if all checks pass and we're on main
-        if (result.allScoresPassed && shouldSubmitNotes) {
-          try {
-            const { submitNote } = await import("../api/submitNote");
-            const noteText =
-              result.noteResult.note + " " + result.noteResult.url;
-            const info = {
-              classification: "misinformed_or_potentially_misleading",
-              misleading_tags: ["disputed_claim_as_fact"],
-              text: noteText,
-              trustworthy_sources: true,
-            };
-            const response = await submitNote(post.id, info);
-            console.log(
-              `[main] Successfully submitted note for post ${post.id}:`,
-              response
-            );
-            postedToX = true;
-            submitted++;
-          } catch (err: any) {
-            console.error(
-              `[main] Failed to submit note for post ${post.id}:`,
-              err.response?.data || err
-            );
+        if (shouldSubmitNotes) {
+          if (result.allScoresPassed) {
+            try {
+              const { submitNote } = await import("../api/submitNote");
+              const noteText =
+                result.noteResult.note + " " + result.noteResult.url;
+              const info = {
+                classification: "misinformed_or_potentially_misleading",
+                misleading_tags: ["disputed_claim_as_fact"],
+                text: noteText,
+                trustworthy_sources: true,
+              };
+              const response = await submitNote(post.id, info);
+              console.log(
+                `[main] Successfully submitted note for post ${post.id}:`,
+                response
+              );
+              postedToX = true;
+              submitted++;
+            } catch (err: any) {
+              console.error(
+                `[main] Failed to submit note for post ${post.id}:`,
+                err.response?.data || err
+              );
+            }
+          } else {
+            // If all scores didn't pass we will consider whether to
+            // allow the note to be revived in 90 minutes based on
+            // the recency of the subject of the note
+            await considerForRerun(result);
           }
         }
 
