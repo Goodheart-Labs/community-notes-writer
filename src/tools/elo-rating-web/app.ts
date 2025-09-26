@@ -289,9 +289,14 @@ class CommunityNotesComparison {
         }
       }
     }
-    
-    // Shuffle pairs
-    this.comparisonPairs.sort(() => Math.random() - 0.5);
+
+    // Shuffle pairs using Fisher-Yates algorithm for better randomization
+    for (let i = this.comparisonPairs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this.comparisonPairs[i], this.comparisonPairs[j]] = [this.comparisonPairs[j], this.comparisonPairs[i]];
+    }
+
+    console.log(`Generated ${this.comparisonPairs.length} comparison pairs, shuffled randomly`);
   }
 
   private displayCurrentComparison() {
@@ -301,21 +306,33 @@ class CommunityNotesComparison {
     }
 
     const pair = this.comparisonPairs[this.currentPairIndex];
-    
+
     // Display tweet
     const tweetContent = this.getElement('tweetContent');
     if (!tweetContent) return;
+
     const tweetData = this.parseTweetData(pair.tweet.text);
-    
-    // Build tweet display with media if available
+
+    // Build tweet display - make URLs clickable
     let tweetHtml = `<div class="space-y-3">`;
-    tweetHtml += `<p>${this.escapeHtml(tweetData.text)}</p>`;
+
+    // Convert URLs in text to clickable links
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const textWithLinks = this.escapeHtml(tweetData.text).replace(urlRegex, (url) => {
+      return `<a href="${url}" target="_blank" class="text-blue-500 hover:underline">${url}</a>`;
+    });
+
+    tweetHtml += `<p>${textWithLinks}</p>`;
     
+    // Only show media if we have actual JSON data with media
     if (tweetData.media && tweetData.media.length > 0) {
       tweetHtml += `<div class="grid grid-cols-2 gap-2">`;
       for (const media of tweetData.media) {
         if (media.type === 'photo') {
-          tweetHtml += `<img src="${media.url}" alt="Tweet media" class="rounded-lg max-h-48 object-cover">`;
+          const imageUrl = media.media_url_https || media.media_url;
+          if (imageUrl) {
+            tweetHtml += `<img src="${imageUrl}" alt="Tweet media" class="rounded-lg max-h-48 object-cover w-full cursor-pointer" onclick="window.open('${imageUrl}', '_blank')">`;
+          }
         }
       }
       tweetHtml += `</div>`;
@@ -340,8 +357,8 @@ class CommunityNotesComparison {
     tweetUrl.innerHTML = `<a href="${pair.tweet.url}" target="_blank">${pair.tweet.url}</a>`;
     
     // Display notes with clickable links, character count, and existing ratings
-    this.displayNoteWithLinks('leftNote', pair.leftNote.text, pair.leftNote.status, pair.leftNote.wouldNathanPost);
-    this.displayNoteWithLinks('rightNote', pair.rightNote.text, pair.rightNote.status, pair.rightNote.wouldNathanPost);
+    this.displayNoteWithLinks('leftNote', pair.leftNote.text, pair.leftNote.status, pair.leftNote.wouldBePosted, pair.leftNote.wouldNathanPost, pair.leftNote.botName);
+    this.displayNoteWithLinks('rightNote', pair.rightNote.text, pair.rightNote.status, pair.rightNote.wouldBePosted, pair.rightNote.wouldNathanPost, pair.rightNote.botName);
     
     // Show notice if both notes already have ratings
     const ratingsNotice = this.getElement('existingRatingsNotice');
@@ -352,19 +369,66 @@ class CommunityNotesComparison {
         ratingsNotice.classList.add('hidden');
       }
     }
+
+    // Highlight better button if ratings differ significantly from "would be posted" status
+    const leftBetterBtn = this.getElement('leftBetterBtn');
+    const rightBetterBtn = this.getElement('rightBetterBtn');
+
+    if (leftBetterBtn && rightBetterBtn &&
+        pair.leftNote.wouldNathanPost !== undefined &&
+        pair.rightNote.wouldNathanPost !== undefined) {
+
+      // Calculate alignment with "would be posted" (1 = would post, 0 = wouldn't post)
+      const leftExpected = pair.leftNote.wouldBePosted ? 1 : 0;
+      const rightExpected = pair.rightNote.wouldBePosted ? 1 : 0;
+
+      const leftDiff = Math.abs(pair.leftNote.wouldNathanPost - leftExpected);
+      const rightDiff = Math.abs(pair.rightNote.wouldNathanPost - rightExpected);
+
+      // Remove any existing highlights
+      leftBetterBtn.classList.remove('ring-4', 'ring-green-500');
+      rightBetterBtn.classList.remove('ring-4', 'ring-green-500');
+
+      // If difference is more than 0.2, highlight the better aligned one
+      if (Math.abs(leftDiff - rightDiff) > 0.2) {
+        if (leftDiff < rightDiff) {
+          // Left is better aligned
+          leftBetterBtn.classList.add('ring-4', 'ring-green-500');
+        } else {
+          // Right is better aligned
+          rightBetterBtn.classList.add('ring-4', 'ring-green-500');
+        }
+      }
+    }
   }
 
   private parseTweetData(tweetJson: string) {
     try {
       const data = JSON.parse(tweetJson);
+
+      // Handle the actual structure we're getting from our pipeline
+      let quotedTweet = null;
+
+      // Check for referenced_tweet_data (our pipeline's format)
+      if (data.referenced_tweet_data) {
+        quotedTweet = {
+          text: data.referenced_tweet_data.text || ''
+        };
+      }
+      // Fallback to Twitter's standard format
+      else if (data.quoted_status) {
+        quotedTweet = {
+          text: data.quoted_status.text || data.quoted_status.full_text || ''
+        };
+      }
+
       return {
         text: data.text || data.full_text || '',
-        media: data.extended_entities?.media || data.entities?.media || [],
-        quotedTweet: data.quoted_status ? {
-          text: data.quoted_status.text || data.quoted_status.full_text || ''
-        } : null
+        media: data.media || data.extended_entities?.media || data.entities?.media || [],
+        quotedTweet: quotedTweet
       };
     } catch (e) {
+      // Not JSON, just plain text
       return { text: tweetJson, media: [], quotedTweet: null };
     }
   }
@@ -398,19 +462,19 @@ class CommunityNotesComparison {
     return charCount;
   }
 
-  private displayNoteWithLinks(elementId: string, noteText: string, status: string, rating?: number) {
+  private displayNoteWithLinks(elementId: string, noteText: string, status: string, wouldBePosted: boolean, rating?: number, botName?: string) {
     const element = this.getElement(elementId);
     if (!element) return;
-    
+
     // Calculate Community Notes character count
     const charCount = this.calculateCommunityNoteLength(noteText);
-    
+
     // Convert URLs to clickable links
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const htmlText = this.escapeHtml(noteText).replace(urlRegex, (url) => {
       return `<a href="${url}" target="_blank" class="text-blue-500 hover:underline">${url}</a>`;
     });
-    
+
     // Determine status color
     let statusColor = 'text-gray-600';
     if (status.includes('CORRECTION WITH TRUSTWORTHY CITATION')) {
@@ -420,19 +484,22 @@ class CommunityNotesComparison {
     } else if (status.includes('OPINION') || status.includes('SATIRE')) {
       statusColor = 'text-orange-600';
     }
-    
-    // Display note with character count, status, and rating if available
+
+    // Display note with status at top, then note text, then metadata
     element.innerHTML = `
       <div>
+        <div class="${statusColor} font-semibold mb-2">
+          <i class="fas fa-tag mr-1"></i>${status}
+        </div>
+        <div class="${wouldBePosted ? 'text-green-600' : 'text-red-600'} font-semibold mb-3">
+          <i class="fas ${wouldBePosted ? 'fa-check-circle' : 'fa-times-circle'} mr-1"></i>${wouldBePosted ? 'Would be posted' : 'Would NOT be posted'}
+        </div>
         <div class="mb-2">${htmlText}</div>
         <div class="text-sm text-gray-500 space-y-1">
           <div>
             <i class="fas fa-text-width mr-1"></i>${charCount} characters
             ${charCount > 280 ? '<span class="text-red-500 ml-1">(exceeds limit)</span>' : ''}
             <span class="text-xs text-gray-400 ml-2">(URLs = 1 char)</span>
-          </div>
-          <div class="${statusColor}">
-            <i class="fas fa-tag mr-1"></i>${status}
           </div>
           ${rating !== undefined ? `
           <div class="text-blue-600 font-semibold">
