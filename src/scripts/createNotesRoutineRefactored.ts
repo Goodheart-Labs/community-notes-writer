@@ -307,10 +307,7 @@ function createLogEntryWithScores(
     "Keywords extracted": result.keywords
       ? result.keywords.keywords.join(", ")
       : "",
-    // Add filter reasoning for debugging
-    "Filter Reasoning": result.filterDetails
-      ? `URL: ${result.filterDetails.url.reasoning}\nPositive: ${result.filterDetails.positive.reasoning}\nDisagreement: ${result.filterDetails.disagreement.reasoning}`
-      : "",
+    // Filter reasoning is now included in Full Result, not as separate field
     // Character count is computed in Airtable, don't write to it
   };
 }
