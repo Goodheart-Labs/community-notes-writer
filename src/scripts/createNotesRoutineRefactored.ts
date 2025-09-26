@@ -7,7 +7,7 @@ import {
 } from "../pipeline/checkVerifiableFacts";
 import { extractKeywords } from "../pipeline/extractKeywords";
 import { searchWithKeywords } from "../pipeline/searchWithKeywords";
-import { checkUrlValidity } from "../pipeline/urlChecker";
+import { checkUrlAndSource } from "../pipeline/urlSourceChecker";
 import { runScoringFilters } from "../pipeline/scoringFilters";
 import PQueue from "p-queue";
 import { execSync } from "child_process";
@@ -164,9 +164,9 @@ async function runRefactoredPipeline(
     // 5. RUN SCORING FILTERS
     console.log(`[pipeline] Running scoring filters...`);
 
-    // URL Check
-    const urlScore = await checkUrlValidity(noteResult.note, noteResult.url);
-    console.log(`[pipeline] URL score: ${urlScore.score.toFixed(2)}`);
+    // URL Check - now checks if the source actually supports the claims
+    const urlScore = await checkUrlAndSource(noteResult.note, noteResult.url);
+    console.log(`[pipeline] URL source support score: ${urlScore.score.toFixed(2)}`);
 
     // Positive and Disagreement filters
     const filterScores = await runScoringFilters(
