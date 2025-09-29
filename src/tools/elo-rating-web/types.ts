@@ -9,6 +9,11 @@ export interface AirtableRecord {
     "Would be posted": number;
     "Would Nathan have posted?": number;
     "Created": string;
+    "Not sarcasm filter"?: number;
+    "URL filter"?: number;
+    "Character count filter"?: number;
+    "Positive claims only filter"?: number;
+    "Significant correction filter"?: number;
   };
 }
 
@@ -26,6 +31,12 @@ export interface Note {
   status: string;
   wouldBePosted: boolean;
   wouldNathanPost?: number;
+  fullResult?: string;
+  notSarcasmFilter?: number;
+  urlFilter?: number;
+  characterCountFilter?: number;
+  positiveClaimsFilter?: number;
+  significantCorrectionFilter?: number;
 }
 
 export interface Comparison {

@@ -114,37 +114,43 @@
                     <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                         <h3 class="text-xl font-semibold text-gray-800 mb-4 text-center">Rate Each Note (0.0 - 1.0)</h3>
                         <p class="text-gray-600 text-center mb-6">How likely would Nathan be to post each note?</p>
-                        
+
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Left Note Rating -->
                             <div class="space-y-4">
                                 <h4 class="font-semibold text-center">Option A</h4>
-                                <div id="leftNotePreview" class="text-sm text-gray-600 p-3 bg-gray-50 rounded max-h-32 overflow-y-auto"></div>
+                                <div id="leftNotePreview" class="text-sm text-gray-600 p-3 bg-gray-50 rounded"></div>
                                 <div class="space-y-2">
                                     <input type="range" id="leftRating" min="0" max="100" value="50" class="w-full">
                                     <div class="flex justify-between items-center">
-                                        <input type="number" id="leftRatingInput" min="0" max="1" step="0.01" value="0.50" 
+                                        <input type="number" id="leftRatingInput" min="0" max="1" step="0.01" value="0.50"
                                                class="w-20 p-2 border rounded text-center">
                                         <span class="text-sm text-gray-500">0 = Never, 1 = Definitely</span>
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Right Note Rating -->
                             <div class="space-y-4">
                                 <h4 class="font-semibold text-center">Option B</h4>
-                                <div id="rightNotePreview" class="text-sm text-gray-600 p-3 bg-gray-50 rounded max-h-32 overflow-y-auto"></div>
+                                <div id="rightNotePreview" class="text-sm text-gray-600 p-3 bg-gray-50 rounded"></div>
                                 <div class="space-y-2">
                                     <input type="range" id="rightRating" min="0" max="100" value="50" class="w-full">
                                     <div class="flex justify-between items-center">
-                                        <input type="number" id="rightRatingInput" min="0" max="1" step="0.01" value="0.50" 
+                                        <input type="number" id="rightRatingInput" min="0" max="1" step="0.01" value="0.50"
                                                class="w-20 p-2 border rounded text-center">
                                         <span class="text-sm text-gray-500">0 = Never, 1 = Definitely</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        
+
+                        <!-- Filter Scores Section -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                            <div id="leftFilterScores" class="bg-blue-50 p-4 rounded-lg"></div>
+                            <div id="rightFilterScores" class="bg-blue-50 p-4 rounded-lg"></div>
+                        </div>
+
                         <div class="flex gap-4 mt-6">
                             <button id="submitRatings" class="flex-1 bg-green-500 text-white px-4 py-3 rounded-md hover:bg-green-600 transition-colors">
                                 <i class="fas fa-check mr-2"></i>Submit Ratings & Continue
@@ -152,6 +158,25 @@
                             <button id="skipRatings" class="flex-1 bg-gray-500 text-white px-4 py-3 rounded-md hover:bg-gray-600 transition-colors">
                                 <i class="fas fa-forward mr-2"></i>Skip Rating
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Full Reports Section (separate box) -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Full Reports</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-semibold mb-2">Option A Report</h4>
+                                <div id="leftFullReport" class="bg-gray-50 p-4 rounded-lg max-h-64 overflow-y-auto">
+                                    <pre class="text-xs text-gray-600 whitespace-pre-wrap font-mono"></pre>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-2">Option B Report</h4>
+                                <div id="rightFullReport" class="bg-gray-50 p-4 rounded-lg max-h-64 overflow-y-auto">
+                                    <pre class="text-xs text-gray-600 whitespace-pre-wrap font-mono"></pre>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

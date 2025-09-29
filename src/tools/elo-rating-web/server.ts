@@ -2,11 +2,31 @@ import { serve } from "bun";
 import { readFileSync } from "fs";
 import { join } from "path";
 import dotenv from "dotenv";
+import { execSync } from "child_process";
 
-// Load environment variables
-dotenv.config({ path: join(process.cwd(), ".env") });
+// Load environment variables from project root
+dotenv.config();
+
+// Debug: log environment variables
+console.log("Environment variables loaded:");
+console.log("AIRTABLE_API_KEY:", process.env.AIRTABLE_API_KEY ? "✓ Set" : "✗ Not set");
+console.log("AIRTABLE_BASE_ID:", process.env.AIRTABLE_BASE_ID ? "✓ Set" : "✗ Not set");
+console.log("AIRTABLE_TABLE_NAME:", process.env.AIRTABLE_TABLE_NAME || "Not set");
 
 const PORT = 8000;
+
+// Build the client files when server starts
+const buildTime = new Date().toLocaleTimeString();
+console.log(`[${buildTime}] Building client files...`);
+try {
+  execSync("cd src/tools/elo-rating-web && bun build ./app.ts ./airtableClient.ts ./eloCalculator.ts ./types.ts ./cacheManager.ts --outdir ./dist --target browser", {
+    stdio: "inherit",
+    cwd: process.cwd()
+  });
+  console.log(`[${buildTime}] ✅ Client files built successfully`);
+} catch (error) {
+  console.error(`[${buildTime}] ❌ Failed to build client files:`, error);
+}
 
 serve({
   port: PORT,
@@ -54,5 +74,7 @@ serve({
   }
 });
 
-console.log(`Server running at http://localhost:${PORT}`);
-console.log("Airtable credentials loaded from .env file");
+console.log(`[${buildTime}] 🚀 Server running at http://localhost:${PORT}`);
+console.log(`[${buildTime}] 🔑 Airtable credentials loaded from .env file`);
+console.log(`[${buildTime}] 👁️  Watching for changes...`);
+// Trigger rebuild

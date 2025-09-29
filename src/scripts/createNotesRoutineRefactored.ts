@@ -7,11 +7,14 @@ import {
 } from "../pipeline/checkVerifiableFacts";
 import { extractKeywords } from "../pipeline/extractKeywords";
 import { searchWithKeywords } from "../pipeline/searchWithKeywords";
-import { checkUrlValidity } from "../pipeline/urlChecker";
+import { checkUrlAndSource } from "../pipeline/urlSourceChecker";
 import { runScoringFilters } from "../pipeline/scoringFilters";
+import { predictHelpfulness } from "../pipeline/predictHelpfulness";
+import { evaluateNoteWithXAPI } from "../pipeline/evaluateNoteXAPI";
 import PQueue from "p-queue";
 import { execSync } from "child_process";
 import { writeNoteWithSearchFn } from "../pipeline/writeNoteWithSearchGoal";
+import { considerForRerun, RerunQueueLogger } from "../pipeline/considerForRerun";
 
 const maxPosts = parseInt(process.env.MAX_POSTS || "10");
 const concurrencyLimit = 3;
@@ -23,7 +26,7 @@ const HARD_TIMEOUT_MS = 9 * 60 * 1000;
 
 let shouldStopProcessing = false;
 
-interface PipelineResult {
+export interface PipelineResult {
   post: any;
   verifiableFactResult?: VerifiableFactResult;
   keywords?: any;
@@ -39,6 +42,10 @@ interface PipelineResult {
     positive: { score: number; reasoning: string };
     disagreement: { score: number; reasoning: string };
   };
+  helpfulnessScore?: number;
+  helpfulnessReasoning?: string;
+  xApiScore?: number;
+  xApiSuccess?: boolean;
   allScoresPassed: boolean;
   skipReason?: string;
 }
@@ -168,9 +175,9 @@ async function runRefactoredPipeline(
     // 5. RUN SCORING FILTERS
     console.log(`[pipeline] Running scoring filters...`);
 
-    // URL Check
-    const urlScore = await checkUrlValidity(noteResult.note, noteResult.url);
-    console.log(`[pipeline] URL score: ${urlScore.score.toFixed(2)}`);
+    // URL Check - now checks if the source actually supports the claims
+    const urlScore = await checkUrlAndSource(noteResult.note, noteResult.url);
+    console.log(`[pipeline] URL source support score: ${urlScore.score.toFixed(2)}`);
 
     // Positive and Disagreement filters
     const filterScores = await runScoringFilters(
@@ -190,8 +197,8 @@ async function runRefactoredPipeline(
       disagreement: { score: filterScores.disagreement.score, reasoning: filterScores.disagreement.reasoning },
     };
 
-    // Check thresholds
-    const allPassed =
+    // Check initial thresholds
+    const initialPassed =
       scores.url > 0.5 && scores.positive > 0.5 && scores.disagreement > 0.5;
 
     console.log(
@@ -201,6 +208,51 @@ async function runRefactoredPipeline(
         2
       )}, Disagreement: ${scores.disagreement.toFixed(2)}`
     );
+
+    // Only run helpfulness ratings if initial filters pass
+    let helpfulnessScore: number | undefined;
+    let helpfulnessReasoning: string | undefined;
+    let xApiScore: number | undefined;
+    let xApiSuccess: boolean | undefined;
+    let allPassed = initialPassed;
+
+    if (initialPassed) {
+      // 6. PREDICT HELPFULNESS
+      console.log(`[pipeline] Predicting helpfulness...`);
+      const helpfulnessResult = await predictHelpfulness(
+        noteResult.note,
+        originalContent.text,
+        searchResult.searchResults,
+        noteResult.url
+      );
+      helpfulnessScore = helpfulnessResult.score;
+      helpfulnessReasoning = helpfulnessResult.reasoning;
+      console.log(
+        `[pipeline] Helpfulness score: ${helpfulnessScore.toFixed(2)} - ${helpfulnessReasoning}`
+      );
+
+      // 7. EVALUATE WITH X API
+      console.log(`[pipeline] Evaluating with X API...`);
+      const xApiResult = await evaluateNoteWithXAPI(
+        noteResult.note,
+        post.id
+      );
+      xApiScore = xApiResult.claimOpinionScore;
+      xApiSuccess = xApiResult.success;
+
+      if (xApiSuccess) {
+        console.log(`[pipeline] X API score: ${xApiScore}`);
+
+        // Check X API threshold
+        if (xApiScore < -0.5) {
+          allPassed = false;
+          console.log(`[pipeline] X API score too low (${xApiScore} < -0.5), note will not be posted`);
+        }
+      } else {
+        console.log(`[pipeline] X API evaluation failed: ${xApiResult.error}`);
+      }
+    }
+
     console.log(`[pipeline] All filters passed: ${allPassed}`);
 
     return {
@@ -211,8 +263,16 @@ async function runRefactoredPipeline(
       noteResult,
       scores,
       filterDetails,
+      helpfulnessScore,
+      helpfulnessReasoning,
+      xApiScore,
+      xApiSuccess,
       allScoresPassed: allPassed,
-      skipReason: allPassed ? undefined : "Failed score thresholds",
+      skipReason: allPassed
+        ? undefined
+        : xApiScore !== undefined && xApiScore < -0.5
+          ? `X API score too low (${xApiScore})`
+          : "Failed score thresholds",
     };
   } catch (err) {
     console.error(`[pipeline] Error for post #${idx + 1}:`, err);
@@ -254,13 +314,37 @@ function createLogEntryWithScores(
     fullResult += `  Reasoning: ${result.filterDetails.positive.reasoning}\n`;
     fullResult += `- Disagreement Score: ${result.scores.disagreement.toFixed(2)}\n`;
     fullResult += `  Reasoning: ${result.filterDetails.disagreement.reasoning}\n`;
+
+    if (result.helpfulnessScore !== undefined) {
+      fullResult += `- Helpfulness Prediction: ${result.helpfulnessScore.toFixed(2)}\n`;
+      if (result.helpfulnessReasoning) {
+        fullResult += `  Reasoning: ${result.helpfulnessReasoning}\n`;
+      }
+    }
+
+    if (result.xApiScore !== undefined) {
+      fullResult += `- X API Score: ${result.xApiScore}${result.xApiSuccess ? '' : ' (failed)'}\n`;
+    }
+
     fullResult += `- All Passed: ${result.allScoresPassed}\n\n`;
   } else if (result.scores) {
-    // Fallback for old format
+    // Fallback for old format without filterDetails
     fullResult += `FILTER SCORES:\n`;
     fullResult += `- URL Score: ${result.scores.url.toFixed(2)}\n`;
     fullResult += `- Positive Claims Score: ${result.scores.positive.toFixed(2)}\n`;
     fullResult += `- Disagreement Score: ${result.scores.disagreement.toFixed(2)}\n`;
+
+    if (result.helpfulnessScore !== undefined) {
+      fullResult += `- Helpfulness Prediction: ${result.helpfulnessScore.toFixed(2)}\n`;
+      if (result.helpfulnessReasoning) {
+        fullResult += `  Reasoning: ${result.helpfulnessReasoning}\n`;
+      }
+    }
+
+    if (result.xApiScore !== undefined) {
+      fullResult += `- X API Score: ${result.xApiScore}${result.xApiSuccess ? '' : ' (failed)'}\n`;
+    }
+
     fullResult += `- All Passed: ${result.allScoresPassed}\n\n`;
   }
 
@@ -308,6 +392,8 @@ function createLogEntryWithScores(
       ? result.keywords.keywords.join(", ")
       : "",
     // Filter reasoning is now included in Full Result, not as separate field
+    "Helpfulness Prediction": result.helpfulnessScore,
+    "X API Score": result.xApiScore,
     // Character count is computed in Airtable, don't write to it
   };
 }
@@ -366,7 +452,20 @@ async function main() {
       if (match && match[1]) skipPostIds.add(match[1]);
     });
 
+    // Get tweets from rerun queue - these should be processed even if already processed before
+    const rerunQueueLogger = new RerunQueueLogger();
+    const rerunQueueTweetIds = await rerunQueueLogger.getRerunQueueTweetIds();
+
+    // Remove rerun queue tweets from skip list so they get processed again
+    rerunQueueTweetIds.forEach((tweetId) => {
+      if (skipPostIds.has(tweetId)) {
+        skipPostIds.delete(tweetId);
+        console.log(`[main] Allowing rerun for tweet ID: ${tweetId}`);
+      }
+    });
+
     console.log(`[main] Skipping ${skipPostIds.size} already-processed posts`);
+    console.log(`[main] Found ${rerunQueueTweetIds.size} tweets in rerun queue`);
 
     // Fetch eligible posts
     const posts = await fetchEligiblePosts(maxPosts, skipPostIds, 3);
@@ -398,29 +497,36 @@ async function main() {
         let postedToX = false;
 
         // Submit to Twitter if all checks pass and we're on main
-        if (result.allScoresPassed && shouldSubmitNotes) {
-          try {
-            const { submitNote } = await import("../api/submitNote");
-            const noteText =
-              result.noteResult.note + " " + result.noteResult.url;
-            const info = {
-              classification: "misinformed_or_potentially_misleading",
-              misleading_tags: ["disputed_claim_as_fact"],
-              text: noteText,
-              trustworthy_sources: true,
-            };
-            const response = await submitNote(post.id, info);
-            console.log(
-              `[main] Successfully submitted note for post ${post.id}:`,
-              response
-            );
-            postedToX = true;
-            submitted++;
-          } catch (err: any) {
-            console.error(
-              `[main] Failed to submit note for post ${post.id}:`,
-              err.response?.data || err
-            );
+        if (shouldSubmitNotes) {
+          if (result.allScoresPassed) {
+            try {
+              const { submitNote } = await import("../api/submitNote");
+              const noteText =
+                result.noteResult.note + " " + result.noteResult.url;
+              const info = {
+                classification: "misinformed_or_potentially_misleading",
+                misleading_tags: ["disputed_claim_as_fact"],
+                text: noteText,
+                trustworthy_sources: true,
+              };
+              const response = await submitNote(post.id, info);
+              console.log(
+                `[main] Successfully submitted note for post ${post.id}:`,
+                response
+              );
+              postedToX = true;
+              submitted++;
+            } catch (err: any) {
+              console.error(
+                `[main] Failed to submit note for post ${post.id}:`,
+                err.response?.data || err
+              );
+            }
+          } else {
+            // If all scores didn't pass we will consider whether to
+            // allow the note to be revived in 90 minutes based on
+            // the recency of the subject of the note
+            await considerForRerun(result);
           }
         }
 

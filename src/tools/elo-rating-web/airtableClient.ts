@@ -95,21 +95,15 @@ export class AirtableClient {
             return;
           }
           
-          // Parse tweet text from Initial tweet body (JSON)
-          let tweetText = '';
-          try {
-            const tweetData = JSON.parse(fields["Initial tweet body"]);
-            tweetText = tweetData.text || tweetData.full_text || '';
-          } catch (e) {
-            tweetText = fields["Initial tweet body"];
-          }
-          
+          // Store the full tweet JSON for media display
+          let tweetText = fields["Initial tweet body"];
+
           // Get or create tweet
           if (!tweets.has(tweetId)) {
             tweets.set(tweetId, {
               id: tweetId,
               url: tweetUrl,
-              text: tweetText,
+              text: tweetText,  // Store full JSON, not just extracted text
               notes: []
             });
           }
@@ -118,7 +112,8 @@ export class AirtableClient {
           let status = 'Unknown';
           try {
             const fullResult = fields["Full Result"] || '';
-            const statusMatch = fullResult.match(/Final status:\s*([^\n]+)/);
+            // Look for "NOTE STATUS:" in the Full Result
+            const statusMatch = fullResult.match(/NOTE STATUS:\s*([^\n]+)/i);
             if (statusMatch) {
               status = statusMatch[1].trim();
             }
@@ -134,7 +129,13 @@ export class AirtableClient {
             text: fields["Final note"],
             status: status,
             wouldBePosted: fields["Would be posted"] === 1,
-            wouldNathanPost: fields["Would Nathan have posted?"]
+            wouldNathanPost: fields["Would Nathan have posted?"],
+            fullResult: fields["Full Result"],
+            notSarcasmFilter: fields["Not sarcasm filter"],
+            urlFilter: fields["URL filter"],
+            characterCountFilter: fields["Character count filter"],
+            positiveClaimsFilter: fields["Positive claims only filter"],
+            significantCorrectionFilter: fields["Significant correction filter"]
           });
         });
         
@@ -179,7 +180,8 @@ export class AirtableClient {
                 let status = 'Unknown';
                 try {
                   const fullResult = fields["Full Result"] || '';
-                  const statusMatch = fullResult.match(/Final status:\s*([^\n]+)/);
+                  // Look for "NOTE STATUS:" in the Full Result
+                  const statusMatch = fullResult.match(/NOTE STATUS:\s*([^\n]+)/i);
                   if (statusMatch) {
                     status = statusMatch[1].trim();
                   }
@@ -194,7 +196,13 @@ export class AirtableClient {
                   text: fields["Final note"],
                   status: status,
                   wouldBePosted: fields["Would be posted"] === 1,
-                  wouldNathanPost: fields["Would Nathan have posted?"]
+                  wouldNathanPost: fields["Would Nathan have posted?"],
+                  fullResult: fields["Full Result"],
+                  notSarcasmFilter: fields["Not sarcasm filter"],
+                  urlFilter: fields["URL filter"],
+                  characterCountFilter: fields["Character count filter"],
+                  positiveClaimsFilter: fields["Positive claims only filter"],
+                  significantCorrectionFilter: fields["Significant correction filter"]
                 });
               });
             }
