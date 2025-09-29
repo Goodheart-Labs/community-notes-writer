@@ -9,6 +9,8 @@ import { extractKeywords } from "../pipeline/extractKeywords";
 import { searchWithKeywords } from "../pipeline/searchWithKeywords";
 import { checkUrlAndSource } from "../pipeline/urlSourceChecker";
 import { runScoringFilters } from "../pipeline/scoringFilters";
+import { predictHelpfulness } from "../pipeline/predictHelpfulness";
+import { evaluateNoteWithXAPI } from "../pipeline/evaluateNoteXAPI";
 import PQueue from "p-queue";
 import { execSync } from "child_process";
 import { writeNoteWithSearchFn } from "../pipeline/writeNoteWithSearchGoal";
@@ -35,6 +37,10 @@ export interface PipelineResult {
     positive: number;
     disagreement: number;
   };
+  helpfulnessScore?: number;
+  helpfulnessReasoning?: string;
+  xApiScore?: number;
+  xApiSuccess?: boolean;
   allScoresPassed: boolean;
   skipReason?: string;
 }
@@ -180,8 +186,8 @@ async function runRefactoredPipeline(
       disagreement: filterScores.disagreement.score,
     };
 
-    // Check thresholds
-    const allPassed =
+    // Check initial thresholds
+    const initialPassed =
       scores.url > 0.5 && scores.positive > 0.5 && scores.disagreement > 0.5;
 
     console.log(
@@ -191,6 +197,51 @@ async function runRefactoredPipeline(
         2
       )}, Disagreement: ${scores.disagreement.toFixed(2)}`
     );
+
+    // Only run helpfulness ratings if initial filters pass
+    let helpfulnessScore: number | undefined;
+    let helpfulnessReasoning: string | undefined;
+    let xApiScore: number | undefined;
+    let xApiSuccess: boolean | undefined;
+    let allPassed = initialPassed;
+
+    if (initialPassed) {
+      // 6. PREDICT HELPFULNESS
+      console.log(`[pipeline] Predicting helpfulness...`);
+      const helpfulnessResult = await predictHelpfulness(
+        noteResult.note,
+        originalContent.text,
+        searchResult.searchResults,
+        noteResult.url
+      );
+      helpfulnessScore = helpfulnessResult.score;
+      helpfulnessReasoning = helpfulnessResult.reasoning;
+      console.log(
+        `[pipeline] Helpfulness score: ${helpfulnessScore.toFixed(2)} - ${helpfulnessReasoning}`
+      );
+
+      // 7. EVALUATE WITH X API
+      console.log(`[pipeline] Evaluating with X API...`);
+      const xApiResult = await evaluateNoteWithXAPI(
+        noteResult.note,
+        post.id
+      );
+      xApiScore = xApiResult.claimOpinionScore;
+      xApiSuccess = xApiResult.success;
+
+      if (xApiSuccess) {
+        console.log(`[pipeline] X API score: ${xApiScore}`);
+
+        // Check X API threshold
+        if (xApiScore < -0.5) {
+          allPassed = false;
+          console.log(`[pipeline] X API score too low (${xApiScore} < -0.5), note will not be posted`);
+        }
+      } else {
+        console.log(`[pipeline] X API evaluation failed: ${xApiResult.error}`);
+      }
+    }
+
     console.log(`[pipeline] All filters passed: ${allPassed}`);
 
     return {
@@ -200,8 +251,16 @@ async function runRefactoredPipeline(
       searchContextResult: searchResult,
       noteResult,
       scores,
+      helpfulnessScore,
+      helpfulnessReasoning,
+      xApiScore,
+      xApiSuccess,
       allScoresPassed: allPassed,
-      skipReason: allPassed ? undefined : "Failed score thresholds",
+      skipReason: allPassed
+        ? undefined
+        : xApiScore !== undefined && xApiScore < -0.5
+          ? `X API score too low (${xApiScore})`
+          : "Failed score thresholds",
     };
   } catch (err) {
     console.error(`[pipeline] Error for post #${idx + 1}:`, err);
@@ -244,6 +303,18 @@ function createLogEntryWithScores(
     fullResult += `- Disagreement Score: ${result.scores.disagreement.toFixed(
       2
     )}\n`;
+
+    if (result.helpfulnessScore !== undefined) {
+      fullResult += `- Helpfulness Prediction: ${result.helpfulnessScore.toFixed(2)}\n`;
+      if (result.helpfulnessReasoning) {
+        fullResult += `  Reasoning: ${result.helpfulnessReasoning}\n`;
+      }
+    }
+
+    if (result.xApiScore !== undefined) {
+      fullResult += `- X API Score: ${result.xApiScore}${result.xApiSuccess ? '' : ' (failed)'}\n`;
+    }
+
     fullResult += `- All Passed: ${result.allScoresPassed}\n\n`;
   }
 
@@ -290,6 +361,8 @@ function createLogEntryWithScores(
     "Keywords extracted": result.keywords
       ? result.keywords.keywords.join(", ")
       : "",
+    "Helpfulness Prediction": result.helpfulnessScore,
+    "X API Score": result.xApiScore,
     // Character count is computed in Airtable, don't write to it
   };
 }
