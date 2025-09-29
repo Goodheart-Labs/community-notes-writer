@@ -22,11 +22,13 @@ const promptTemplate = ({
   searchResults,
   citations,
   retweetContext,
+  backgroundUnderstanding = "",
 }: {
   text: string;
   searchResults: string;
   citations: string[];
   retweetContext?: string;
+  backgroundUnderstanding?: string;
 }) => `TASK: Analyze this X post and determine if it contains inaccuracies that require additional context, then write a note to provide that additional context.
 
 CRITICAL ANALYSIS STEPS:
@@ -119,7 +121,12 @@ Possible context that tweet is quoting (may be empty):
 ${retweetContext}
 \`\`\`
 
-Perplexity search results:
+${backgroundUnderstanding ? `Background Understanding from Google News:
+\`\`\`
+${backgroundUnderstanding}
+\`\`\`
+
+` : ''}Perplexity search results:
 \`\`\`
 ${searchResults}
 
@@ -133,6 +140,7 @@ const retryPromptTemplate = ({
   searchResults,
   citations,
   retweetContext,
+  backgroundUnderstanding = "",
   previousNote,
   characterCount,
 }: {
@@ -140,6 +148,7 @@ const retryPromptTemplate = ({
   searchResults: string;
   citations: string[];
   retweetContext?: string;
+  backgroundUnderstanding?: string;
   previousNote: string;
   characterCount: number;
 }) => `TASK: Analyze this X post and determine if it contains factual errors that require correction.${
@@ -167,7 +176,12 @@ Possible context that tweet is quoting (may be empty):
 ${retweetContext}
 \`\`\`
 
-Perplexity search results:
+${backgroundUnderstanding ? `Background Understanding from Google News:
+\`\`\`
+${backgroundUnderstanding}
+\`\`\`
+
+` : ''}Perplexity search results:
 \`\`\`
 ${searchResults}
 
@@ -187,6 +201,7 @@ export async function writeNoteWithSearchFn(
     searchResults,
     citations,
     retweetContext,
+    backgroundUnderstanding = "",
   }: z.infer<typeof textAndSearchResults>,
   config: {
     model: string;
@@ -208,6 +223,7 @@ export async function writeNoteWithSearchFn(
           searchResults,
           citations,
           retweetContext,
+          backgroundUnderstanding,
         });
       } else {
         // Retry attempt - use previous result to provide feedback
@@ -220,6 +236,7 @@ export async function writeNoteWithSearchFn(
           searchResults,
           citations,
           retweetContext,
+          backgroundUnderstanding,
           previousNote: previousParsed.note,
           characterCount: previousParsed.note.length,
         });
