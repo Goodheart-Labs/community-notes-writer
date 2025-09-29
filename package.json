@@ -45,6 +45,7 @@
     "watch-elo": "cd src/tools/elo-rating-web && bun build ./app.ts ./airtableClient.ts ./eloCalculator.ts ./types.ts ./cacheManager.ts --outdir ./dist --target browser --watch",
     "serve-elo": "bun run src/tools/elo-rating-web/server.ts",
     "elo": "bun run build-elo && bun run serve-elo",
+    "elo:watch": "bun src/tools/elo-rating-web/watch.ts",
     "dev-elo": "bash src/tools/elo-rating-web/dev.sh",
     "prompt-lab": "bun src/tools/prompt-lab/server.ts",
     "prompt-lab:fetch": "bun src/tools/prompt-lab/fetchAirtableData.ts",

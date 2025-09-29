@@ -37,6 +37,11 @@ export interface PipelineResult {
     positive: number;
     disagreement: number;
   };
+  filterDetails?: {
+    url: { score: number; reasoning: string };
+    positive: { score: number; reasoning: string };
+    disagreement: { score: number; reasoning: string };
+  };
   helpfulnessScore?: number;
   helpfulnessReasoning?: string;
   xApiScore?: number;
@@ -186,6 +191,12 @@ async function runRefactoredPipeline(
       disagreement: filterScores.disagreement.score,
     };
 
+    const filterDetails = {
+      url: { score: urlScore.score, reasoning: urlScore.reasoning },
+      positive: { score: filterScores.positive.score, reasoning: filterScores.positive.reasoning },
+      disagreement: { score: filterScores.disagreement.score, reasoning: filterScores.disagreement.reasoning },
+    };
+
     // Check initial thresholds
     const initialPassed =
       scores.url > 0.5 && scores.positive > 0.5 && scores.disagreement > 0.5;
@@ -251,6 +262,7 @@ async function runRefactoredPipeline(
       searchContextResult: searchResult,
       noteResult,
       scores,
+      filterDetails,
       helpfulnessScore,
       helpfulnessReasoning,
       xApiScore,
@@ -294,15 +306,33 @@ function createLogEntryWithScores(
     fullResult += `- Claims: ${result.keywords.claims.join("; ")}\n\n`;
   }
 
-  if (result.scores) {
+  if (result.scores && result.filterDetails) {
     fullResult += `FILTER SCORES:\n`;
     fullResult += `- URL Score: ${result.scores.url.toFixed(2)}\n`;
-    fullResult += `- Positive Claims Score: ${result.scores.positive.toFixed(
-      2
-    )}\n`;
-    fullResult += `- Disagreement Score: ${result.scores.disagreement.toFixed(
-      2
-    )}\n`;
+    fullResult += `  Reasoning: ${result.filterDetails.url.reasoning}\n`;
+    fullResult += `- Positive Claims Score: ${result.scores.positive.toFixed(2)}\n`;
+    fullResult += `  Reasoning: ${result.filterDetails.positive.reasoning}\n`;
+    fullResult += `- Disagreement Score: ${result.scores.disagreement.toFixed(2)}\n`;
+    fullResult += `  Reasoning: ${result.filterDetails.disagreement.reasoning}\n`;
+
+    if (result.helpfulnessScore !== undefined) {
+      fullResult += `- Helpfulness Prediction: ${result.helpfulnessScore.toFixed(2)}\n`;
+      if (result.helpfulnessReasoning) {
+        fullResult += `  Reasoning: ${result.helpfulnessReasoning}\n`;
+      }
+    }
+
+    if (result.xApiScore !== undefined) {
+      fullResult += `- X API Score: ${result.xApiScore}${result.xApiSuccess ? '' : ' (failed)'}\n`;
+    }
+
+    fullResult += `- All Passed: ${result.allScoresPassed}\n\n`;
+  } else if (result.scores) {
+    // Fallback for old format without filterDetails
+    fullResult += `FILTER SCORES:\n`;
+    fullResult += `- URL Score: ${result.scores.url.toFixed(2)}\n`;
+    fullResult += `- Positive Claims Score: ${result.scores.positive.toFixed(2)}\n`;
+    fullResult += `- Disagreement Score: ${result.scores.disagreement.toFixed(2)}\n`;
 
     if (result.helpfulnessScore !== undefined) {
       fullResult += `- Helpfulness Prediction: ${result.helpfulnessScore.toFixed(2)}\n`;
@@ -361,6 +391,7 @@ function createLogEntryWithScores(
     "Keywords extracted": result.keywords
       ? result.keywords.keywords.join(", ")
       : "",
+    // Filter reasoning is now included in Full Result, not as separate field
     "Helpfulness Prediction": result.helpfulnessScore,
     "X API Score": result.xApiScore,
     // Character count is computed in Airtable, don't write to it
