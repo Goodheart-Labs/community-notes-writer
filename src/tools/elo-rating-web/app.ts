@@ -300,6 +300,7 @@ class CommunityNotesComparison {
   }
 
   private displayCurrentComparison() {
+    // Check if we have more comparisons to show - updated!
     if (this.currentPairIndex >= this.comparisonPairs.length) {
       this.showInterface('noMoreComparisons');
       return;
@@ -318,19 +319,45 @@ class CommunityNotesComparison {
 
     // Convert URLs in text to clickable links
     const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const textWithLinks = this.escapeHtml(tweetData.text).replace(urlRegex, (url) => {
+    let processedText = this.escapeHtml(tweetData.text);
+
+    // Replace t.co links with clearer text
+    processedText = processedText.replace(urlRegex, (url) => {
+      if (url.includes('t.co/')) {
+        return `<a href="${url}" target="_blank" class="text-blue-500 hover:underline font-medium">
+          <svg class="inline w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path>
+            <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path>
+          </svg>View linked content</a>`;
+      }
       return `<a href="${url}" target="_blank" class="text-blue-500 hover:underline">${url}</a>`;
     });
 
-    tweetHtml += `<p>${textWithLinks}</p>`;
+    tweetHtml += `<p>${processedText}</p>`;
     
     // Only show media if we have actual JSON data with media
     if (tweetData.media && tweetData.media.length > 0) {
+      console.log('Rendering media, count:', tweetData.media.length);
       tweetHtml += `<div class="grid grid-cols-2 gap-2">`;
       for (const media of tweetData.media) {
-        if (media.type === 'photo') {
-          const imageUrl = media.media_url_https || media.media_url;
+        console.log('Media item:', {
+          type: media.type,
+          media_url_https: media.media_url_https,
+          media_url: media.media_url,
+          url: media.url,
+          fullObject: media
+        });
+
+        // Check multiple possible image indicators
+        const isImage = media.type === 'photo' ||
+                       media.media_url_https ||
+                       media.media_url ||
+                       (media.url && (media.url.includes('.jpg') || media.url.includes('.png') || media.url.includes('.jpeg')));
+
+        if (isImage) {
+          const imageUrl = media.media_url_https || media.media_url || media.url;
           if (imageUrl) {
+            console.log('Adding image with URL:', imageUrl);
             tweetHtml += `<img src="${imageUrl}" alt="Tweet media" class="rounded-lg max-h-48 object-cover w-full cursor-pointer" onclick="window.open('${imageUrl}', '_blank')">`;
           }
         }
@@ -339,10 +366,31 @@ class CommunityNotesComparison {
     }
     
     if (tweetData.quotedTweet) {
+      // Process the quoted tweet text - replace t.co links with clearer text
+      let quotedText = this.escapeHtml(tweetData.quotedTweet.text);
+
+      // Replace t.co links with [View Tweet] or keep other URLs as-is
+      quotedText = quotedText.replace(urlRegex, (url) => {
+        if (url.includes('t.co/')) {
+          return `<a href="${url}" target="_blank" class="text-blue-500 hover:underline font-medium">
+            <svg class="inline w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path>
+              <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path>
+            </svg>View Tweet</a>`;
+        }
+        return `<a href="${url}" target="_blank" class="text-blue-500 hover:underline">${url}</a>`;
+      });
+
       tweetHtml += `
-        <div class="border rounded-lg p-3 bg-gray-50">
-          <p class="text-sm text-gray-600 mb-1">Quote Tweet:</p>
-          <p class="text-sm">${this.escapeHtml(tweetData.quotedTweet.text)}</p>
+        <div class="border-l-4 border-gray-300 bg-gray-50 rounded-lg p-4 mt-3">
+          <div class="flex items-center mb-2">
+            <svg class="w-4 h-4 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"></path>
+              <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z"></path>
+            </svg>
+            <span class="text-sm font-semibold text-gray-600">Quoted Tweet</span>
+          </div>
+          <p class="text-sm text-gray-700 leading-relaxed">${quotedText}</p>
         </div>
       `;
     }
@@ -353,8 +401,15 @@ class CommunityNotesComparison {
     // Display URL
     const tweetUrl = this.getElement('tweetUrl');
     if (!tweetUrl) return;
-    
-    tweetUrl.innerHTML = `<a href="${pair.tweet.url}" target="_blank">${pair.tweet.url}</a>`;
+
+    tweetUrl.innerHTML = `
+      <a href="${pair.tweet.url}" target="_blank" class="inline-flex items-center text-blue-500 hover:text-blue-600 font-medium">
+        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path>
+          <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path>
+        </svg>
+        View on Twitter
+      </a>`;
     
     // Display notes with clickable links, character count, and existing ratings
     this.displayNoteWithLinks('leftNote', pair.leftNote.text, pair.leftNote.status, pair.leftNote.wouldBePosted, pair.leftNote.wouldNathanPost, pair.leftNote.botName);
@@ -371,8 +426,8 @@ class CommunityNotesComparison {
     }
 
     // Highlight better button if ratings differ significantly from "would be posted" status
-    const leftBetterBtn = this.getElement('leftBetterBtn');
-    const rightBetterBtn = this.getElement('rightBetterBtn');
+    const leftBetterBtn = this.getElement('leftBetter');
+    const rightBetterBtn = this.getElement('rightBetter');
 
     if (leftBetterBtn && rightBetterBtn &&
         pair.leftNote.wouldNathanPost !== undefined &&
@@ -406,6 +461,17 @@ class CommunityNotesComparison {
     try {
       const data = JSON.parse(tweetJson);
 
+      // Debug log to see what we're getting
+      console.log('Full tweet data:', data);
+      console.log('Tweet data structure:', {
+        hasMedia: !!data.media,
+        hasExtendedEntities: !!data.extended_entities,
+        hasEntities: !!data.entities,
+        mediaCount: data.media?.length || 0,
+        extendedMediaCount: data.extended_entities?.media?.length || 0,
+        entitiesMediaCount: data.entities?.media?.length || 0
+      });
+
       // Handle the actual structure we're getting from our pipeline
       let quotedTweet = null;
 
@@ -422,13 +488,24 @@ class CommunityNotesComparison {
         };
       }
 
+      const media = data.media || data.extended_entities?.media || data.entities?.media || [];
+
+      // Debug log media details
+      if (media.length > 0) {
+        console.log('Found media:', media.map(m => ({
+          type: m.type,
+          url: m.media_url_https || m.media_url || m.url
+        })));
+      }
+
       return {
         text: data.text || data.full_text || '',
-        media: data.media || data.extended_entities?.media || data.entities?.media || [],
+        media: media,
         quotedTweet: quotedTweet
       };
     } catch (e) {
       // Not JSON, just plain text
+      console.log('Failed to parse tweet as JSON, treating as plain text');
       return { text: tweetJson, media: [], quotedTweet: null };
     }
   }
@@ -605,20 +682,32 @@ class CommunityNotesComparison {
   private showRatingInterface() {
     this.awaitingRating = true;
     const pair = this.comparisonPairs[this.currentPairIndex];
-    
-    // Show note previews
+
+    // Show note text only in the preview
     const leftPreview = this.getElement('leftNotePreview');
     const rightPreview = this.getElement('rightNotePreview');
-    
-    if (leftPreview) leftPreview.textContent = pair.leftNote.text;
-    if (rightPreview) rightPreview.textContent = pair.rightNote.text;
-    
+
+    if (leftPreview) {
+      leftPreview.textContent = pair.leftNote.text;
+    }
+    if (rightPreview) {
+      rightPreview.textContent = pair.rightNote.text;
+    }
+
+    // Show filter scores in separate section
+    this.displayFilterScores('leftFilterScores', pair.leftNote);
+    this.displayFilterScores('rightFilterScores', pair.rightNote);
+
+    // Show full reports in separate box
+    this.displayFullReport('leftFullReport', pair.leftNote);
+    this.displayFullReport('rightFullReport', pair.rightNote);
+
     // Reset sliders and inputs to middle
     (document.getElementById('leftRating') as HTMLInputElement).value = '50';
     (document.getElementById('leftRatingInput') as HTMLInputElement).value = '0.50';
     (document.getElementById('rightRating') as HTMLInputElement).value = '50';
     (document.getElementById('rightRatingInput') as HTMLInputElement).value = '0.50';
-    
+
     // Show existing ratings if available
     if (pair.leftNote.wouldNathanPost !== undefined) {
       const leftRating = pair.leftNote.wouldNathanPost;
@@ -630,8 +719,113 @@ class CommunityNotesComparison {
       (document.getElementById('rightRating') as HTMLInputElement).value = (rightRating * 100).toString();
       (document.getElementById('rightRatingInput') as HTMLInputElement).value = rightRating.toFixed(2);
     }
-    
+
     this.showInterface('ratingInterface');
+  }
+
+  private displayFilterScores(elementId: string, note: Note) {
+    const element = this.getElement(elementId);
+    if (!element) return;
+
+    const scores = [];
+    const threshold = 0.5;
+
+    // Collect all available filter scores
+    if (note.notSarcasmFilter !== undefined && note.notSarcasmFilter !== null) {
+      scores.push({
+        label: 'Not Sarcasm',
+        value: note.notSarcasmFilter.toFixed(2),
+        pass: note.notSarcasmFilter >= threshold
+      });
+    }
+    if (note.urlFilter !== undefined && note.urlFilter !== null) {
+      scores.push({
+        label: 'URL Valid',
+        value: note.urlFilter.toFixed(2),
+        pass: note.urlFilter >= threshold
+      });
+    }
+    if (note.characterCountFilter !== undefined && note.characterCountFilter !== null) {
+      scores.push({
+        label: 'Character Count',
+        value: note.characterCountFilter.toFixed(2),
+        pass: note.characterCountFilter >= threshold
+      });
+    }
+    if (note.positiveClaimsFilter !== undefined && note.positiveClaimsFilter !== null) {
+      scores.push({
+        label: 'Positive Claims',
+        value: note.positiveClaimsFilter.toFixed(2),
+        pass: note.positiveClaimsFilter >= threshold
+      });
+    }
+    if (note.significantCorrectionFilter !== undefined && note.significantCorrectionFilter !== null) {
+      scores.push({
+        label: 'Significant Correction',
+        value: note.significantCorrectionFilter.toFixed(2),
+        pass: note.significantCorrectionFilter >= threshold
+      });
+    }
+
+    if (scores.length > 0) {
+      element.innerHTML = `
+        <h5 class="font-semibold text-sm mb-2">Filter Scores</h5>
+        <div class="grid grid-cols-1 gap-1">
+          ${scores.map(score => `
+            <div class="flex justify-between text-xs">
+              <span class="text-gray-600">${score.label}:</span>
+              <span class="${score.pass ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}">
+                ${score.value} ${score.pass ? '✓' : '✗'}
+              </span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      element.innerHTML = '<p class="text-xs text-gray-500">No filter scores available</p>';
+    }
+  }
+
+  private displayFullReport(elementId: string, note: Note) {
+    const element = this.getElement(elementId);
+    if (!element) return;
+
+    const preElement = element.querySelector('pre');
+    if (preElement) {
+      if (note.fullResult) {
+        preElement.textContent = note.fullResult;
+      } else {
+        preElement.textContent = 'No full report available';
+      }
+    }
+  }
+
+
+  private extractFilterScores(fullResult: string): Array<{label: string, value: string, pass: boolean}> {
+    const scores = [];
+
+    // Extract filter scores from full result
+    const patterns = [
+      { regex: /Not sarcasm filter:\s*([\d.]+)/i, label: 'Not Sarcasm' },
+      { regex: /URL filter:\s*([\d.]+)/i, label: 'URL Valid' },
+      { regex: /Character count filter:\s*([\d.]+)/i, label: 'Character Count' },
+      { regex: /Positive claims only filter:\s*([\d.]+)/i, label: 'Positive Claims' },
+      { regex: /Significant correction filter:\s*([\d.]+)/i, label: 'Significant Correction' }
+    ];
+
+    for (const pattern of patterns) {
+      const match = fullResult.match(pattern.regex);
+      if (match) {
+        const value = parseFloat(match[1]);
+        scores.push({
+          label: pattern.label,
+          value: value.toFixed(2),
+          pass: value >= 0.5
+        });
+      }
+    }
+
+    return scores;
   }
 
   private async submitRatings() {

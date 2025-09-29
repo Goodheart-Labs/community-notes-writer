@@ -129,7 +129,13 @@ export class AirtableClient {
             text: fields["Final note"],
             status: status,
             wouldBePosted: fields["Would be posted"] === 1,
-            wouldNathanPost: fields["Would Nathan have posted?"]
+            wouldNathanPost: fields["Would Nathan have posted?"],
+            fullResult: fields["Full Result"],
+            notSarcasmFilter: fields["Not sarcasm filter"],
+            urlFilter: fields["URL filter"],
+            characterCountFilter: fields["Character count filter"],
+            positiveClaimsFilter: fields["Positive claims only filter"],
+            significantCorrectionFilter: fields["Significant correction filter"]
           });
         });
         
@@ -190,7 +196,13 @@ export class AirtableClient {
                   text: fields["Final note"],
                   status: status,
                   wouldBePosted: fields["Would be posted"] === 1,
-                  wouldNathanPost: fields["Would Nathan have posted?"]
+                  wouldNathanPost: fields["Would Nathan have posted?"],
+                  fullResult: fields["Full Result"],
+                  notSarcasmFilter: fields["Not sarcasm filter"],
+                  urlFilter: fields["URL filter"],
+                  characterCountFilter: fields["Character count filter"],
+                  positiveClaimsFilter: fields["Positive claims only filter"],
+                  significantCorrectionFilter: fields["Significant correction filter"]
                 });
               });
             }

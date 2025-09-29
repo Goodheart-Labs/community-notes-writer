@@ -4,8 +4,14 @@ import { join } from "path";
 import dotenv from "dotenv";
 import { execSync } from "child_process";
 
-// Load environment variables
-dotenv.config({ path: join(process.cwd(), ".env") });
+// Load environment variables from project root
+dotenv.config();
+
+// Debug: log environment variables
+console.log("Environment variables loaded:");
+console.log("AIRTABLE_API_KEY:", process.env.AIRTABLE_API_KEY ? "✓ Set" : "✗ Not set");
+console.log("AIRTABLE_BASE_ID:", process.env.AIRTABLE_BASE_ID ? "✓ Set" : "✗ Not set");
+console.log("AIRTABLE_TABLE_NAME:", process.env.AIRTABLE_TABLE_NAME || "Not set");
 
 const PORT = 8000;
 
