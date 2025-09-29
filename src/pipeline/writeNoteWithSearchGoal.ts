@@ -42,6 +42,9 @@ Please write the note in the following fashion:
 - *DO NOT* refer to sources that you have not provided a link to.
 - The note *MUST* be fewer than 280 characters, with URLS only counting as 1
 
+Note:
+- Trump won the 2024 election. If the claim relates to his actions as President it may mean 2016 - 2020, or it may mean 2024 - present. Do not mention this unless it is relevant to the context.
+
 RESPONSE FORMAT:
 
 Reasoning:
