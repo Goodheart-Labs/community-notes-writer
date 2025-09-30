@@ -250,9 +250,9 @@ async function runRefactoredPipeline(
         console.log(`[pipeline] X API score: ${xApiScore}`);
 
         // Check X API threshold
-        if (xApiScore < -0.5) {
+        if (xApiScore < -1.5) {
           allPassed = false;
-          console.log(`[pipeline] X API score too low (${xApiScore} < -0.5), note will not be posted`);
+          console.log(`[pipeline] X API score too low (${xApiScore} < -1.5), note will not be posted`);
         }
       } else {
         console.log(`[pipeline] X API evaluation failed: ${xApiResult.error}`);
@@ -278,7 +278,7 @@ async function runRefactoredPipeline(
         ? undefined
         : helpfulnessScore !== undefined && helpfulnessScore < 0.5
           ? `Helpfulness score too low (${helpfulnessScore.toFixed(2)})`
-          : xApiScore !== undefined && xApiScore < -0.5
+          : xApiScore !== undefined && xApiScore < -1.5
             ? `X API score too low (${xApiScore})`
             : "Failed score thresholds",
     };
