@@ -39,13 +39,8 @@ export async function evaluateNoteWithXAPI(
       post_id: postId
     });
 
-    console.log(`[evaluateNoteXAPI] Making request to: ${url}`);
-    console.log(`[evaluateNoteXAPI] Post ID: ${postId}`);
-    console.log(`[evaluateNoteXAPI] Note text length: ${noteText.length}`);
-
     // Get OAuth 1.0a headers
     const oauthHeaders = getOAuth1Headers(url, "POST", body);
-    console.log(`[evaluateNoteXAPI] OAuth headers generated successfully`);
 
     const response = await axios.post(
       url,
@@ -61,22 +56,14 @@ export async function evaluateNoteWithXAPI(
       }
     );
 
-    console.log(`[evaluateNoteXAPI] Response status: ${response.status}`);
-    console.log(`[evaluateNoteXAPI] Response data:`, JSON.stringify(response.data, null, 2));
-
     // According to X API docs, claim_opinion_score is nested under data.data
     const claimOpinionScore = response.data.data?.claim_opinion_score;
 
-    console.log(`[evaluateNoteXAPI] Extracted claim_opinion_score: ${claimOpinionScore}`);
-    console.log(`[evaluateNoteXAPI] Type of score: ${typeof claimOpinionScore}`);
+    console.log(`[evaluateNoteXAPI] Score for post ${postId}: ${claimOpinionScore}`);
 
     if (claimOpinionScore === undefined || claimOpinionScore === null) {
       console.warn(`[evaluateNoteXAPI] WARNING: claim_opinion_score is ${claimOpinionScore}`);
-      console.warn(`[evaluateNoteXAPI] Full response structure:`, {
-        hasData: !!response.data.data,
-        dataKeys: response.data.data ? Object.keys(response.data.data) : "no data field",
-        errors: response.data.errors || "no errors field"
-      });
+      console.warn(`[evaluateNoteXAPI] Response errors:`, response.data.errors);
     }
 
     return {
@@ -84,15 +71,7 @@ export async function evaluateNoteWithXAPI(
       success: true
     };
   } catch (error: any) {
-    console.error("[evaluateNoteXAPI] Error evaluating note:");
-    console.error("[evaluateNoteXAPI] Error message:", error.message);
-    console.error("[evaluateNoteXAPI] Response status:", error.response?.status);
-    console.error("[evaluateNoteXAPI] Response data:", JSON.stringify(error.response?.data, null, 2));
-    console.error("[evaluateNoteXAPI] Request config:", {
-      url: error.config?.url,
-      method: error.config?.method,
-      headers: error.config?.headers
-    });
+    console.error("[evaluateNoteXAPI] Error evaluating note:", error.response?.data || error.message);
 
     // Return a neutral score if API fails (don't block the pipeline)
     return {
