@@ -33,6 +33,9 @@ export async function searchWithKeywords(
   const systemPrompt = `Search the web for information about: ${searchQuery}
 
 ${claimsText}
+${input.quoteContext ? `Context: ${input.quoteContext}` : ""}
+
+Tweet text: "${input.originalText}"
 
 Today's date: ${input.date}
 
