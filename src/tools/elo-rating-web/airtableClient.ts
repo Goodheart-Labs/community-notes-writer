@@ -31,11 +31,11 @@ export class AirtableClient {
     // Format progress message based on time period
     let progressMsg = '';
     if (daysBack < 1) {
-      progressMsg = `Fetching main branch posted notes from the last ${Math.round(hoursBack)} hours...`;
+      progressMsg = `Fetching all notes from the last ${Math.round(hoursBack)} hours...`;
     } else if (daysBack === 1) {
-      progressMsg = `Fetching main branch posted notes from the last 24 hours...`;
+      progressMsg = `Fetching all notes from the last 24 hours...`;
     } else {
-      progressMsg = `Fetching main branch posted notes from the last ${daysBack} days...`;
+      progressMsg = `Fetching all notes from the last ${daysBack} days...`;
     }
     this.onProgress?.(progressMsg);
     
@@ -46,9 +46,9 @@ export class AirtableClient {
     do {
       // Use encodeURIComponent for table name
       const encodedTableName = encodeURIComponent(this.tableName);
-      // Filter by date, final note, and main branch posted posts only
-      const dateStr = startDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
-      const filterFormula = `AND({Final note} != '', IS_AFTER({Created}, '${dateStr}'), {Bot name} = 'main', {Would be posted} = 1)`;
+      // Filter by timestamp and final note only
+      const dateStr = startDate.toISOString(); // Full ISO timestamp for precise filtering
+      const filterFormula = `AND({Final note} != '', IS_AFTER({Created}, '${dateStr}'))`;
       const url = `https://api.airtable.com/v0/${this.baseId}/${encodedTableName}?` + 
         `filterByFormula=${encodeURIComponent(filterFormula)}` +
         `&pageSize=100` +
@@ -221,8 +221,9 @@ export class AirtableClient {
       return uniqueBots.size >= 2;
     });
     
-    console.log(`Found ${tweetsArray.length} main branch posted tweets, ${filteredTweets.length} with other branch attempts`);
-    this.onProgress?.(`Found ${filteredTweets.length} tweets with multiple branch attempts out of ${tweetsArray.length} main branch posts`);
+    console.log(`Found ${tweetsArray.length} total tweets, ${filteredTweets.length} with multiple branch attempts`);
+    console.log(`Total notes fetched: ${tweetsArray.reduce((sum, t) => sum + t.notes.length, 0)}`);
+    this.onProgress?.(`Found ${filteredTweets.length} tweets with multiple branch attempts out of ${tweetsArray.length} total tweets`);
     return filteredTweets;
   }
 

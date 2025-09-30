@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bad Miss Viewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <h1 class="text-4xl font-bold text-gray-800 mb-2">Bad Miss Viewer</h1>
+        <p class="text-gray-600 mb-8">Posts that would have been posted but Nathan rated < 0.5</p>
+
+        <!-- Controls -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex flex-col md:flex-row gap-4">
+                <!-- Time Range Filter -->
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Time Range</label>
+                    <select id="timeRange" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                        <option value="8">Last 8 hours</option>
+                        <option value="24">Last 24 hours</option>
+                        <option value="48">Last 48 hours</option>
+                        <option value="168">Last week</option>
+                    </select>
+                </div>
+
+                <!-- Refresh Button -->
+                <div class="flex items-end">
+                    <button id="refreshBtn" class="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors">
+                        <i class="fas fa-sync-alt mr-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Branch Filter Buttons -->
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Branch</label>
+                <div id="branchButtons" class="flex flex-wrap gap-2">
+                    <button class="branch-btn active" data-branch="all">
+                        All Branches
+                    </button>
+                    <!-- Dynamic buttons will be added here -->
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="mt-4 pt-4 border-t border-gray-200">
+                <div class="text-gray-600">
+                    <span class="font-semibold">Total Bad Misses:</span>
+                    <span id="totalCount" class="ml-2 text-lg font-bold text-red-600">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="space-y-4">
+            <div class="text-center text-gray-500 py-12">
+                <i class="fas fa-arrow-up text-4xl mb-4"></i>
+                <p>Select a time range and branch to view bad misses</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentBranch = 'all';
+        let allBranches = [];
+
+        // Fetch branches and populate buttons based on time range
+        async function loadBranches() {
+            try {
+                const timeRange = document.getElementById('timeRange').value;
+                const response = await fetch(`/api/branches?hours=${timeRange}`);
+                const data = await response.json();
+                allBranches = data.branches;
+
+                const container = document.getElementById('branchButtons');
+
+                // Clear existing branch buttons (keep the "All" button)
+                const allBtn = container.querySelector('[data-branch="all"]');
+                container.innerHTML = '';
+                container.appendChild(allBtn);
+
+                // Add branch buttons for branches with bad misses
+                allBranches.forEach(branch => {
+                    const btn = document.createElement('button');
+                    btn.className = 'branch-btn';
+                    btn.dataset.branch = branch;
+                    btn.textContent = branch;
+                    container.appendChild(btn);
+                });
+
+                // Add click handlers to all branch buttons
+                container.querySelectorAll('.branch-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        currentBranch = btn.dataset.branch;
+                        container.querySelectorAll('.branch-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        loadBadMisses();
+                    });
+                });
+
+                // Reset to "all" branch when reloading branches
+                currentBranch = 'all';
+                allBtn.classList.add('active');
+            } catch (error) {
+                console.error('Failed to load branches:', error);
+            }
+        }
+
+        // Fetch and display bad misses
+        async function loadBadMisses() {
+            const timeRange = document.getElementById('timeRange').value;
+            const resultsContainer = document.getElementById('results');
+
+            resultsContainer.innerHTML = '<div class="text-center text-gray-500 py-12"><i class="fas fa-spinner fa-spin text-4xl mb-4"></i><p>Loading bad misses...</p></div>';
+
+            try {
+                const response = await fetch(`/api/bad-misses?hours=${timeRange}&branch=${currentBranch}`);
+                const data = await response.json();
+
+                document.getElementById('totalCount').textContent = data.count;
+
+                if (data.badMisses.length === 0) {
+                    resultsContainer.innerHTML = `
+                        <div class="text-center text-gray-500 py-12">
+                            <i class="fas fa-check-circle text-4xl mb-4 text-green-500"></i>
+                            <p>No bad misses found for the selected filters!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                resultsContainer.innerHTML = data.badMisses.map(miss => `
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                                        ${miss.botName}
+                                    </span>
+                                    <span class="text-sm text-gray-500">
+                                        ${new Date(miss.createdTime).toLocaleString()}
+                                    </span>
+                                </div>
+                                <a href="${miss.url}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm">
+                                    <i class="fab fa-twitter mr-1"></i>View Tweet
+                                </a>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm text-gray-600">Nathan Score</div>
+                                <div class="text-2xl font-bold text-red-600">
+                                    ${miss.nathanScore !== null && miss.nathanScore !== undefined ? miss.nathanScore.toFixed(2) : 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tweet Text -->
+                        ${miss.tweetText ? `
+                            <div class="mb-4">
+                                <h4 class="font-semibold text-gray-700 mb-2">Original Tweet</h4>
+                                <div class="bg-gray-50 p-4 rounded-lg text-gray-800">
+                                    ${escapeHtml(miss.tweetText)}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- Final Note -->
+                        ${miss.finalNote ? `
+                            <div class="mb-4">
+                                <h4 class="font-semibold text-gray-700 mb-2">Note That Would Have Been Posted</h4>
+                                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                                    ${escapeHtml(miss.finalNote)}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- Filter Scores -->
+                        <div class="mb-4">
+                            <button class="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-2" onclick="toggleFilters(this)">
+                                <i class="fas fa-chevron-down"></i>
+                                <span>Show Filter Scores</span>
+                            </button>
+                            <div class="filter-scores hidden mt-3 grid grid-cols-2 md:grid-cols-3 gap-3">
+                                ${formatFilterScore('Not Sarcasm', miss.notSarcasmFilter)}
+                                ${formatFilterScore('URL Filter', miss.urlFilter)}
+                                ${formatFilterScore('Character Count', miss.characterCountFilter)}
+                                ${formatFilterScore('Positive Claims', miss.positiveClaimsFilter)}
+                                ${formatFilterScore('Significant Correction', miss.significantCorrectionFilter)}
+                            </div>
+                        </div>
+
+                        <!-- Full Report -->
+                        ${miss.fullResult ? `
+                            <div>
+                                <button class="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-2" onclick="toggleReport(this)">
+                                    <i class="fas fa-chevron-down"></i>
+                                    <span>Show Full Report</span>
+                                </button>
+                                <div class="full-report hidden mt-3 bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
+                                    <pre class="text-xs text-gray-700 whitespace-pre-wrap font-mono">${escapeHtml(miss.fullResult)}</pre>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Failed to load bad misses:', error);
+                resultsContainer.innerHTML = `
+                    <div class="text-center text-red-500 py-12">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                        <p>Error loading bad misses: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function formatFilterScore(label, score) {
+            if (score === null || score === undefined) return '';
+            const color = score >= 0.7 ? 'green' : score >= 0.4 ? 'yellow' : 'red';
+            return `
+                <div class="bg-${color}-50 p-2 rounded text-center">
+                    <div class="text-xs text-gray-600">${label}</div>
+                    <div class="text-lg font-semibold text-${color}-800">${score.toFixed(2)}</div>
+                </div>
+            `;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function toggleFilters(btn) {
+            const container = btn.parentElement;
+            const scores = container.querySelector('.filter-scores');
+            const icon = btn.querySelector('i');
+            const span = btn.querySelector('span');
+
+            if (scores.classList.contains('hidden')) {
+                scores.classList.remove('hidden');
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+                span.textContent = 'Hide Filter Scores';
+            } else {
+                scores.classList.add('hidden');
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+                span.textContent = 'Show Filter Scores';
+            }
+        }
+
+        function toggleReport(btn) {
+            const container = btn.parentElement;
+            const report = container.querySelector('.full-report');
+            const icon = btn.querySelector('i');
+            const span = btn.querySelector('span');
+
+            if (report.classList.contains('hidden')) {
+                report.classList.remove('hidden');
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+                span.textContent = 'Hide Full Report';
+            } else {
+                report.classList.add('hidden');
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+                span.textContent = 'Show Full Report';
+            }
+        }
+
+        // Event listeners
+        document.getElementById('timeRange').addEventListener('change', async () => {
+            await loadBranches();
+            loadBadMisses();
+        });
+        document.getElementById('refreshBtn').addEventListener('click', async () => {
+            await loadBranches();
+            loadBadMisses();
+        });
+
+        // Initialize
+        loadBranches().then(() => loadBadMisses());
+    </script>
+
+    <style>
+        .branch-btn {
+            @apply px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors;
+        }
+        .branch-btn.active {
+            @apply bg-blue-500 text-white border-blue-500 hover:bg-blue-600;
+        }
+    </style>
+</body>
+</html>

@@ -97,6 +97,20 @@ class CommunityNotesComparison {
         rightInput?.addEventListener('input', () => {
             rightSlider.value = (parseFloat(rightInput.value) * 10).toString();
         });
+        // Toggle details section
+        document.getElementById('toggleDetails')?.addEventListener('click', () => {
+            const detailsSection = document.getElementById('detailsSection');
+            const toggleButton = document.getElementById('toggleDetails');
+            const isHidden = detailsSection.classList.contains('hidden');
+
+            if (isHidden) {
+                detailsSection.classList.remove('hidden');
+                toggleButton.innerHTML = '<span class="font-medium"><i class="fas fa-chevron-up mr-2"></i>Hide Filter Scores & Full Reports</span><i class="fas fa-chevron-up"></i>';
+            } else {
+                detailsSection.classList.add('hidden');
+                toggleButton.innerHTML = '<span class="font-medium"><i class="fas fa-chevron-down mr-2"></i>Show Filter Scores & Full Reports</span><i class="fas fa-chevron-down"></i>';
+            }
+        });
         // Clear cache button
         document.getElementById('clearCache')?.addEventListener('click', () => {
             this.cacheManager.clearCache();
@@ -461,7 +475,8 @@ class CommunityNotesComparison {
             document.getElementById('rightRating').value = (rightRating * 10).toString();
             document.getElementById('rightRatingInput').value = rightRating.toFixed(1);
         }
-        this.showInterface('ratingInterface');
+        // No longer need to switch interfaces - everything is on one page now
+        // this.showInterface('ratingInterface');
     }
     async submitRatings() {
         if (!this.currentComparison || !this.airtableClient)

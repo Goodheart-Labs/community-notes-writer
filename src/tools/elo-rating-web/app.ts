@@ -112,26 +112,49 @@ class CommunityNotesComparison {
 
     leftSlider?.addEventListener('input', () => {
       leftInput.value = (parseFloat(leftSlider.value) / 100).toFixed(2);
+      this.updateButtonHighlight();
     });
     leftInput?.addEventListener('input', () => {
       leftSlider.value = (parseFloat(leftInput.value) * 100).toString();
+      this.updateButtonHighlight();
     });
     rightSlider?.addEventListener('input', () => {
       rightInput.value = (parseFloat(rightSlider.value) / 100).toFixed(2);
+      this.updateButtonHighlight();
     });
     rightInput?.addEventListener('input', () => {
       rightSlider.value = (parseFloat(rightInput.value) * 100).toString();
+      this.updateButtonHighlight();
     });
 
     // Clear cache button
     document.getElementById('clearCache')?.addEventListener('click', () => {
       this.cacheManager.clearCache();
+      this.currentPairIndex = 0;
+      this.comparisonPairs = [];
+      this.tweets = [];
+      this.updateProgress();
       alert('Cache cleared! Next fetch will load fresh data from Airtable.');
     });
 
     // Clear cache when date range changes
     document.getElementById('dateRange')?.addEventListener('change', () => {
       this.cacheManager.clearCache();
+    });
+
+    // Toggle details section
+    document.getElementById('toggleDetails')?.addEventListener('click', () => {
+      const detailsSection = document.getElementById('detailsSection');
+      const button = document.getElementById('toggleDetails');
+      const isHidden = detailsSection?.classList.contains('hidden');
+
+      if (isHidden) {
+        detailsSection?.classList.remove('hidden');
+        if (button) button.innerHTML = '<span class="font-medium"><i class="fas fa-chevron-up mr-2"></i>Hide Filter Scores & Full Reports</span><i class="fas fa-chevron-up"></i>';
+      } else {
+        detailsSection?.classList.add('hidden');
+        if (button) button.innerHTML = '<span class="font-medium"><i class="fas fa-chevron-down mr-2"></i>Show Filter Scores & Full Reports</span><i class="fas fa-chevron-down"></i>';
+      }
     });
 
     // Keyboard shortcuts
@@ -414,6 +437,28 @@ class CommunityNotesComparison {
     // Display notes with clickable links, character count, and existing ratings
     this.displayNoteWithLinks('leftNote', pair.leftNote.text, pair.leftNote.status, pair.leftNote.wouldBePosted, pair.leftNote.wouldNathanPost, pair.leftNote.botName);
     this.displayNoteWithLinks('rightNote', pair.rightNote.text, pair.rightNote.status, pair.rightNote.wouldBePosted, pair.rightNote.wouldNathanPost, pair.rightNote.botName);
+
+    // Populate the sliders with existing ratings if available
+    if (pair.leftNote.wouldNathanPost !== undefined && pair.leftNote.wouldNathanPost !== null) {
+      const leftRating = pair.leftNote.wouldNathanPost;
+      (document.getElementById('leftRating') as HTMLInputElement).value = (leftRating * 100).toString();
+      (document.getElementById('leftRatingInput') as HTMLInputElement).value = leftRating.toFixed(2);
+    } else {
+      (document.getElementById('leftRating') as HTMLInputElement).value = '50';
+      (document.getElementById('leftRatingInput') as HTMLInputElement).value = '0.50';
+    }
+
+    if (pair.rightNote.wouldNathanPost !== undefined && pair.rightNote.wouldNathanPost !== null) {
+      const rightRating = pair.rightNote.wouldNathanPost;
+      (document.getElementById('rightRating') as HTMLInputElement).value = (rightRating * 100).toString();
+      (document.getElementById('rightRatingInput') as HTMLInputElement).value = rightRating.toFixed(2);
+    } else {
+      (document.getElementById('rightRating') as HTMLInputElement).value = '50';
+      (document.getElementById('rightRatingInput') as HTMLInputElement).value = '0.50';
+    }
+
+    // Update button highlight based on ratings
+    this.updateButtonHighlight();
     
     // Show notice if both notes already have ratings
     const ratingsNotice = this.getElement('existingRatingsNotice');
@@ -614,13 +659,66 @@ class CommunityNotesComparison {
 
       this.updateLeaderboard();
 
-      // Show rating interface
+      // Show rating interface and populate with data
       this.showRatingInterface();
+
+      // Auto-submit ratings after a brief moment
+      setTimeout(() => {
+        if (this.awaitingRating) {
+          this.submitRatings();
+        }
+      }, 100);
     } else {
       // Skip - move to next comparison
       this.currentPairIndex++;
       this.updateProgress();
       this.displayCurrentComparison();
+    }
+  }
+
+  private updateButtonHighlight() {
+    if (this.currentPairIndex >= this.comparisonPairs.length) return;
+
+    const pair = this.comparisonPairs[this.currentPairIndex];
+    const leftRatingInput = document.getElementById('leftRatingInput') as HTMLInputElement;
+    const rightRatingInput = document.getElementById('rightRatingInput') as HTMLInputElement;
+    const leftBetterBtn = document.getElementById('leftBetter');
+    const rightBetterBtn = document.getElementById('rightBetter');
+    const equalBtn = document.getElementById('equal');
+
+    if (!leftRatingInput || !rightRatingInput || !leftBetterBtn || !rightBetterBtn || !equalBtn) {
+      return;
+    }
+
+    const leftRating = parseFloat(leftRatingInput.value);
+    const rightRating = parseFloat(rightRatingInput.value);
+
+    // Calculate how close each rating is to whether it would be posted
+    // wouldBePosted: true = 1, false = 0
+    const leftExpected = pair.leftNote.wouldBePosted ? 1 : 0;
+    const rightExpected = pair.rightNote.wouldBePosted ? 1 : 0;
+
+    // Distance from expected value
+    const leftDiff = Math.abs(leftRating - leftExpected);
+    const rightDiff = Math.abs(rightRating - rightExpected);
+
+    // Clear all highlights
+    leftBetterBtn.classList.remove('ring-4', 'ring-green-500', 'ring-offset-2');
+    rightBetterBtn.classList.remove('ring-4', 'ring-green-500', 'ring-offset-2');
+    equalBtn.classList.remove('ring-4', 'ring-green-500', 'ring-offset-2');
+
+    // Highlight based on which is closer to its expected value
+    const diffBetweenDiffs = Math.abs(leftDiff - rightDiff);
+
+    if (diffBetweenDiffs < 0.15) {
+      // Both are similarly close/far from expected - suggest equal
+      equalBtn.classList.add('ring-4', 'ring-green-500', 'ring-offset-2');
+    } else if (leftDiff < rightDiff) {
+      // Left is closer to its expected value - it's better
+      leftBetterBtn.classList.add('ring-4', 'ring-green-500', 'ring-offset-2');
+    } else {
+      // Right is closer to its expected value - it's better
+      rightBetterBtn.classList.add('ring-4', 'ring-green-500', 'ring-offset-2');
     }
   }
 
@@ -683,6 +781,13 @@ class CommunityNotesComparison {
     this.awaitingRating = true;
     const pair = this.comparisonPairs[this.currentPairIndex];
 
+    console.log('showRatingInterface called for pair:', {
+      leftBot: pair.leftNote.botName,
+      rightBot: pair.rightNote.botName,
+      leftRating: pair.leftNote.wouldNathanPost,
+      rightRating: pair.rightNote.wouldNathanPost
+    });
+
     // Show note text only in the preview
     const leftPreview = this.getElement('leftNotePreview');
     const rightPreview = this.getElement('rightNotePreview');
@@ -709,18 +814,24 @@ class CommunityNotesComparison {
     (document.getElementById('rightRatingInput') as HTMLInputElement).value = '0.50';
 
     // Show existing ratings if available
-    if (pair.leftNote.wouldNathanPost !== undefined) {
+    if (pair.leftNote.wouldNathanPost !== undefined && pair.leftNote.wouldNathanPost !== null) {
       const leftRating = pair.leftNote.wouldNathanPost;
+      console.log('Loading left rating:', leftRating);
       (document.getElementById('leftRating') as HTMLInputElement).value = (leftRating * 100).toString();
       (document.getElementById('leftRatingInput') as HTMLInputElement).value = leftRating.toFixed(2);
     }
-    if (pair.rightNote.wouldNathanPost !== undefined) {
+    if (pair.rightNote.wouldNathanPost !== undefined && pair.rightNote.wouldNathanPost !== null) {
       const rightRating = pair.rightNote.wouldNathanPost;
+      console.log('Loading right rating:', rightRating);
       (document.getElementById('rightRating') as HTMLInputElement).value = (rightRating * 100).toString();
       (document.getElementById('rightRatingInput') as HTMLInputElement).value = rightRating.toFixed(2);
     }
 
-    this.showInterface('ratingInterface');
+    // Update button highlight based on the loaded ratings
+    this.updateButtonHighlight();
+
+    // No longer need to switch interfaces - everything is on one page now
+    // this.showInterface('ratingInterface');
   }
 
   private displayFilterScores(elementId: string, note: Note) {
