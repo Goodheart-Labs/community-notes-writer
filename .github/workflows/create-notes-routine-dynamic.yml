@@ -43,6 +43,8 @@ jobs:
       X_API_KEY_SECRET: ${{ secrets.X_API_KEY_SECRET }}
       X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
       X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+      # X API Bearer Token for note evaluation
+      X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
       # OpenRouter API key for AI models
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       # Airtable credentials for logging
