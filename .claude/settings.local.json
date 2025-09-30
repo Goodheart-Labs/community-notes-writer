@@ -19,7 +19,9 @@
       "Bash(curl:*)",
       "Read(//private/tmp/**)",
       "Bash(git branch:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(git rm:*)",
+      "WebFetch(domain:airtable.com)"
     ],
     "deny": [],
     "ask": []

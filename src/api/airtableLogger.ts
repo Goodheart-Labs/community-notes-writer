@@ -18,6 +18,9 @@ export class AirtableLogger {
   private base: Airtable.Base;
   private tableName: string;
 
+  private baseId: string;
+  private apiKey: string;
+
   constructor() {
     const apiKey = process.env.AIRTABLE_API_KEY;
     const baseId = process.env.AIRTABLE_BASE_ID;
@@ -29,8 +32,77 @@ export class AirtableLogger {
       );
     }
 
+    this.apiKey = apiKey;
+    this.baseId = baseId;
     this.base = new Airtable({ apiKey }).base(baseId);
     this.tableName = tableName;
+  }
+
+  async ensureFields(): Promise<void> {
+    try {
+      // Get current table schema
+      const response = await fetch(
+        `https://api.airtable.com/v0/meta/bases/${this.baseId}/tables`,
+        {
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch table schema: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const table = data.tables.find((t: any) => t.name === this.tableName);
+
+      if (!table) {
+        throw new Error(`Table ${this.tableName} not found`);
+      }
+
+      const existingFields = new Set(table.fields.map((f: any) => f.name));
+      const requiredFields = [
+        { name: "Helpfulness Prediction", type: "number", options: { precision: 2 } },
+        { name: "X API Score", type: "number", options: { precision: 2 } },
+      ];
+
+      const fieldsToCreate = requiredFields.filter(
+        (field) => !existingFields.has(field.name)
+      );
+
+      if (fieldsToCreate.length === 0) {
+        console.log("[AirtableLogger] All required fields already exist");
+        return;
+      }
+
+      // Create missing fields
+      for (const field of fieldsToCreate) {
+        const createResponse = await fetch(
+          `https://api.airtable.com/v0/meta/bases/${this.baseId}/tables/${table.id}/fields`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${this.apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(field),
+          }
+        );
+
+        if (!createResponse.ok) {
+          const error = await createResponse.json();
+          throw new Error(
+            `Failed to create field ${field.name}: ${JSON.stringify(error)}`
+          );
+        }
+
+        console.log(`[AirtableLogger] Created field: ${field.name}`);
+      }
+    } catch (error) {
+      console.error("[AirtableLogger] Error ensuring fields:", error);
+      throw error;
+    }
   }
 
   async getExistingUrls(): Promise<Set<string>> {
