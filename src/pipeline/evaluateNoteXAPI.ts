@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getOAuth1Headers } from "../api/getOAuthToken";
 
 export interface XAPIEvaluationResult {
   claimOpinionScore: number;
@@ -16,28 +17,40 @@ export async function evaluateNoteWithXAPI(
   noteText: string,
   postId: string
 ): Promise<XAPIEvaluationResult> {
-  // Check for bearer token
-  const bearerToken = process.env.X_BEARER_TOKEN;
+  // Check for OAuth 1.0a credentials
+  const consumer_key = process.env.X_API_KEY;
+  const consumer_secret = process.env.X_API_KEY_SECRET;
+  const access_token = process.env.X_ACCESS_TOKEN;
+  const access_token_secret = process.env.X_ACCESS_TOKEN_SECRET;
 
-  if (!bearerToken) {
-    console.warn("[evaluateNoteXAPI] No X_BEARER_TOKEN found, skipping X API evaluation");
+  if (!consumer_key || !consumer_secret || !access_token || !access_token_secret) {
+    console.warn("[evaluateNoteXAPI] Missing OAuth 1.0a credentials, skipping X API evaluation");
     return {
       claimOpinionScore: 0,
       success: false,
-      error: "No bearer token configured"
+      error: "Missing OAuth 1.0a credentials"
     };
   }
 
   try {
+    const url = "https://api.x.com/2/evaluate_note";
+    const body = JSON.stringify({
+      note_text: noteText,
+      post_id: postId
+    });
+
+    // Get OAuth 1.0a headers
+    const oauthHeaders = getOAuth1Headers(url, "POST", body);
+
     const response = await axios.post(
-      "https://api.x.com/2/evaluate_note",
+      url,
       {
         note_text: noteText,
         post_id: postId
       },
       {
         headers: {
-          "Authorization": `Bearer ${bearerToken}`,
+          ...oauthHeaders,
           "Content-Type": "application/json"
         }
       }

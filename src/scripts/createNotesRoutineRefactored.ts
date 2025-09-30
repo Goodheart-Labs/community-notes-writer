@@ -192,7 +192,7 @@ async function runRefactoredPipeline(
     };
 
     const filterDetails = {
-      url: { score: urlScore.score, reasoning: urlScore.reasoning },
+      url: { score: urlScore.score, reasoning: `URL source support: ${urlScore.hasUrl ? 'URL provided' : 'No URL provided'}` },
       positive: { score: filterScores.positive.score, reasoning: filterScores.positive.reasoning },
       disagreement: { score: filterScores.disagreement.score, reasoning: filterScores.disagreement.reasoning },
     };
@@ -230,6 +230,12 @@ async function runRefactoredPipeline(
       console.log(
         `[pipeline] Helpfulness score: ${helpfulnessScore.toFixed(2)} - ${helpfulnessReasoning}`
       );
+
+      // Check helpfulness threshold
+      if (helpfulnessScore < 0.5) {
+        allPassed = false;
+        console.log(`[pipeline] Helpfulness score too low (${helpfulnessScore.toFixed(2)} < 0.5), note will not be posted`);
+      }
 
       // 7. EVALUATE WITH X API
       console.log(`[pipeline] Evaluating with X API...`);
@@ -270,9 +276,11 @@ async function runRefactoredPipeline(
       allScoresPassed: allPassed,
       skipReason: allPassed
         ? undefined
-        : xApiScore !== undefined && xApiScore < -0.5
-          ? `X API score too low (${xApiScore})`
-          : "Failed score thresholds",
+        : helpfulnessScore !== undefined && helpfulnessScore < 0.5
+          ? `Helpfulness score too low (${helpfulnessScore.toFixed(2)})`
+          : xApiScore !== undefined && xApiScore < -0.5
+            ? `X API score too low (${xApiScore})`
+            : "Failed score thresholds",
     };
   } catch (err) {
     console.error(`[pipeline] Error for post #${idx + 1}:`, err);
