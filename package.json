@@ -51,6 +51,7 @@
     "prompt-lab:fetch": "bun src/tools/prompt-lab/fetchAirtableData.ts",
     "bad-miss": "bun src/tools/bad-miss-analysis/server.ts",
     "bad-miss-viewer": "bun --watch src/tools/bad-miss-viewer/server.ts",
+    "why-not-posted": "bun --watch src/tools/why-not-posted/server.ts",
     "filter-lab": "bun src/tools/filter-lab/server.ts",
     "note-viewer": "bun --watch src/tools/note-viewer/server.ts",
     "test:log": "bun src/scripts/runTestsAndLog.ts",

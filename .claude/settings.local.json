@@ -15,7 +15,9 @@
       "Bash(git rebase:*)",
       "Bash(git checkout:*)",
       "Bash(git pull:*)",
-      "WebFetch(domain:docs.x.com)"
+      "WebFetch(domain:docs.x.com)",
+      "Bash(curl:*)",
+      "Read(//private/tmp/**)"
     ],
     "deny": [],
     "ask": []

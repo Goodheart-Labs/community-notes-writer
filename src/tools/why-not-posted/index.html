@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Not Posted Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <h1 class="text-4xl font-bold text-gray-800 mb-2">Pipeline Analysis</h1>
+        <p class="text-gray-600 mb-8">Analyze the full note generation pipeline and success/failure rates</p>
+
+        <!-- Controls -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex flex-col md:flex-row gap-4">
+                <!-- Branch Filter -->
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Branch</label>
+                    <select id="branchFilter" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                        <option value="all">All Branches</option>
+                        <option value="main">main</option>
+                    </select>
+                </div>
+
+                <!-- Limit -->
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Number of Records</label>
+                    <select id="limitFilter" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                        <option value="50">Last 50</option>
+                        <option value="100" selected>Last 100</option>
+                        <option value="200">Last 200</option>
+                        <option value="500">Last 500</option>
+                    </select>
+                </div>
+
+                <!-- Analyze Button -->
+                <div class="flex items-end">
+                    <button id="analyzeBtn" class="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors">
+                        <i class="fas fa-chart-line mr-2"></i>Analyze
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div id="stats" class="mt-4 pt-4 border-t border-gray-200 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <span class="text-sm text-gray-600">Total Analyzed:</span>
+                        <span id="totalAnalyzed" class="ml-2 text-xl font-bold text-blue-600">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sankey Diagram -->
+        <div id="sankeyContainer" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Pipeline Flow (Sankey Diagram)</h2>
+            <div id="sankeyChart" style="width: 100%; height: 800px;"></div>
+        </div>
+
+        <!-- Failure Breakdown -->
+        <div id="breakdownContainer" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Failure Breakdown</h2>
+            <div id="breakdownChart" style="width: 100%; height: 400px;"></div>
+        </div>
+
+        <!-- Detailed Records -->
+        <div id="recordsContainer" class="bg-white rounded-lg shadow-md p-6 hidden">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-bold text-gray-800">Detailed Records</h2>
+                <div class="flex gap-2">
+                    <select id="stepFilter" class="p-2 border border-gray-300 rounded-md text-sm">
+                        <option value="all">All Steps</option>
+                    </select>
+                    <span id="filteredCount" class="text-sm text-gray-600 self-center"></span>
+                </div>
+            </div>
+            <div id="recordsList" class="space-y-4"></div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="text-center text-gray-500 py-12 hidden">
+            <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+            <p>Analyzing pipeline failures...</p>
+        </div>
+    </div>
+
+    <script>
+        let currentData = null;
+
+        async function analyze() {
+            const branch = document.getElementById('branchFilter').value;
+            const limit = document.getElementById('limitFilter').value;
+
+            // Show loading
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('sankeyContainer').classList.add('hidden');
+            document.getElementById('breakdownContainer').classList.add('hidden');
+            document.getElementById('recordsContainer').classList.add('hidden');
+            document.getElementById('stats').classList.add('hidden');
+
+            try {
+                const response = await fetch(`/api/why-not-posted?branch=${branch}&limit=${limit}`);
+                const data = await response.json();
+                currentData = data;
+
+                // Hide loading
+                document.getElementById('loadingState').classList.add('hidden');
+
+                // Show stats
+                document.getElementById('stats').classList.remove('hidden');
+                document.getElementById('totalAnalyzed').textContent = data.totalAnalyzed;
+
+                // Render Sankey diagram
+                renderSankey(data.sankeyData);
+
+                // Render breakdown chart
+                renderBreakdown(data.failureBreakdown);
+
+                // Render detailed records
+                renderRecords(data.analyses);
+
+            } catch (error) {
+                console.error('Failed to analyze:', error);
+                document.getElementById('loadingState').classList.add('hidden');
+                alert('Error analyzing data: ' + error.message);
+            }
+        }
+
+        function renderSankey(sankeyData) {
+            const container = document.getElementById('sankeyContainer');
+            container.classList.remove('hidden');
+
+            const data = [{
+                type: "sankey",
+                node: {
+                    pad: 15,
+                    thickness: 20,
+                    line: {
+                        color: "black",
+                        width: 0.5
+                    },
+                    label: sankeyData.nodes.map(n => n.name),
+                    color: sankeyData.nodes.map(n => {
+                        if (n.name === 'Start') return '#3b82f6';
+                        if (n.name === 'Posted' || n.name === 'Passed All Tracked Filters') return '#10b981';
+                        if (n.name.startsWith('Failed:')) return '#ef4444';
+                        return '#6b7280';
+                    })
+                },
+                link: {
+                    source: sankeyData.links.map(l => l.source),
+                    target: sankeyData.links.map(l => l.target),
+                    value: sankeyData.links.map(l => l.value),
+                    color: sankeyData.links.map(l => {
+                        const targetNode = sankeyData.nodes[l.target];
+                        if (targetNode.name.startsWith('Failed:')) return 'rgba(239, 68, 68, 0.4)';
+                        if (targetNode.name === 'Posted' || targetNode.name === 'Passed All Tracked Filters') return 'rgba(16, 185, 129, 0.4)';
+                        return 'rgba(107, 114, 128, 0.4)';
+                    })
+                }
+            }];
+
+            const layout = {
+                title: "Note Generation Pipeline Flow",
+                font: { size: 12 },
+                height: 800,
+            };
+
+            Plotly.newPlot('sankeyChart', data, layout, {responsive: true});
+        }
+
+        function renderBreakdown(breakdown) {
+            const container = document.getElementById('breakdownContainer');
+            container.classList.remove('hidden');
+
+            const data = [{
+                type: 'bar',
+                x: breakdown.map(b => b.count),
+                y: breakdown.map(b => b.step),
+                orientation: 'h',
+                marker: {
+                    color: '#ef4444'
+                }
+            }];
+
+            const layout = {
+                title: 'Number of Notes Failing at Each Step',
+                xaxis: { title: 'Count' },
+                yaxis: {
+                    title: '',
+                    automargin: true
+                },
+                height: 400,
+                margin: { l: 200 }
+            };
+
+            Plotly.newPlot('breakdownChart', data, layout, {responsive: true});
+        }
+
+        function renderRecords(analyses) {
+            const container = document.getElementById('recordsContainer');
+            const list = document.getElementById('recordsList');
+            const stepFilter = document.getElementById('stepFilter');
+            const filteredCount = document.getElementById('filteredCount');
+
+            container.classList.remove('hidden');
+
+            // Populate step filter dropdown
+            const uniqueSteps = new Set();
+            uniqueSteps.add('all');
+            analyses.forEach(a => {
+                if (a.failedAt) uniqueSteps.add(a.failedAt);
+            });
+
+            stepFilter.innerHTML = Array.from(uniqueSteps).map(step =>
+                `<option value="${step}">${step === 'all' ? 'All Steps' : step}</option>`
+            ).join('');
+
+            // Filter function
+            function filterAndRender() {
+                const selectedStep = stepFilter.value;
+                const filtered = selectedStep === 'all'
+                    ? analyses
+                    : analyses.filter(a => a.failedAt === selectedStep);
+
+                filteredCount.textContent = `(${filtered.length} records)`;
+
+                // Show first 50 for performance
+                const displayAnalyses = filtered.slice(0, 50);
+
+                list.innerHTML = displayAnalyses.map(analysis => `
+                    <div class="border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition-colors">
+                        <!-- Header -->
+                        <div class="flex items-start justify-between mb-4 pb-4 border-b border-gray-100">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                                        ${analysis.record.botName}
+                                    </span>
+                                    ${analysis.failedAt ? `
+                                        <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-semibold">
+                                            ✗ ${analysis.failedAt}
+                                        </span>
+                                    ` : `
+                                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
+                                            ✓ Posted
+                                        </span>
+                                    `}
+                                </div>
+                                <a href="${analysis.record.url}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm inline-flex items-center gap-1">
+                                    <i class="fab fa-twitter"></i>
+                                    <span>View Tweet</span>
+                                    <i class="fas fa-external-link-alt text-xs"></i>
+                                </a>
+                            </div>
+                            <span class="text-sm text-gray-500">
+                                ${new Date(analysis.record.createdTime).toLocaleString()}
+                            </span>
+                        </div>
+
+                        <!-- Note Text (if exists) -->
+                        ${analysis.record.finalNote ? `
+                            <div class="mb-4">
+                                <h4 class="font-semibold text-gray-700 mb-2 text-sm">Generated Note</h4>
+                                <div class="bg-gray-50 p-3 rounded-lg text-sm text-gray-800 border-l-4 border-blue-400">
+                                    ${escapeHtml(analysis.record.finalNote)}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- Pipeline Steps -->
+                        <div class="mb-3">
+                            <h4 class="font-semibold text-gray-700 mb-2 text-sm">Pipeline Steps</h4>
+                            <div class="space-y-1.5">
+                                ${analysis.steps.map((step, idx) => `
+                                    <div class="flex items-center gap-2 text-sm p-2 rounded ${
+                                        step.passed ? 'bg-green-50' : 'bg-red-50'
+                                    }">
+                                        <span class="text-gray-400 font-mono text-xs w-6">${idx + 1}.</span>
+                                        ${step.passed
+                                            ? '<i class="fas fa-check-circle text-green-600"></i>'
+                                            : '<i class="fas fa-times-circle text-red-600"></i>'
+                                        }
+                                        <span class="${step.passed ? 'text-gray-700' : 'text-red-700 font-semibold'} flex-1">
+                                            ${step.step}
+                                        </span>
+                                        ${step.score !== undefined ? `
+                                            <span class="font-mono text-xs ${
+                                                step.passed ? 'text-green-700' : 'text-red-700'
+                                            }">
+                                                ${step.score.toFixed(2)} ${step.passed ? '>' : '≤'} ${step.threshold}
+                                            </span>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                if (filtered.length > 50) {
+                    list.innerHTML += `
+                        <div class="text-center text-gray-500 py-4 border border-gray-200 rounded-lg bg-gray-50">
+                            Showing first 50 of ${filtered.length} records
+                        </div>
+                    `;
+                }
+            }
+
+            // Initial render
+            filterAndRender();
+
+            // Add event listener for filtering
+            stepFilter.addEventListener('change', filterAndRender);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Event listeners
+        document.getElementById('analyzeBtn').addEventListener('click', analyze);
+
+        // Auto-analyze on load
+        analyze();
+    </script>
+</body>
+</html>
