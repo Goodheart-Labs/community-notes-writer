@@ -19,7 +19,9 @@
       "Bash(curl:*)",
       "Read(//private/tmp/**)",
       "Bash(git branch:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "WebSearch",
+      "Bash(./scripts/count_tokens.sh:*)"
     ],
     "deny": [],
     "ask": []

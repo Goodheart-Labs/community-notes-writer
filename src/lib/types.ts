@@ -1,11 +1,24 @@
-import type { VerifiableFactResult } from "../pipeline/checkVerifiableFacts";
+import type { VerifiableFactResult } from "../pipeline/filterPostsForVerifiableClaims";
+
+export interface PipelineStep {
+  stepNumber: number;
+  stepName: string;
+  completed: boolean;
+  passed?: boolean;
+  score?: number;
+  reasoning?: string;
+  data?: any;
+}
 
 export interface PipelineResult {
   post: any;
+  stepsExecuted: PipelineStep[];
+  failedAtStep?: string;
   verifiableFactResult?: VerifiableFactResult;
   keywords?: any;
   searchContextResult?: any;
   noteResult?: any;
+  characterLimitResult?: { valid: boolean; characterCount: number; reasoning: string };
   scores?: {
     url: number;
     positive: number;

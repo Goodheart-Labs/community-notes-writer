@@ -1,5 +1,5 @@
 import { KeywordResult } from "./extractKeywords";
-import { llm } from "./llm";
+import { llm } from "../lib/llm";
 import type { OpenAIChatModelId } from "@ai-sdk/openai/internal";
 
 export interface SearchInput {

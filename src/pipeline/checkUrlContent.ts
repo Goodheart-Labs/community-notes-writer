@@ -1,5 +1,5 @@
 import { chromium } from "playwright";
-import { llm } from "./llm";
+import { llm } from "../lib/llm";
 
 export interface UrlSourceCheckResult {
   score: number;              // 0-1 based on claim support

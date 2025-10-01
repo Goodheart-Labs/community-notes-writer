@@ -1,9 +1,9 @@
 import { createGoal } from "@tonerow/agent-framework";
-import { llm } from "./llm";
+import { llm } from "../lib/llm";
 import { chromium } from "playwright";
 import { z } from "zod";
 import { writeNoteOutput } from "./schemas";
-import { writeNoteWithSearch } from "./writeNoteWithSearchGoal";
+import { writeNoteWithSearch } from "./writeNote";
 
 const prompt = (
   missingContext: string,

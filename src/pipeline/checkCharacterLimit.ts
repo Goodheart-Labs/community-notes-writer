@@ -12,7 +12,7 @@ export interface CharacterLimitResult {
  */
 export function checkCharacterLimit(noteText: string): CharacterLimitResult {
   const CHAR_LIMIT = 280;
-  const URL_LENGTH = 23; // Twitter's t.co shortened URL length
+  const URL_LENGTH = 1; // Twitter's t.co shortened URL length
   
   // Regex to match URLs
   const urlRegex = /https?:\/\/[^\s]+/g;

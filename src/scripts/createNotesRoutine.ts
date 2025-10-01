@@ -1,6 +1,6 @@
 import { fetchEligiblePosts } from "../api/fetchEligiblePosts";
 import { AirtableLogger } from "../api/airtableLogger";
-import { processTweet } from "../pipeline/processTweet";
+import { processPost } from "../pipeline/processPost";
 import PQueue from "p-queue";
 import { execSync } from "child_process";
 import {
@@ -29,15 +29,53 @@ function createLogEntryWithScores(
   const url = `https://twitter.com/i/status/${result.post.id}`;
   const tweetText = result.post.text || "";
 
-  // Build the full result text with scores
-  let fullResult = `VERIFIABLE FACT SCORE: ${
-    result.verifiableFactResult?.score?.toFixed(2) || "N/A"
-  }\n\n`;
+  // Build the full result text with step-by-step execution
+  let fullResult = `========================================\n`;
+  fullResult += `PIPELINE EXECUTION REPORT\n`;
+  fullResult += `========================================\n\n`;
 
-  // add reasoning
-  fullResult += `REASONING: ${
-    result.verifiableFactResult?.reasoning || "N/A"
-  }\n\n`;
+  // Add step-by-step results
+  if (result.stepsExecuted && result.stepsExecuted.length > 0) {
+    fullResult += `STEPS EXECUTED:\n\n`;
+
+    result.stepsExecuted.forEach((step) => {
+      fullResult += `[Step ${step.stepNumber}] ${step.stepName}\n`;
+      fullResult += `  Status: ${step.completed ? 'COMPLETED' : 'NOT COMPLETED'}\n`;
+      if (step.passed !== undefined) {
+        fullResult += `  Result: ${step.passed ? 'PASSED ✓' : 'FAILED ✗'}\n`;
+      }
+      if (step.score !== undefined) {
+        fullResult += `  Score: ${step.score.toFixed(2)}\n`;
+      }
+      if (step.reasoning) {
+        fullResult += `  Reasoning: ${step.reasoning}\n`;
+      }
+      if (step.data) {
+        if (step.data.citationsCount !== undefined) {
+          fullResult += `  Citations Found: ${step.data.citationsCount}\n`;
+        }
+        if (step.data.status) {
+          fullResult += `  Note Status: ${step.data.status}\n`;
+        }
+        if (step.data.characterCount) {
+          fullResult += `  Character Count: ${step.data.characterCount}/${step.data.limit}\n`;
+        }
+      }
+      fullResult += `\n`;
+    });
+
+    if (result.failedAtStep) {
+      fullResult += `FAILED AT: ${result.failedAtStep}\n\n`;
+    }
+  } else {
+    // Fallback to old format if stepsExecuted is not available
+    fullResult += `VERIFIABLE FACT SCORE: ${
+      result.verifiableFactResult?.score?.toFixed(2) || "N/A"
+    }\n\n`;
+    fullResult += `REASONING: ${
+      result.verifiableFactResult?.reasoning || "N/A"
+    }\n\n`;
+  }
 
   if (result.keywords) {
     fullResult += `KEYWORDS EXTRACTED:\n`;
@@ -263,7 +301,7 @@ async function main() {
       }
 
       queue.add(async () => {
-        const result = await processTweet(post, idx);
+        const result = await processPost(post, idx);
         if (!result) return;
 
         let postedToX = false;

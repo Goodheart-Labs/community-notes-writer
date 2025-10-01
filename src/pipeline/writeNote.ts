@@ -1,13 +1,76 @@
 import { createGoal } from "@tonerow/agent-framework";
 import { z } from "zod";
-import { llm } from "./llm";
+import { llm } from "../lib/llm";
 import { searchVersionOne } from "./searchContextGoal";
 import { textAndSearchResults, writeNoteOutput } from "./schemas";
 import { zodResponseFormat } from "openai/helpers/zod.mjs";
-import { parseStatusNoteUrl } from "./parseStatusNoteUrl";
+
+/**
+ * Parses a string to extract status, note, url, and reasoning.
+ */
+function parseStatusNoteUrl(content: string): {
+  status: string;
+  note: string;
+  url: string;
+  reasoning?: string;
+} {
+  // Look for the new format with "Status:" and "Note:" labels
+  const statusMatch = content.match(/Status:\s*(.+?)(?:\n|$)/i);
+  const noteMatch = content.match(/Note:\s*([\s\S]+?)(?:$)/i);
+
+  if (statusMatch && statusMatch[1] && noteMatch && noteMatch[1]) {
+    // New format detected
+    let status = statusMatch[1].trim();
+    let noteContent = noteMatch[1].trim();
+
+    // Extract URL from the note content
+    const urlMatch = noteContent.match(/https?:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+/);
+    let url = urlMatch ? urlMatch[0] : "";
+
+    // Remove URL from note text (it will be added back later if needed)
+    let note = noteContent.replace(/https?:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+/g, '').trim();
+
+    // Extract reasoning (everything before "Status:")
+    let reasoning = "";
+    const statusIndex = content.indexOf("Status:");
+    if (statusIndex > 0) {
+      reasoning = content.substring(0, statusIndex).trim();
+      // Remove any [Reasoning] label if present
+      reasoning = reasoning.replace(/^\[?Reasoning\]?:?\s*/i, '').trim();
+    }
+
+    return { status, note, url, reasoning };
+  }
+
+  // Fall back to old format for backward compatibility
+  const lines = content
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) {
+    throw new Error("Empty content");
+  }
+  // Status is the first non-empty line
+  const status: string = lines[0] ?? "";
+  // Find a URL in any line
+  let url = "";
+  let urlLineIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i]?.match(/https?:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+/);
+    if (match && match[0]) {
+      url = match[0];
+      urlLineIdx = i;
+      break;
+    }
+  }
+  // Note is everything except the status and url line
+  const noteLines = lines.filter((_, idx) => idx !== 0 && idx !== urlLineIdx);
+  const note: string = noteLines.join(" ").trim();
+  return { status, note, url };
+}
 
 // Define the goal schema, similar to searchContext.ts
-export const writeNoteWithSearchGoal = createGoal({
+export const writeNoteGoal = createGoal({
   name: "write note with search",
   description:
     "Write a Community Note for a post on X using search results for context.",
@@ -15,7 +78,7 @@ export const writeNoteWithSearchGoal = createGoal({
   output: writeNoteOutput,
 });
 
-writeNoteWithSearchGoal.testFrom(searchVersionOne);
+writeNoteGoal.testFrom(searchVersionOne);
 
 const promptTemplate = ({
   text,
@@ -181,7 +244,7 @@ export const writeNoteWithSearch = writeNoteWithSearchGoal.register({
   config: [{ model: "anthropic/claude-sonnet-4" }],
 });
 
-export async function writeNoteWithSearchFn(
+export async function writeNote(
   {
     text,
     searchResults,
@@ -272,9 +335,9 @@ export async function writeNoteWithSearchFn(
 
     throw new Error("Unexpected error in retry logic");
   } catch (error) {
-    console.error("Error in writeNoteWithSearchFn:", error);
+    console.error("Error in writeNote:", error);
     throw error;
   }
 }
 
-writeNoteWithSearch.define(writeNoteWithSearchFn);
+writeNoteWithSearch.define(writeNote);

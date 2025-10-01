@@ -24,7 +24,7 @@ const verifiableFactSchema = z.object({
     .describe("One sentence explanation of why this score was given"),
 });
 
-export async function checkVerifiableFacts(
+export async function filterPostsForVerifiableClaims(
   tweetText: string,
   quoteContext?: string,
   imageUrl?: string
@@ -86,18 +86,10 @@ IMPORTANT: Return ONLY a JSON object with:
       "[verifiableFactFilter] Error checking verifiable facts:",
       error
     );
-    // Default to passing if there's an error
+    // Default to failing if there's an error
     return {
-      score: 0.7,
-      reasoning: "Error in fact verification, defaulting to likely verifiable",
+      score: 0.3,
+      reasoning: "Error in fact verification, defaulting to fail",
     };
   }
-}
-
-// Keep old function for backward compatibility during transition
-export async function checkSarcasm(
-  tweetText: string,
-  quoteContext?: string
-): Promise<VerifiableFactResult> {
-  return checkVerifiableFacts(tweetText, quoteContext);
 }

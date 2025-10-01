@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.WHY_NOT_POSTED_PORT || 3005;
+const PORT = process.env.POSTING_SANKEY_PORT || 3005;
 
 // Middleware
 app.use(express.json());
@@ -30,10 +30,10 @@ interface NoteRecord {
   createdTime?: string;
   fullResult?: string;
   noteStatus?: string;
-  // Filter scores
+  // Filter scores - new structure
   notSarcasmFilter?: number;
-  urlFilter?: number;
-  characterCountFilter?: number;
+  urlValidityFilter?: number;
+  urlSourceFilter?: number;
   positiveClaimsFilter?: number;
   significantCorrectionFilter?: number;
   helpfulnessPrediction?: number;
@@ -152,19 +152,31 @@ function analyzeNote(record: NoteRecord): AnalysisResult {
     return { record, steps, failedAt };
   }
 
-  // Step 4: URL filter (only if it actually ran)
-  if (record.urlFilter !== undefined) {
-    const passed = record.urlFilter > 0.5;
+  // Step 4: URL Quality filter (only if it actually ran)
+  if (record.urlValidityFilter !== undefined) {
+    const passed = record.urlValidityFilter > 0.5;
     steps.push({
-      step: 'URL Filter',
+      step: 'URL Quality Filter',
       passed,
-      score: record.urlFilter,
+      score: record.urlValidityFilter,
       threshold: 0.5,
     });
-    if (!passed && !failedAt) failedAt = 'URL Filter';
+    if (!passed && !failedAt) failedAt = 'URL Quality Filter';
   }
 
-  // Step 5: Positive claims filter (only if it actually ran)
+  // Step 5: URL Content filter (only if it actually ran)
+  if (record.urlSourceFilter !== undefined) {
+    const passed = record.urlSourceFilter > 0.5;
+    steps.push({
+      step: 'URL Content Filter',
+      passed,
+      score: record.urlSourceFilter,
+      threshold: 0.5,
+    });
+    if (!passed && !failedAt) failedAt = 'URL Content Filter';
+  }
+
+  // Step 6: Positive claims filter (only if it actually ran)
   if (record.positiveClaimsFilter !== undefined) {
     const passed = record.positiveClaimsFilter > 0.5;
     steps.push({
@@ -176,7 +188,7 @@ function analyzeNote(record: NoteRecord): AnalysisResult {
     if (!passed && !failedAt) failedAt = 'Positive Claims Filter';
   }
 
-  // Step 6: Disagreement filter (only if it actually ran)
+  // Step 7: Disagreement filter (only if it actually ran)
   if (record.significantCorrectionFilter !== undefined) {
     const passed = record.significantCorrectionFilter > 0.5;
     steps.push({
@@ -188,38 +200,24 @@ function analyzeNote(record: NoteRecord): AnalysisResult {
     if (!passed && !failedAt) failedAt = 'Disagreement Filter';
   }
 
-  // Step 7: Character count filter (only if it actually ran)
-  if (record.characterCountFilter !== undefined) {
-    const passed = record.characterCountFilter > 0.5;
-    steps.push({
-      step: 'Character Count Filter',
-      passed,
-      score: record.characterCountFilter,
-      threshold: 0.5,
-    });
-    if (!passed && !failedAt) failedAt = 'Character Count Filter';
-  }
-
-  // Step 8: Helpfulness prediction (only runs if initial filters passed)
+  // Step 8: Helpfulness prediction (informational only, always passes now)
   if (record.helpfulnessPrediction !== undefined) {
-    const passed = record.helpfulnessPrediction > 0.5;
     steps.push({
       step: 'Helpfulness Prediction',
-      passed,
+      passed: true,  // Always passes now - informational only
       score: record.helpfulnessPrediction,
-      threshold: 0.5,
     });
-    if (!passed && !failedAt) failedAt = 'Helpfulness Prediction';
+    // Don't set failedAt for helpfulness anymore
   }
 
   // Step 9: X API Score (only if it actually ran)
   if (record.xApiScore !== undefined) {
-    const passed = record.xApiScore > 0.5;
+    const passed = record.xApiScore >= -0.5;  // Updated threshold
     steps.push({
       step: 'X API Score',
       passed,
       score: record.xApiScore,
-      threshold: 0.5,
+      threshold: -0.5,
     });
     if (!passed && !failedAt) failedAt = 'X API Score';
   }
@@ -312,10 +310,10 @@ function generateSankeyData(analyses: AnalysisResult[]): SankeyData {
     'NO MISSING CONTEXT',
     'TWEET NOT SIGNIFICANTLY INCORRECT',
     'STATUS EXTRACTION FAILED',
-    'URL Filter',
+    'URL Quality Filter',
+    'URL Content Filter',
     'Positive Claims Filter',
     'Disagreement Filter',
-    'Character Count Filter',
     'Helpfulness Prediction',
     'X API Score',
     // Failure nodes in order from bottom to top of image
@@ -323,9 +321,10 @@ function generateSankeyData(analyses: AnalysisResult[]): SankeyData {
     'Failed: NO SUPPORTING SOURCE FOUND',
     'Failed: NO MISSING CONTEXT',
     'Failed: TWEET NOT SIGNIFICANTLY INCORRECT',
+    'Failed: URL Quality Filter',
+    'Failed: URL Content Filter',
     'Failed: Positive Claims Filter',
     'Failed: Disagreement Filter',
-    'Failed: Helpfulness Prediction',
     'Failed: X API Score',
     'Passed All Tracked Filters',
     'Posted',
@@ -399,8 +398,6 @@ app.get('/api/why-not-posted', async (req: Request, res: Response) => {
           'Created',
           'Full Result',
           'Not sarcasm filter',
-          'URL filter',
-          'Character count filter',
           'Positive claims only filter',
           'Significant correction filter',
           'Helpfulness Prediction',
@@ -418,8 +415,8 @@ app.get('/api/why-not-posted', async (req: Request, res: Response) => {
             createdTime: record.get('Created') as string,
             fullResult: record.get('Full Result') as string,
             notSarcasmFilter: record.get('Not sarcasm filter') as number,
-            urlFilter: record.get('URL filter') as number,
-            characterCountFilter: record.get('Character count filter') as number,
+            urlValidityFilter: undefined,  // Not stored separately yet
+            urlSourceFilter: undefined,     // Not stored separately yet
             positiveClaimsFilter: record.get('Positive claims only filter') as number,
             significantCorrectionFilter: record.get('Significant correction filter') as number,
             helpfulnessPrediction: record.get('Helpfulness Prediction') as number,
@@ -458,7 +455,7 @@ app.get('/api/why-not-posted', async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error('[why-not-posted] Error:', error);
+    console.error('[posting-sankey] Error:', error);
     res.status(500).json({
       error: 'Failed to analyze notes',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -472,5 +469,5 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Why Not Posted running on http://localhost:${PORT}`);
+  console.log(`Posting Sankey running on http://localhost:${PORT}`);
 });

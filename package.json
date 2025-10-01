@@ -29,14 +29,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit --project tsconfig.json",
     "typecheck-elo": "cd src/tools/elo-rating-web && tsc --noEmit",
-    "test-airtable": "bun run src/test-airtable-logger.ts",
     "routine": "bun run src/scripts/createNotesRoutine.ts",
-    "test": "bun run src/scripts/run.ts",
-    "test-tweet": "bun run src/scripts/testSpecificTweet.ts",
     "fetch-notes": "bun run src/scripts/fetchOurNotes.ts",
     "backfill-notes": "bun run src/scripts/backfillNoteStatus.ts",
-    "backfill-url-scores": "bun run src/scripts/backfillUrlScores.ts",
-    "backfill-url-scores:test": "bun run src/scripts/backfillUrlScores.ts --test",
     "update-notes": "bun run src/scripts/updateNoteStatus.ts",
     "build-elo": "cd src/tools/elo-rating-web && bun build ./app.ts ./airtableClient.ts ./eloCalculator.ts ./types.ts ./cacheManager.ts --outdir ./dist --target browser",
     "watch-elo": "cd src/tools/elo-rating-web && bun build ./app.ts ./airtableClient.ts ./eloCalculator.ts ./types.ts ./cacheManager.ts --outdir ./dist --target browser --watch",
@@ -48,10 +43,8 @@
     "prompt-lab:fetch": "bun src/tools/prompt-lab/fetchAirtableData.ts",
     "bad-miss": "bun src/tools/bad-miss-analysis/server.ts",
     "bad-miss-viewer": "bun --watch src/tools/bad-miss-viewer/server.ts",
-    "why-not-posted": "bun --watch src/tools/why-not-posted/server.ts",
+    "posting-sankey": "bun --watch src/tools/posting-sankey/server.ts",
     "filter-lab": "bun src/tools/filter-lab/server.ts",
-    "note-viewer": "bun --watch src/tools/note-viewer/server.ts",
-    "test:log": "bun src/scripts/runTestsAndLog.ts",
-    "test:positive-filter": "bun src/scripts/testPositiveFilter.ts"
+    "note-viewer": "bun --watch src/tools/note-viewer/server.ts"
   }
 }
