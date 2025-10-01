@@ -1,4 +1,4 @@
-import type { PipelineResult } from "../scripts/createNotesRoutineRefactored";
+import type { PipelineResult } from "../scripts/createNotesRoutine";
 import { generateObject } from "ai";
 import { openrouter } from "@openrouter/ai-sdk-provider";
 import z from "zod";
@@ -7,7 +7,7 @@ import Airtable from "airtable";
 interface RerunQueueEntry {
   "Tweet ID": string;
   "Status URL": string;
-  "Reasoning": string;
+  Reasoning: string;
 }
 
 export class RerunQueueLogger {
@@ -19,7 +19,9 @@ export class RerunQueueLogger {
     const baseId = process.env.AIRTABLE_BASE_ID;
 
     if (!apiKey || !baseId) {
-      throw new Error("Missing required environment variables: AIRTABLE_API_KEY, AIRTABLE_BASE_ID");
+      throw new Error(
+        "Missing required environment variables: AIRTABLE_API_KEY, AIRTABLE_BASE_ID"
+      );
     }
 
     this.base = new Airtable({ apiKey }).base(baseId);
@@ -29,7 +31,9 @@ export class RerunQueueLogger {
   async logRerunEntry(entry: RerunQueueEntry): Promise<void> {
     try {
       await this.base(this.tableName).create([{ fields: entry as any }]);
-      console.log(`[RerunQueueLogger] Successfully logged rerun entry for Tweet ID: ${entry["Tweet ID"]}`);
+      console.log(
+        `[RerunQueueLogger] Successfully logged rerun entry for Tweet ID: ${entry["Tweet ID"]}`
+      );
     } catch (error) {
       console.error("[RerunQueueLogger] Error logging to Airtable:", error);
       throw error;
@@ -48,7 +52,7 @@ export class RerunQueueLogger {
         .select({
           fields: ["Tweet ID", "Created At"],
           pageSize: 100,
-          filterByFormula: `IS_AFTER({Created At}, '${oneDayAgo.toISOString()}')`
+          filterByFormula: `IS_AFTER({Created At}, '${oneDayAgo.toISOString()}')`,
         })
         .eachPage((records, fetchNextPage) => {
           records.forEach((record) => {
@@ -58,7 +62,9 @@ export class RerunQueueLogger {
           fetchNextPage();
         });
 
-      console.log(`[RerunQueueLogger] Found ${tweetIds.size} tweets in rerun queue from last 24 hours`);
+      console.log(
+        `[RerunQueueLogger] Found ${tweetIds.size} tweets in rerun queue from last 24 hours`
+      );
       return tweetIds;
     } catch (error) {
       console.error("[RerunQueueLogger] Error fetching rerun queue:", error);
@@ -117,10 +123,15 @@ Should this note be rerun based on the likelihood of new information surfacing i
       await logger.logRerunEntry({
         "Tweet ID": tweetId,
         "Status URL": statusUrl,
-        "Reasoning": reasoning || "AI determined this tweet should be rerun for potential new information"
+        Reasoning:
+          reasoning ||
+          "AI determined this tweet should be rerun for potential new information",
       });
     } catch (error) {
-      console.error(`[considerForRerun] Failed to log rerun entry for tweet ${result.post.id}:`, error);
+      console.error(
+        `[considerForRerun] Failed to log rerun entry for tweet ${result.post.id}:`,
+        error
+      );
       // Don't throw - we still want to return the shouldRerun result even if logging fails
     }
   }

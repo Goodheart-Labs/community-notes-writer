@@ -1,343 +1,618 @@
 import { fetchEligiblePosts } from "../api/fetchEligiblePosts";
-import { versionOneFn as searchV1 } from "../pipeline/searchContextGoal";
-import { writeNoteWithSearchFn } from "../pipeline/writeNoteWithSearchGoal";
-import { check as checkV1 } from "../pipeline/check";
-import { AirtableLogger, createLogEntry } from "../api/airtableLogger";
+import { AirtableLogger } from "../api/airtableLogger";
 import { getOriginalTweetContent } from "../utils/retweetUtils";
 import {
-  runProductionFilters,
-  formatFilterResults,
-} from "../pipeline/productionFilters";
+  checkVerifiableFacts,
+  VerifiableFactResult,
+} from "../pipeline/checkVerifiableFacts";
+import { extractKeywords } from "../pipeline/extractKeywords";
+import { searchWithKeywords } from "../pipeline/searchWithKeywords";
+import { checkUrlAndSource } from "../pipeline/urlSourceChecker";
+import { runScoringFilters } from "../pipeline/scoringFilters";
+import { predictHelpfulness } from "../pipeline/predictHelpfulness";
+import { evaluateNoteWithXAPI } from "../pipeline/evaluateNoteXAPI";
 import PQueue from "p-queue";
 import { execSync } from "child_process";
+import { writeNoteWithSearchFn } from "../pipeline/writeNoteWithSearchGoal";
+import {
+  considerForRerun,
+  RerunQueueLogger,
+} from "../pipeline/considerForRerun";
 
-const maxPosts = 10; // Maximum posts to process per run
-const concurrencyLimit = 3; // Process 3 posts at a time to avoid rate limiting
-const SOFT_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes - stop processing new items
-const HARD_TIMEOUT_MS = 25 * 60 * 1000; // 25 minutes - force exit
+const maxPosts = parseInt(process.env.MAX_POSTS || "10");
+const concurrencyLimit = 3;
+
+// Soft timeout (8 minutes) - stop adding new tasks
+const SOFT_TIMEOUT_MS = 8 * 60 * 1000;
+// Hard timeout (9 minutes) - force exit
+const HARD_TIMEOUT_MS = 9 * 60 * 1000;
 
 let shouldStopProcessing = false;
 
-// Soft timeout - stop accepting new work
-const softTimeout = setTimeout(() => {
-  console.log("[main] Soft timeout reached (20 minutes), stopping new processing");
-  shouldStopProcessing = true;
-}, SOFT_TIMEOUT_MS);
+export interface PipelineResult {
+  post: any;
+  verifiableFactResult?: VerifiableFactResult;
+  keywords?: any;
+  searchContextResult?: any;
+  noteResult?: any;
+  scores?: {
+    url: number;
+    positive: number;
+    disagreement: number;
+  };
+  filterDetails?: {
+    url: { score: number; reasoning: string };
+    positive: { score: number; reasoning: string };
+    disagreement: { score: number; reasoning: string };
+  };
+  helpfulnessScore?: number;
+  helpfulnessReasoning?: string;
+  xApiScore?: number;
+  xApiSuccess?: boolean;
+  allScoresPassed: boolean;
+  skipReason?: string;
+}
 
-// Hard timeout - force exit
-const hardTimeout = setTimeout(() => {
-  console.log("[main] Hard timeout reached (25 minutes), forcing exit");
-  process.exit(1);
-}, HARD_TIMEOUT_MS);
-
-async function runPipeline(post: any, idx: number) {
+async function runRefactoredPipeline(
+  post: any,
+  idx: number
+): Promise<PipelineResult | null> {
   console.log(
-    `[runPipeline] Starting pipeline for post #${idx + 1} (ID: ${post.id})`
+    `[pipeline] Starting refactored pipeline for post #${idx + 1} (ID: ${
+      post.id
+    })`
   );
-  try {
-    // Get the original tweet content (handling retweets)
-    const originalContent = getOriginalTweetContent(post);
 
-    console.log(
-      `[runPipeline] Processing ${
-        originalContent.isRetweet ? "retweet" : "original tweet"
-      } for post #${idx + 1}`
+  try {
+    // Get the original tweet content
+    const originalContent = getOriginalTweetContent(post);
+    const quoteContext = originalContent.retweetContext;
+
+    // Extract image URL if present
+    let imageUrl: string | undefined;
+    if (post.media && post.media.length > 0) {
+      const imageMedia = post.media.find(
+        (media: any) => media.type === "photo"
+      );
+      if (imageMedia && imageMedia.url) {
+        imageUrl = imageMedia.url;
+      }
+    }
+
+    // 1. VERIFIABLE FACT FILTER (Early exit)
+    console.log(`[pipeline] Running verifiable fact filter...`);
+    const verifiableFactResult = await checkVerifiableFacts(
+      originalContent.text,
+      quoteContext,
+      imageUrl
     );
 
-    // Check if the post contains video media
-    const hasVideo =
-      post.media?.some((m: any) => m.type === "video") ||
-      post.referenced_tweet_data?.media?.some((m: any) => m.type === "video");
+    console.log(
+      `[pipeline] Verifiable fact score: ${verifiableFactResult.score.toFixed(
+        2
+      )} - ${verifiableFactResult.reasoning}`
+    );
 
-    if (hasVideo) {
+    if (verifiableFactResult.score <= 0.5) {
       console.log(
-        `[runPipeline] Skipping post #${idx + 1} (ID: ${
-          post.id
-        }) - contains video media`
+        `[pipeline] Post filtered for non-verifiable content (score: ${verifiableFactResult.score.toFixed(
+          2
+        )})`
       );
-
-      // Return a special result for video posts that will still be logged to Airtable
       return {
         post,
-        searchContextResult: {
-          text: originalContent.text,
-          searchResults: "SKIPPED - Post contains video media",
-          citations: [],
-        },
-        noteResult: {
-          status: "SKIPPED - VIDEO CONTENT",
-          note: "Video content is not currently supported for Community Notes generation",
-          url: "",
-        },
-        checkResult: "NO - VIDEO CONTENT",
+        verifiableFactResult,
+        allScoresPassed: false,
+        skipReason: `Verifiable fact filter: ${verifiableFactResult.reasoning}`,
       };
     }
 
-    const searchContextResult = await searchV1(
-      {
-        text: originalContent.text,
-        media: originalContent.media,
-        searchResults: "",
-        retweetContext: originalContent.retweetContext,
-      },
-      { model: "perplexity/sonar" }
-    );
-    console.log(
-      `[runPipeline] Search context complete for post #${idx + 1} (ID: ${
-        post.id
-      })`
-    );
+    // 2. EXTRACT KEYWORDS
+    console.log(`[pipeline] Extracting keywords...`);
+    const keywords = await extractKeywords(originalContent.text, quoteContext);
+    console.log(`[pipeline] Keywords: ${keywords.keywords.join(", ")}`);
 
+    // 3. SEARCH WITH KEYWORDS + DATE
+    console.log(`[pipeline] Searching with keywords...`);
+    const todayDate = new Date().toISOString().split("T")[0];
+
+    const searchResult = await searchWithKeywords(
+      {
+        keywords,
+        date: todayDate!,
+        quoteContext,
+        originalText: originalContent.text,
+      },
+      { model: "perplexity/sonar" as any }
+    );
+    console.log(`[pipeline] Search complete`);
+
+    const citations = searchResult.citations || [];
+
+    // If there are no citations, skip the rest of the pipeline
+    if (citations.length === 0) {
+      console.log(
+        `[pipeline] No citations found, skipping the rest of the pipeline`
+      );
+      return {
+        post,
+        verifiableFactResult,
+        keywords,
+        searchContextResult: searchResult,
+        noteResult: {
+          status: "NO CITATIONS",
+          note: "No citations found",
+          url: "",
+        },
+        allScoresPassed: false,
+        skipReason: "No citations found",
+      };
+    }
+
+    // 4. WRITE NOTE (using existing implementation for now)
+    console.log(`[pipeline] Writing note...`);
     const noteResult = await writeNoteWithSearchFn(
       {
-        text: searchContextResult.text,
-        searchResults: searchContextResult.searchResults,
-        citations: searchContextResult.citations || [],
+        text: searchResult.text,
+        searchResults: searchResult.searchResults,
+        citations,
       },
       { model: "anthropic/claude-sonnet-4" }
     );
+    console.log(`[pipeline] Note generated`);
+
+    // Skip if not a correction
+    if (noteResult.status !== "CORRECTION WITH TRUSTWORTHY CITATION") {
+      console.log(`[pipeline] Skipping - status: ${noteResult.status}`);
+      return {
+        post,
+        verifiableFactResult,
+        keywords,
+        searchContextResult: searchResult,
+        noteResult,
+        allScoresPassed: false,
+        skipReason: `Status: ${noteResult.status}`,
+      };
+    }
+
+    // 5. RUN SCORING FILTERS
+    console.log(`[pipeline] Running scoring filters...`);
+
+    // URL Check - now checks if the source actually supports the claims
+    const urlScore = await checkUrlAndSource(noteResult.note, noteResult.url);
     console.log(
-      `[runPipeline] Note generated for post #${idx + 1} (ID: ${post.id})`
+      `[pipeline] URL source support score: ${urlScore.score.toFixed(2)}`
     );
 
-    const checkResult = await checkV1({
-      note: noteResult.note,
-      url: noteResult.url,
-      status: noteResult.status,
-    });
-    console.log(
-      `[runPipeline] Check complete for post #${idx + 1} (ID: ${post.id})`
+    // Positive and Disagreement filters
+    const filterScores = await runScoringFilters(
+      noteResult.note,
+      originalContent.text
     );
+
+    const scores = {
+      url: urlScore.score,
+      positive: filterScores.positive.score,
+      disagreement: filterScores.disagreement.score,
+    };
+
+    const filterDetails = {
+      url: {
+        score: urlScore.score,
+        reasoning: `URL source support: ${
+          urlScore.hasUrl ? "URL provided" : "No URL provided"
+        }`,
+      },
+      positive: {
+        score: filterScores.positive.score,
+        reasoning: filterScores.positive.reasoning,
+      },
+      disagreement: {
+        score: filterScores.disagreement.score,
+        reasoning: filterScores.disagreement.reasoning,
+      },
+    };
+
+    // Check initial thresholds
+    const initialPassed =
+      scores.url > 0.5 && scores.positive > 0.5 && scores.disagreement > 0.5;
+
+    console.log(
+      `[pipeline] Scores - URL: ${scores.url.toFixed(
+        2
+      )}, Positive: ${scores.positive.toFixed(
+        2
+      )}, Disagreement: ${scores.disagreement.toFixed(2)}`
+    );
+
+    // Only run helpfulness ratings if initial filters pass
+    let helpfulnessScore: number | undefined;
+    let helpfulnessReasoning: string | undefined;
+    let xApiScore: number | undefined;
+    let xApiSuccess: boolean | undefined;
+    let allPassed = initialPassed;
+
+    if (initialPassed) {
+      // 6. PREDICT HELPFULNESS
+      console.log(`[pipeline] Predicting helpfulness...`);
+      const helpfulnessResult = await predictHelpfulness(
+        noteResult.note,
+        originalContent.text,
+        searchResult.searchResults,
+        noteResult.url
+      );
+      helpfulnessScore = helpfulnessResult.score;
+      helpfulnessReasoning = helpfulnessResult.reasoning;
+      console.log(
+        `[pipeline] Helpfulness score: ${helpfulnessScore.toFixed(
+          2
+        )} - ${helpfulnessReasoning}`
+      );
+
+      // Check helpfulness threshold
+      if (helpfulnessScore < 0.5) {
+        allPassed = false;
+        console.log(
+          `[pipeline] Helpfulness score too low (${helpfulnessScore.toFixed(
+            2
+          )} < 0.5), note will not be posted`
+        );
+      }
+
+      // 7. EVALUATE WITH X API
+      console.log(`[pipeline] Evaluating with X API...`);
+      const xApiResult = await evaluateNoteWithXAPI(noteResult.note, post.id);
+      xApiScore = xApiResult.claimOpinionScore;
+      xApiSuccess = xApiResult.success;
+
+      if (xApiSuccess) {
+        console.log(`[pipeline] X API score: ${xApiScore}`);
+
+        // Check X API threshold
+        if (xApiScore < -1.5) {
+          allPassed = false;
+          console.log(
+            `[pipeline] X API score too low (${xApiScore} < -1.5), note will not be posted`
+          );
+        }
+      } else {
+        console.log(`[pipeline] X API evaluation failed: ${xApiResult.error}`);
+      }
+    }
+
+    console.log(`[pipeline] All filters passed: ${allPassed}`);
 
     return {
       post,
-      searchContextResult,
+      verifiableFactResult,
+      keywords,
+      searchContextResult: searchResult,
       noteResult,
-      checkResult,
+      scores,
+      filterDetails,
+      helpfulnessScore,
+      helpfulnessReasoning,
+      xApiScore,
+      xApiSuccess,
+      allScoresPassed: allPassed,
+      skipReason: allPassed
+        ? undefined
+        : helpfulnessScore !== undefined && helpfulnessScore < 0.5
+        ? `Helpfulness score too low (${helpfulnessScore.toFixed(2)})`
+        : xApiScore !== undefined && xApiScore < -1.5
+        ? `X API score too low (${xApiScore})`
+        : "Failed score thresholds",
     };
   } catch (err) {
-    console.error(
-      `[runPipeline] Error in pipeline for post #${idx + 1} (ID: ${post.id}):`,
-      err
-    );
+    console.error(`[pipeline] Error for post #${idx + 1}:`, err);
     return null;
   }
 }
 
-async function main() {
-  try {
-    // Get current branch name
-    let currentBranch = "unknown";
+function createLogEntryWithScores(
+  result: PipelineResult,
+  branchName: string,
+  commit?: string,
+  postedToX: boolean = false
+): any {
+  const url = `https://twitter.com/i/status/${result.post.id}`;
+  const tweetText = result.post.text || "";
 
-    // First check if we're in GitHub Actions and use the branch from environment
-    if (process.env.GITHUB_BRANCH_NAME) {
-      currentBranch = process.env.GITHUB_BRANCH_NAME.trim().toLowerCase();
-      console.log(
-        `[main] Running in GitHub Actions, using branch from env: ${currentBranch}`
-      );
-    } else {
-      // Fallback to git command for local development
-      try {
-        currentBranch = execSync("git rev-parse --abbrev-ref HEAD", {
-          encoding: "utf8",
-        }).trim().toLowerCase();
-      } catch (error) {
-        console.warn(
-          "[main] Could not determine current branch, assuming main"
-        );
-        currentBranch = "main";
+  // Build the full result text with scores
+  let fullResult = `VERIFIABLE FACT SCORE: ${
+    result.verifiableFactResult?.score?.toFixed(2) || "N/A"
+  }\n\n`;
+
+  // add reasoning
+  fullResult += `REASONING: ${
+    result.verifiableFactResult?.reasoning || "N/A"
+  }\n\n`;
+
+  if (result.keywords) {
+    fullResult += `KEYWORDS EXTRACTED:\n`;
+    fullResult += `- Keywords: ${result.keywords.keywords.join(", ")}\n`;
+    fullResult += `- Entities: ${result.keywords.entities.join(", ")}\n`;
+    fullResult += `- Claims: ${result.keywords.claims.join("; ")}\n\n`;
+  }
+
+  if (result.scores && result.filterDetails) {
+    fullResult += `FILTER SCORES:\n`;
+    fullResult += `- URL Score: ${result.scores.url.toFixed(2)}\n`;
+    fullResult += `  Reasoning: ${result.filterDetails.url.reasoning}\n`;
+    fullResult += `- Positive Claims Score: ${result.scores.positive.toFixed(
+      2
+    )}\n`;
+    fullResult += `  Reasoning: ${result.filterDetails.positive.reasoning}\n`;
+    fullResult += `- Disagreement Score: ${result.scores.disagreement.toFixed(
+      2
+    )}\n`;
+    fullResult += `  Reasoning: ${result.filterDetails.disagreement.reasoning}\n`;
+
+    if (result.helpfulnessScore !== undefined) {
+      fullResult += `- Helpfulness Prediction: ${result.helpfulnessScore.toFixed(
+        2
+      )}\n`;
+      if (result.helpfulnessReasoning) {
+        fullResult += `  Reasoning: ${result.helpfulnessReasoning}\n`;
       }
     }
 
-    // Determine if we should run in simulation mode (skip actual submission)
-    const shouldSubmitNotes = currentBranch === "main";
+    if (result.xApiScore !== undefined) {
+      fullResult += `- X API Score: ${result.xApiScore}${
+        result.xApiSuccess ? "" : " (failed)"
+      }\n`;
+    }
 
-    console.log(`[main] Current branch: ${currentBranch}`);
-    console.log(`[main] Should submit notes: ${shouldSubmitNotes}`);
+    fullResult += `- All Passed: ${result.allScoresPassed}\n\n`;
+  } else if (result.scores) {
+    // Fallback for old format without filterDetails
+    fullResult += `FILTER SCORES:\n`;
+    fullResult += `- URL Score: ${result.scores.url.toFixed(2)}\n`;
+    fullResult += `- Positive Claims Score: ${result.scores.positive.toFixed(
+      2
+    )}\n`;
+    fullResult += `- Disagreement Score: ${result.scores.disagreement.toFixed(
+      2
+    )}\n`;
+
+    if (result.helpfulnessScore !== undefined) {
+      fullResult += `- Helpfulness Prediction: ${result.helpfulnessScore.toFixed(
+        2
+      )}\n`;
+      if (result.helpfulnessReasoning) {
+        fullResult += `  Reasoning: ${result.helpfulnessReasoning}\n`;
+      }
+    }
+
+    if (result.xApiScore !== undefined) {
+      fullResult += `- X API Score: ${result.xApiScore}${
+        result.xApiSuccess ? "" : " (failed)"
+      }\n`;
+    }
+
+    fullResult += `- All Passed: ${result.allScoresPassed}\n\n`;
+  }
+
+  if (result.skipReason) {
+    fullResult += `SKIP REASON: ${result.skipReason}\n\n`;
+  }
+
+  if (result.searchContextResult) {
+    fullResult += `SEARCH RESULTS:\n${result.searchContextResult.searchResults}\n\n`;
+
+    if (
+      result.searchContextResult.citations &&
+      result.searchContextResult.citations.length > 0
+    ) {
+      fullResult += `CITATIONS:\n`;
+      result.searchContextResult.citations.forEach(
+        (citation: string, index: number) => {
+          fullResult += `[${index + 1}] ${citation}\n`;
+        }
+      );
+      fullResult += `\n`;
+    }
+  }
+
+  if (result.noteResult) {
+    fullResult += `NOTE STATUS: ${result.noteResult.status}\n`;
+    fullResult += `NOTE: ${result.noteResult.note}\n`;
+    fullResult += `URL: ${result.noteResult.url}`;
+  }
+
+  return {
+    URL: url,
+    "Bot name": branchName,
+    "Initial post text": tweetText, // The actual tweet text
+    "Initial tweet body": JSON.stringify(result.post), // The full JSON object
+    "Full Result": fullResult,
+    "Final note": result.noteResult?.note || "",
+    "Would be posted": result.allScoresPassed ? 1 : 0,
+    "Posted to X": postedToX,
+    // Use the correct filter column names (if they exist)
+    "Not sarcasm filter": result.verifiableFactResult?.score,
+    "Positive claims only filter": result.scores?.positive,
+    "Significant correction filter": result.scores?.disagreement,
+    "Keywords extracted": result.keywords
+      ? result.keywords.keywords.join(", ")
+      : "",
+    // Filter reasoning is now included in Full Result, not as separate field
+    "Helpfulness Prediction": result.helpfulnessScore,
+    "X API Score": result.xApiScore,
+    // Character count is computed in Airtable, don't write to it
+  };
+}
+
+async function main() {
+  try {
+    // Get current branch
+    let currentBranch = "refactor";
+    try {
+      if (process.env.GITHUB_BRANCH_NAME) {
+        currentBranch = process.env.GITHUB_BRANCH_NAME.trim().toLowerCase();
+      } else {
+        currentBranch = execSync("git rev-parse --abbrev-ref HEAD", {
+          encoding: "utf8",
+        })
+          .trim()
+          .toLowerCase();
+      }
+    } catch (error) {
+      console.warn("[main] Could not determine branch");
+    }
+
+    const shouldSubmitNotes = currentBranch === "main";
+    console.log(
+      `[main] Branch: ${currentBranch}, Submit notes: ${shouldSubmitNotes}`
+    );
 
     if (!shouldSubmitNotes) {
       console.log(
-        `[main] Running in SIMULATION MODE - notes will be generated and logged but not submitted to X.com`
+        `[main] SIMULATION MODE - notes will not be submitted to X.com`
       );
     }
 
-    // Get commit hash from environment variable (available in GitHub Actions)
-    const commit = process.env.GITHUB_SHA;
+    // Set up timeouts
+    const softTimeout = setTimeout(() => {
+      console.log("[main] Soft timeout reached - no new tasks will be added");
+      shouldStopProcessing = true;
+    }, SOFT_TIMEOUT_MS);
 
-    // Initialize Airtable logger
+    const hardTimeout = setTimeout(() => {
+      console.log("[main] Hard timeout reached - forcing exit");
+      process.exit(0);
+    }, HARD_TIMEOUT_MS);
+
+    // Initialize Airtable
     const airtableLogger = new AirtableLogger();
     const logEntries: any[] = [];
 
-    // Get existing URLs from Airtable for this specific bot
+    // Get existing URLs
     const existingUrls = await airtableLogger.getExistingUrlsForBot(
       currentBranch
     );
-
-    // Convert URLs to post IDs (extract ID from URL)
     const skipPostIds = new Set<string>();
     existingUrls.forEach((url) => {
       const match = url.match(/status\/(\d+)$/);
       if (match && match[1]) skipPostIds.add(match[1]);
     });
 
+    // Get tweets from rerun queue - these should be processed even if already processed before
+    const rerunQueueLogger = new RerunQueueLogger();
+    const rerunQueueTweetIds = await rerunQueueLogger.getRerunQueueTweetIds();
+
+    // Remove rerun queue tweets from skip list so they get processed again
+    rerunQueueTweetIds.forEach((tweetId) => {
+      if (skipPostIds.has(tweetId)) {
+        skipPostIds.delete(tweetId);
+        console.log(`[main] Allowing rerun for tweet ID: ${tweetId}`);
+      }
+    });
+
+    console.log(`[main] Skipping ${skipPostIds.size} already-processed posts`);
     console.log(
-      `[main] Skipping ${skipPostIds.size} already-processed posts for bot '${currentBranch}'`
+      `[main] Found ${rerunQueueTweetIds.size} tweets in rerun queue`
     );
 
-    let posts = await fetchEligiblePosts(maxPosts, skipPostIds, 3); // Fetch up to 3 pages to get at least 10 posts
-
+    // Fetch eligible posts
+    const posts = await fetchEligiblePosts(maxPosts, skipPostIds, 3);
     if (!posts.length) {
       console.log("No new eligible posts found.");
       clearTimeout(softTimeout);
       clearTimeout(hardTimeout);
       process.exit(0);
     }
-    console.log(`[main] Starting pipelines for ${posts.length} posts...`);
 
+    console.log(
+      `[main] Starting refactored pipelines for ${posts.length} posts...`
+    );
+
+    // Process posts with concurrency limit
     const queue = new PQueue({ concurrency: concurrencyLimit });
-    const results: any[] = [];
     let submitted = 0;
 
-    // Add progress logging
-    queue.on("active", () => {
-      console.log(`[queue] Task started - ${queue.size} remaining in queue`);
-    });
-
-    // Add all tasks to the queue
     for (const [idx, post] of posts.entries()) {
-      // Check for soft timeout before adding new tasks
       if (shouldStopProcessing) {
-        console.log(
-          `[main] Soft timeout reached, skipping remaining ${
-            posts.length - idx
-          } posts`
-        );
+        console.log(`[main] Stopping - ${posts.length - idx} posts remaining`);
         break;
       }
 
       queue.add(async () => {
-        const r = await runPipeline(post, idx);
-        if (!r) return;
+        const result = await runRefactoredPipeline(post, idx);
+        if (!result) return;
 
-        // Check if the source verification passed
-        const checkYes =
-          r.checkResult && r.checkResult.trim().toUpperCase() === "YES";
-
-        // Track if we actually posted to Twitter
         let postedToX = false;
-        let twitterResponse = null;
-        let filterResults = null;
-        let filtersPassed = false;
 
-        if (
-          r.noteResult.status === "CORRECTION WITH TRUSTWORTHY CITATION" &&
-          checkYes
-        ) {
-          // Run production filters before posting
-          const noteText = r.noteResult.note + " " + r.noteResult.url;
-          const postText = r.post.text || r.post.full_text || "";
-
-          const filterRun = await runProductionFilters(noteText, postText);
-          filterResults = formatFilterResults(filterRun.results);
-          filtersPassed = filterRun.passed;
-
-          if (!filtersPassed) {
-            console.log(`[main] Filters blocked note for post ${r.post.id}`);
-          } else if (shouldSubmitNotes) {
+        // Submit to Twitter if all checks pass and we're on main
+        if (shouldSubmitNotes) {
+          if (result.allScoresPassed) {
             try {
-              // Submit the note using the same info as in your submitNote.ts
               const { submitNote } = await import("../api/submitNote");
+              const noteText =
+                result.noteResult.note + " " + result.noteResult.url;
               const info = {
                 classification: "misinformed_or_potentially_misleading",
                 misleading_tags: ["disputed_claim_as_fact"],
                 text: noteText,
                 trustworthy_sources: true,
               };
-              const response = await submitNote(r.post.id, info);
+              const response = await submitNote(post.id, info);
               console.log(
-                `[main] Successfully submitted note for post ${r.post.id}:`,
+                `[main] Successfully submitted note for post ${post.id}:`,
                 response
               );
               postedToX = true;
-              twitterResponse = response;
               submitted++;
             } catch (err: any) {
               console.error(
-                `[main] Failed to submit note for post ${r.post.id}:`,
+                `[main] Failed to submit note for post ${post.id}:`,
                 err.response?.data || err
               );
-              postedToX = false;
             }
           } else {
-            console.log(
-              `[main] SIMULATION MODE: Would submit note for post ${r.post.id} but skipping actual submission`
-            );
+            // If all scores didn't pass we will consider whether to
+            // allow the note to be revived in 90 minutes based on
+            // the recency of the subject of the note
+            await considerForRerun(result);
           }
-        } else {
-          const reason =
-            r.noteResult.status !== "CORRECTION WITH TRUSTWORTHY CITATION"
-              ? `status: ${r.noteResult.status}`
-              : `check result: ${r.checkResult}`;
-          console.log(`[main] Skipping post ${r.post.id} (${reason})`);
         }
 
-        // Create log entry with actual posting status and filter results
-        const logEntry = createLogEntry(
-          r.post,
-          r.searchContextResult,
-          r.noteResult,
-          r.checkResult,
+        // Create log entry with scores
+        const logEntry = createLogEntryWithScores(
+          result,
           currentBranch,
-          commit,
-          postedToX,
-          filterResults || undefined
+          process.env.GITHUB_SHA,
+          postedToX
         );
         logEntries.push(logEntry);
       });
     }
 
-    await queue.onIdle(); // Wait for all tasks to complete
-    console.log(
-      `[main] All ${posts.length} posts processed with concurrency limit of ${concurrencyLimit}`
-    );
+    await queue.onIdle();
+    console.log(`[main] All posts processed`);
 
-    // Log all entries to Airtable
+    // Log to Airtable
     if (logEntries.length > 0) {
       try {
         await airtableLogger.logMultipleEntries(logEntries);
-        console.log(
-          `[main] Successfully logged ${logEntries.length} entries to Airtable`
-        );
+        console.log(`[main] Logged ${logEntries.length} entries to Airtable`);
       } catch (err) {
         console.error("[main] Failed to log to Airtable:", err);
       }
     }
 
-    if (logEntries.length === 0) {
-      console.log(
-        "No posts with status 'CORRECTION WITH TRUSTWORTHY CITATION' found."
-      );
-    } else {
-      console.log(
-        `[main] Successfully processed ${logEntries.length} posts, submitted ${submitted} notes`
-      );
-    }
-
-    // Clear all timeouts and exit successfully
-    clearTimeout(softTimeout);
-    clearTimeout(hardTimeout);
-    console.log("[main] Process completed successfully, exiting");
-    process.exit(0);
-  } catch (error: any) {
-    console.error(
-      "Error in create notes routine script:",
-      error.response?.data || error
+    console.log(
+      `[main] Completed - processed ${posts.length} posts, submitted ${submitted} notes`
     );
-    // Clear all timeouts and exit with error
+
     clearTimeout(softTimeout);
     clearTimeout(hardTimeout);
+    process.exit(0);
+  } catch (error) {
+    console.error("[main] Fatal error:", error);
     process.exit(1);
   }
 }
 
+// Run the refactored pipeline
 main();

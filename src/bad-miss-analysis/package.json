@@ -1,9 +1,0 @@
-{
-  "name": "bad-miss-analysis",
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": {
-    "start": "tsx server.ts",
-    "dev": "tsx watch server.ts"
-  }
-}
