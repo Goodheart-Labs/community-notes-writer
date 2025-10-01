@@ -32,6 +32,7 @@ interface NoteEntry {
   wouldBePosted?: number;
   postedToX?: boolean;
   createdTime?: string;
+  nathanRating?: number;
   // Filter scores
   notSarcasmFilter?: number;
   urlFilter?: number;
@@ -93,6 +94,7 @@ app.get('/api/notes', async (req: Request, res: Response) => {
           'Would be posted',
           'Posted to X',
           'Created',
+          'Would Nathan have posted?',
           // Filter columns
           'Not sarcasm filter',
           'URL filter',
@@ -114,6 +116,7 @@ app.get('/api/notes', async (req: Request, res: Response) => {
             wouldBePosted: record.get('Would be posted') as number,
             postedToX: record.get('Posted to X') as boolean,
             createdTime: record.get('Created') as string,
+            nathanRating: record.get('Would Nathan have posted?') as number,
             // Filter scores
             notSarcasmFilter: record.get('Not sarcasm filter') as number,
             urlFilter: record.get('URL filter') as number,
@@ -152,11 +155,35 @@ app.get('/api/notes', async (req: Request, res: Response) => {
   }
 });
 
+// Update Nathan's rating for a note
+app.post('/api/notes/:id/rating', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { rating } = req.body;
+
+    if (rating === undefined || rating < 0 || rating > 1) {
+      return res.status(400).json({ error: 'Rating must be between 0 and 1' });
+    }
+
+    await base(process.env.AIRTABLE_TABLE_NAME!).update(id, {
+      'Would Nathan have posted?': rating,
+    });
+
+    res.json({ success: true, rating });
+  } catch (error) {
+    console.error('[note-viewer] Error updating rating:', error);
+    res.status(500).json({
+      error: 'Failed to update rating',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Get unique branch names
 app.get('/api/branches', async (req: Request, res: Response) => {
   try {
     const branches = new Set<string>();
-    
+
     await base(process.env.AIRTABLE_TABLE_NAME!)
       .select({
         fields: ['Bot name'],

@@ -202,7 +202,35 @@
       background: #ffebee;
       color: #c62828;
     }
-    
+
+    .rating-input {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 8px;
+      background: #ddd;
+      border-radius: 4px;
+      outline: none;
+    }
+
+    .rating-input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      cursor: pointer;
+      border-radius: 50%;
+    }
+
+    .rating-input::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      cursor: pointer;
+      border-radius: 50%;
+      border: none;
+    }
+
     .tweet-text {
       background: #f5f5f5;
       padding: 15px;
@@ -785,7 +813,20 @@
                 ${noteUrl ? `<br><br>${linkifyUrls(noteUrl)}` : ''}
               </div>
             ` : ''}
-            
+
+            <div class="rating-slider" style="margin: 15px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+              <label style="display: block; margin-bottom: 8px; font-weight: 500;">Would Nathan have posted? <span id="rating-value-${note.id}" style="color: #667eea;">${note.nathanRating !== undefined ? (note.nathanRating * 100).toFixed(0) + '%' : 'Not rated'}</span></label>
+              <input type="range"
+                     min="0"
+                     max="100"
+                     value="${note.nathanRating !== undefined ? note.nathanRating * 100 : 50}"
+                     class="rating-input"
+                     data-note-id="${note.id}"
+                     oninput="updateRatingDisplay('${note.id}', this.value)"
+                     onchange="saveRating('${note.id}', this.value)"
+                     style="width: 100%; cursor: pointer;">
+            </div>
+
             ${extractedInfoHtml}
             ${scoresHtml}
             
@@ -862,6 +903,37 @@
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+    }
+
+    // Rating slider functions
+    function updateRatingDisplay(noteId, value) {
+      const displayElement = document.getElementById(`rating-value-${noteId}`);
+      if (displayElement) {
+        displayElement.textContent = value + '%';
+      }
+    }
+
+    async function saveRating(noteId, value) {
+      const rating = parseInt(value) / 100; // Convert to 0-1 scale
+
+      try {
+        const response = await fetch(`/api/notes/${noteId}/rating`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ rating }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save rating');
+        }
+
+        console.log(`Saved rating for ${noteId}: ${rating}`);
+      } catch (error) {
+        console.error('Error saving rating:', error);
+        alert('Failed to save rating. Please try again.');
+      }
     }
 
     function downloadCSV(data) {
