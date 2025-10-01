@@ -1,4 +1,4 @@
-import type { PipelineResult } from "../scripts/createNotesRoutine";
+import type { PipelineResult } from "../lib/types";
 import { generateObject } from "ai";
 import { openrouter } from "@openrouter/ai-sdk-provider";
 import z from "zod";
