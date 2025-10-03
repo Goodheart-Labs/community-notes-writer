@@ -19,8 +19,8 @@ jobs:
       - name: Get all branches
         id: branch-list
         run: |
-          # Get all remote branches, filter out HEAD, and trim whitespace
-          git branch -r | grep -E "(origin/main|origin/staging/)" | grep -v "HEAD" | sed 's/origin\///' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' > branches.txt
+          # Get all remote branches
+          git branch -r | grep -E "(origin/main|origin/staging/)" | sed 's/origin\///' > branches.txt
 
           # Convert to JSON array format for matrix
           echo "branches=$(cat branches.txt | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
