@@ -8,12 +8,7 @@ import { zodResponseFormat } from "openai/helpers/zod.mjs";
 /**
  * Parses a string to extract status, note, url, and reasoning.
  */
-function parseStatusNoteUrl(content: string): {
-  status: string;
-  note: string;
-  url: string;
-  reasoning?: string;
-} {
+function parseStatusNoteUrl(content: string): z.infer<typeof writeNoteOutput> & { reasoning?: string } {
   // Look for the new format with "Status:" and "Note:" labels
   const statusMatch = content.match(/Status:\s*(.+?)(?:\n|$)/i);
   const noteMatch = content.match(/Note:\s*([\s\S]+?)(?:$)/i);
@@ -39,7 +34,7 @@ function parseStatusNoteUrl(content: string): {
       reasoning = reasoning.replace(/^\[?Reasoning\]?:?\s*/i, '').trim();
     }
 
-    return { status, note, url, reasoning };
+    return { status: status as any, note, url, reasoning };
   }
 
   // Fall back to old format for backward compatibility
@@ -51,7 +46,7 @@ function parseStatusNoteUrl(content: string): {
     throw new Error("Empty content");
   }
   // Status is the first non-empty line
-  const status: string = lines[0] ?? "";
+  const status = lines[0] ?? "";
   // Find a URL in any line
   let url = "";
   let urlLineIdx = -1;
@@ -66,7 +61,7 @@ function parseStatusNoteUrl(content: string): {
   // Note is everything except the status and url line
   const noteLines = lines.filter((_, idx) => idx !== 0 && idx !== urlLineIdx);
   const note: string = noteLines.join(" ").trim();
-  return { status, note, url };
+  return { status: status as any, note, url };
 }
 
 // Define the goal schema, similar to searchContext.ts
@@ -239,7 +234,7 @@ Citations:
 ${citations.join("\n")}
 \`\`\``;
 
-export const writeNoteWithSearch = writeNoteWithSearchGoal.register({
+export const writeNoteWithSearch = writeNoteGoal.register({
   name: "write note with search v1",
   config: [{ model: "anthropic/claude-sonnet-4" }],
 });
@@ -254,7 +249,7 @@ export async function writeNote(
   config: {
     model: string;
   }
-) {
+): Promise<z.infer<typeof writeNoteOutput>> {
   const maxRetries = 3;
   let attempt = 0;
   let previousParsed: ReturnType<typeof parseStatusNoteUrl> | null = null;

@@ -74,6 +74,7 @@
                 <div class="flex gap-2">
                     <select id="stepFilter" class="p-2 border border-gray-300 rounded-md text-sm">
                         <option value="all">All Steps</option>
+                        <option value="missing-verifiable">Missing Verifiable Fact Filter</option>
                     </select>
                     <span id="filteredCount" class="text-sm text-gray-600 self-center"></span>
                 </div>
@@ -212,20 +213,34 @@
             // Populate step filter dropdown
             const uniqueSteps = new Set();
             uniqueSteps.add('all');
+            uniqueSteps.add('missing-verifiable');
             analyses.forEach(a => {
                 if (a.failedAt) uniqueSteps.add(a.failedAt);
             });
 
-            stepFilter.innerHTML = Array.from(uniqueSteps).map(step =>
-                `<option value="${step}">${step === 'all' ? 'All Steps' : step}</option>`
-            ).join('');
+            stepFilter.innerHTML = Array.from(uniqueSteps).map(step => {
+                if (step === 'all') return `<option value="all">All Steps</option>`;
+                if (step === 'missing-verifiable') return `<option value="missing-verifiable">Missing Verifiable Fact Filter</option>`;
+                return `<option value="${step}">${step}</option>`;
+            }).join('');
 
             // Filter function
             function filterAndRender() {
                 const selectedStep = stepFilter.value;
-                const filtered = selectedStep === 'all'
-                    ? analyses
-                    : analyses.filter(a => a.failedAt === selectedStep);
+                let filtered;
+
+                if (selectedStep === 'all') {
+                    filtered = analyses;
+                } else if (selectedStep === 'missing-verifiable') {
+                    // Find records that have a note but no Verifiable Fact Filter step
+                    filtered = analyses.filter(a => {
+                        const hasNote = a.steps.some(s => s.step === 'Generated Note' && s.passed);
+                        const hasVerifiable = a.steps.some(s => s.step === 'Verifiable Fact Filter');
+                        return hasNote && !hasVerifiable;
+                    });
+                } else {
+                    filtered = analyses.filter(a => a.failedAt === selectedStep);
+                }
 
                 filteredCount.textContent = `(${filtered.length} records)`;
 
@@ -262,12 +277,23 @@
                             </span>
                         </div>
 
+                        <!-- Original Tweet -->
+                        ${analysis.record.initialPostText ? `
+                            <div class="mb-4">
+                                <h4 class="font-semibold text-gray-700 mb-2 text-sm">Original Tweet</h4>
+                                <div class="bg-gray-50 p-3 rounded-lg text-sm text-gray-800">
+                                    ${escapeHtml(analysis.record.initialPostText)}
+                                </div>
+                                ${getTweetImages(analysis.record.initialTweetBody)}
+                            </div>
+                        ` : ''}
+
                         <!-- Note Text (if exists) -->
                         ${analysis.record.finalNote ? `
                             <div class="mb-4">
                                 <h4 class="font-semibold text-gray-700 mb-2 text-sm">Generated Note</h4>
-                                <div class="bg-gray-50 p-3 rounded-lg text-sm text-gray-800 border-l-4 border-blue-400">
-                                    ${escapeHtml(analysis.record.finalNote)}
+                                <div class="bg-blue-50 p-3 rounded-lg text-sm text-gray-800 border-l-4 border-blue-400">
+                                    ${linkifyUrls(escapeHtml(analysis.record.finalNote))}
                                 </div>
                             </div>
                         ` : ''}
@@ -322,6 +348,33 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function getTweetImages(tweetBodyJson) {
+            if (!tweetBodyJson) return '';
+
+            try {
+                const tweetBody = typeof tweetBodyJson === 'string' ? JSON.parse(tweetBodyJson) : tweetBodyJson;
+                if (!tweetBody.media || tweetBody.media.length === 0) return '';
+
+                const images = tweetBody.media
+                    .filter(m => m.type === 'photo' && m.url)
+                    .map(m => `
+                        <img src="${m.url}" alt="Tweet image" class="max-w-full h-auto rounded-lg border border-gray-200" style="max-height: 300px;">
+                    `).join('');
+
+                if (images) {
+                    return `<div class="mt-3 flex gap-2 flex-wrap">${images}</div>`;
+                }
+            } catch (e) {
+                console.error('Error parsing tweet body:', e);
+            }
+            return '';
+        }
+
+        function linkifyUrls(text) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            return text.replace(urlRegex, '<a href="$1" target="_blank" class="text-blue-600 hover:text-blue-800 underline">$1</a>');
         }
 
         // Event listeners

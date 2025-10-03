@@ -21,7 +21,9 @@
       "Bash(git branch:*)",
       "Bash(git fetch:*)",
       "WebSearch",
-      "Bash(./scripts/count_tokens.sh:*)"
+      "Bash(./scripts/count_tokens.sh:*)",
+      "Bash(npx tsc:*)",
+      "Bash(bun add:*)"
     ],
     "deny": [],
     "ask": []

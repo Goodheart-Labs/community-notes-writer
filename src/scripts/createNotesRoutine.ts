@@ -86,8 +86,10 @@ function createLogEntryWithScores(
 
   if (result.scores && result.filterDetails) {
     fullResult += `FILTER SCORES:\n`;
-    fullResult += `- URL Score: ${result.scores.url.toFixed(2)}\n`;
-    fullResult += `  Reasoning: ${result.filterDetails.url.reasoning}\n`;
+    fullResult += `- URL Validity Score: ${result.scores.urlValidity.toFixed(2)}\n`;
+    fullResult += `  Reasoning: ${result.filterDetails.urlValidity.reasoning}\n`;
+    fullResult += `- URL Source Score: ${result.scores.urlSource.toFixed(2)}\n`;
+    fullResult += `  Reasoning: ${result.filterDetails.urlSource.reasoning}\n`;
     fullResult += `- Positive Claims Score: ${result.scores.positive.toFixed(
       2
     )}\n`;
@@ -116,7 +118,8 @@ function createLogEntryWithScores(
   } else if (result.scores) {
     // Fallback for old format without filterDetails
     fullResult += `FILTER SCORES:\n`;
-    fullResult += `- URL Score: ${result.scores.url.toFixed(2)}\n`;
+    fullResult += `- URL Validity Score: ${result.scores.urlValidity.toFixed(2)}\n`;
+    fullResult += `- URL Source Score: ${result.scores.urlSource.toFixed(2)}\n`;
     fullResult += `- Positive Claims Score: ${result.scores.positive.toFixed(
       2
     )}\n`;

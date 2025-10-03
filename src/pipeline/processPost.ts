@@ -57,14 +57,14 @@ export async function processPost(
     );
 
     const step1Passed = verifiableFactResult.score > 0.5;
-    console.log(`[Step ${stepNumber}] COMPLETE: ${stepName1}`);
+    console.log(`[Step ${stepNumber}] COMPLETE: ${STEP_VERIFIABLE_FACTS}`);
     console.log(`[Step ${stepNumber}]   Score: ${verifiableFactResult.score.toFixed(2)}`);
     console.log(`[Step ${stepNumber}]   Passed: ${step1Passed ? 'YES' : 'NO'}`);
     console.log(`[Step ${stepNumber}]   Reasoning: ${verifiableFactResult.reasoning}\n`);
 
     steps.push({
       stepNumber,
-      stepName: stepName1,
+      stepName: STEP_VERIFIABLE_FACTS,
       completed: true,
       passed: step1Passed,
       score: verifiableFactResult.score,
@@ -72,14 +72,14 @@ export async function processPost(
     });
 
     if (!step1Passed) {
-      failedAtStep = stepName1;
+      failedAtStep = STEP_VERIFIABLE_FACTS;
       return {
         post,
         stepsExecuted: steps,
         failedAtStep,
         verifiableFactResult,
         allScoresPassed: false,
-        skipReason: `Failed at step ${stepNumber}: ${stepName1} (score: ${verifiableFactResult.score.toFixed(2)})`,
+        skipReason: `Failed at step ${stepNumber}: ${STEP_VERIFIABLE_FACTS} (score: ${verifiableFactResult.score.toFixed(2)})`,
       };
     }
 
@@ -254,7 +254,7 @@ export async function processPost(
     const STEP_URL_QUALITY = "Check URL Quality";
     console.log(`[Step ${stepNumber}] START: ${STEP_URL_QUALITY}`);
 
-    const urlValidityResult = await checkUrlValidity(noteResult.note, noteResult.url);
+    const urlValidityResult = await checkUrlValidity(noteResult.note, noteResult.url || "");
     const step7Passed = urlValidityResult.score > 0.5;
 
     console.log(`[Step ${stepNumber}] COMPLETE: ${STEP_URL_QUALITY}`);
@@ -276,7 +276,7 @@ export async function processPost(
     const STEP_URL_CONTENT = "Check URL Content";
     console.log(`[Step ${stepNumber}] START: ${STEP_URL_CONTENT}`);
 
-    const urlSourceResult = await checkUrlAndSource(noteResult.note, noteResult.url);
+    const urlSourceResult = await checkUrlAndSource(noteResult.note, noteResult.url || "");
     const step8Passed = urlSourceResult.score > 0.5;
 
     console.log(`[Step ${stepNumber}] COMPLETE: ${STEP_URL_CONTENT}`);
@@ -392,7 +392,7 @@ export async function processPost(
         noteResult.note,
         originalContent.text,
         searchResult.searchResults,
-        noteResult.url
+        noteResult.url || ""
       );
       helpfulnessScore = helpfulnessResult.score;
       helpfulnessReasoning = helpfulnessResult.reasoning;

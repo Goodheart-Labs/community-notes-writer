@@ -30,6 +30,8 @@ interface NoteRecord {
   createdTime?: string;
   fullResult?: string;
   noteStatus?: string;
+  initialPostText?: string;
+  initialTweetBody?: string;
   // Filter scores - new structure
   notSarcasmFilter?: number;
   urlValidityFilter?: number;
@@ -306,28 +308,26 @@ function generateSankeyData(analyses: AnalysisResult[]): SankeyData {
     'Verifiable Fact Filter',
     'Generated Note',
     'CORRECTION WITH TRUSTWORTHY CITATION',
+    'Positive Claims Filter',
+    'Passed All Tracked Filters',
+    'Disagreement Filter',
+    'Helpfulness Prediction',
+    'Failed: X API Score',
+    'Failed: Disagreement Filter',
+    'Failed: NO MISSING CONTEXT',
+    'Failed: NO SUPPORTING SOURCE FOUND',
     'NO SUPPORTING SOURCE FOUND',
     'NO MISSING CONTEXT',
     'TWEET NOT SIGNIFICANTLY INCORRECT',
     'STATUS EXTRACTION FAILED',
     'URL Quality Filter',
     'URL Content Filter',
-    'Positive Claims Filter',
-    'Disagreement Filter',
-    'Helpfulness Prediction',
-    'X API Score',
-    // Failure nodes in order from bottom to top of image
     'Failed: Verifiable Fact Filter',
-    'Failed: NO SUPPORTING SOURCE FOUND',
-    'Failed: NO MISSING CONTEXT',
     'Failed: TWEET NOT SIGNIFICANTLY INCORRECT',
+    'Failed: Positive Claims Filter',
+    'Posted',
     'Failed: URL Quality Filter',
     'Failed: URL Content Filter',
-    'Failed: Positive Claims Filter',
-    'Failed: Disagreement Filter',
-    'Failed: X API Score',
-    'Passed All Tracked Filters',
-    'Posted',
   ];
 
   const sortedNodeNames = Array.from(nodeNames).sort((a, b) => {
@@ -397,6 +397,8 @@ app.get('/api/why-not-posted', async (req: Request, res: Response) => {
           'Would be posted',
           'Created',
           'Full Result',
+          'Initial post text',
+          'Initial tweet body',
           'Not sarcasm filter',
           'Positive claims only filter',
           'Significant correction filter',
@@ -414,6 +416,8 @@ app.get('/api/why-not-posted', async (req: Request, res: Response) => {
             wouldBePosted: record.get('Would be posted') as number,
             createdTime: record.get('Created') as string,
             fullResult: record.get('Full Result') as string,
+            initialPostText: record.get('Initial post text') as string,
+            initialTweetBody: record.get('Initial tweet body') as string,
             notSarcasmFilter: record.get('Not sarcasm filter') as number,
             urlValidityFilter: undefined,  // Not stored separately yet
             urlSourceFilter: undefined,     // Not stored separately yet

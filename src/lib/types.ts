@@ -20,12 +20,14 @@ export interface PipelineResult {
   noteResult?: any;
   characterLimitResult?: { valid: boolean; characterCount: number; reasoning: string };
   scores?: {
-    url: number;
+    urlValidity: number;
+    urlSource: number;
     positive: number;
     disagreement: number;
   };
   filterDetails?: {
-    url: { score: number; reasoning: string };
+    urlValidity: { score: number; reasoning: string };
+    urlSource: { score: number; reasoning: string };
     positive: { score: number; reasoning: string };
     disagreement: { score: number; reasoning: string };
   };
