@@ -46,6 +46,7 @@
     "bad-miss-viewer": "bun --watch src/tools/bad-miss-viewer/server.ts",
     "posting-sankey": "bun --watch src/tools/posting-sankey/server.ts",
     "filter-lab": "bun src/tools/filter-lab/server.ts",
-    "note-viewer": "bun --watch src/tools/note-viewer/server.ts"
+    "note-viewer": "bun --watch src/tools/note-viewer/server.ts",
+    "bot-comparison": "bun --watch src/tools/bot-comparison/server.ts"
   }
 }

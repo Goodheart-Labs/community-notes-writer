@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Comparison</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .bot-column {
+            min-width: 400px;
+            max-width: 400px;
+        }
+        .tweet-column {
+            min-width: 300px;
+            max-width: 300px;
+        }
+        .comparison-table {
+            display: flex;
+            flex-direction: column;
+            overflow-x: auto;
+        }
+        .comparison-row {
+            display: flex;
+            flex-direction: row;
+            border-bottom: 1px solid #e5e7eb;
+            flex-shrink: 0;
+        }
+        .comparison-row:hover {
+            background-color: #f9fafb;
+        }
+        .cell {
+            padding: 1rem;
+            border-right: 1px solid #e5e7eb;
+        }
+        .header-cell {
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+            font-weight: 600;
+            border-bottom: 2px solid #d1d5db;
+        }
+        .tweet-cell {
+            position: sticky;
+            left: 0;
+            background: white;
+            z-index: 5;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-gray-800 mb-2">Bot Comparison</h1>
+        <p class="text-gray-600 mb-8">Compare how different bot configurations handle the same tweets</p>
+
+        <!-- Controls -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Number of Tweets</label>
+                    <select id="limitFilter" class="w-full p-2 border border-gray-300 rounded-md">
+                        <option value="25">Last 25</option>
+                        <option value="50" selected>Last 50</option>
+                        <option value="100">Last 100</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button id="loadBtn" class="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600">
+                        <i class="fas fa-sync mr-2"></i>Load
+                    </button>
+                </div>
+            </div>
+
+            <div id="stats" class="mt-4 pt-4 border-t border-gray-200 hidden">
+                <div class="flex gap-4">
+                    <div>
+                        <span class="text-sm text-gray-600">Total Tweets:</span>
+                        <span id="totalTweets" class="ml-2 text-xl font-bold text-blue-600">0</span>
+                    </div>
+                    <div>
+                        <span class="text-sm text-gray-600">Bots:</span>
+                        <span id="totalBots" class="ml-2 text-xl font-bold text-green-600">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparison Table -->
+        <div id="comparisonContainer" class="bg-white rounded-lg shadow-md overflow-hidden hidden">
+            <div id="comparisonTable" class="comparison-table"></div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="text-center text-gray-500 py-12 hidden">
+            <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+            <p>Loading comparison data...</p>
+        </div>
+
+    </div>
+
+    <script>
+        let currentData = null;
+
+        async function loadComparison() {
+            const limit = document.getElementById('limitFilter').value;
+
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('comparisonContainer').classList.add('hidden');
+            document.getElementById('stats').classList.add('hidden');
+
+            try {
+                const response = await fetch(`/api/comparison?limit=${limit}`);
+                const data = await response.json();
+                currentData = data;
+
+                document.getElementById('loadingState').classList.add('hidden');
+
+                // Show stats
+                document.getElementById('stats').classList.remove('hidden');
+                document.getElementById('totalTweets').textContent = data.totalTweets;
+                document.getElementById('totalBots').textContent = data.botNames.length;
+
+                // Render comparison table
+                renderComparison(data);
+
+            } catch (error) {
+                console.error('Failed to load:', error);
+                document.getElementById('loadingState').classList.add('hidden');
+                alert('Error loading data: ' + error.message);
+            }
+        }
+
+        function renderComparison(data) {
+            const container = document.getElementById('comparisonContainer');
+            const table = document.getElementById('comparisonTable');
+            container.classList.remove('hidden');
+
+            if (!data || !data.tweets || !data.botNames) {
+                console.error('Invalid data structure:', data);
+                alert('Invalid data received from server');
+                return;
+            }
+
+            // Build header row
+            let headerHTML = '<div class="comparison-row">';
+            headerHTML += '<div class="cell header-cell tweet-cell tweet-column"><i class="fas fa-twitter text-blue-400 mr-2"></i>Tweet</div>';
+            data.botNames.forEach(botName => {
+                headerHTML += `<div class="cell header-cell bot-column"><i class="fas fa-robot mr-2"></i>${escapeHtml(botName)}</div>`;
+            });
+            headerHTML += '</div>';
+
+            // Build data rows
+            let rowsHTML = '';
+            data.tweets.forEach((tweet, idx) => {
+                rowsHTML += '<div class="comparison-row">';
+
+                // Tweet column (sticky)
+                rowsHTML += `<div class="cell tweet-cell tweet-column">
+                    <div class="text-sm text-gray-500 mb-2">#${idx + 1}</div>
+                    <div class="text-sm mb-2">${escapeHtml(tweet.tweetText).substring(0, 150)}${tweet.tweetText.length > 150 ? '...' : ''}</div>
+                    ${getTweetImages(tweet.tweetBody)}
+                    <a href="${tweet.url}" target="_blank" class="text-xs text-blue-600 hover:underline inline-flex items-center gap-1 mt-2">
+                        <i class="fab fa-twitter"></i>
+                        View on X
+                        <i class="fas fa-external-link-alt text-xs"></i>
+                    </a>
+                </div>`;
+
+                // Bot columns
+                data.botNames.forEach(botName => {
+                    const botRecord = tweet.bots.find(b => b.botName === botName);
+                    if (botRecord) {
+                        const posted = botRecord.wouldBePosted === 1;
+                        const isBadMiss = posted && botRecord.nathanScore !== undefined && botRecord.nathanScore < 0.5;
+                        rowsHTML += `<div class="cell bot-column">
+                            <div class="flex items-center gap-2 mb-3 flex-wrap">
+                                ${isBadMiss
+                                    ? '<span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold"><i class="fas fa-exclamation-triangle mr-1"></i>Bad Miss</span>'
+                                    : ''
+                                }
+                                ${posted
+                                    ? '<span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold"><i class="fas fa-check-circle mr-1"></i>Would Post</span>'
+                                    : '<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs"><i class="fas fa-times-circle mr-1"></i>Skip</span>'
+                                }
+                            </div>
+                            ${botRecord.finalNote ? `
+                                <div class="mb-3">
+                                    <div class="text-xs font-semibold text-gray-600 mb-1">Generated Note:</div>
+                                    <div class="text-sm bg-blue-50 p-2 rounded border-l-2 border-blue-400">
+                                        ${linkifyUrls(escapeHtml(botRecord.finalNote))}
+                                    </div>
+                                </div>
+                            ` : '<div class="text-sm text-gray-400 italic mb-3">No note generated</div>'}
+                            ${!posted && botRecord.skipReason ? `
+                                <div class="mb-3 bg-yellow-50 p-2 rounded border-l-2 border-yellow-400">
+                                    <div class="text-xs font-semibold text-yellow-800 mb-1">Skip Reason:</div>
+                                    <div class="text-xs text-yellow-900">${escapeHtml(botRecord.skipReason)}</div>
+                                </div>
+                            ` : ''}
+                            <div class="text-xs space-y-1">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Verifiable:</span>
+                                    <span class="${botRecord.notSarcasmFilter !== undefined ? (botRecord.notSarcasmFilter > 0.5 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'} font-mono">
+                                        ${botRecord.notSarcasmFilter !== undefined ? botRecord.notSarcasmFilter.toFixed(2) : 'N/A'}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Positive Claims:</span>
+                                    <span class="${botRecord.positiveClaimsFilter !== undefined ? (botRecord.positiveClaimsFilter > 0.5 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'} font-mono">
+                                        ${botRecord.positiveClaimsFilter !== undefined ? botRecord.positiveClaimsFilter.toFixed(2) : 'N/A'}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Disagreement:</span>
+                                    <span class="${botRecord.significantCorrectionFilter !== undefined ? (botRecord.significantCorrectionFilter > 0.5 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'} font-mono">
+                                        ${botRecord.significantCorrectionFilter !== undefined ? botRecord.significantCorrectionFilter.toFixed(2) : 'N/A'}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Helpfulness:</span>
+                                    <span class="${botRecord.helpfulnessPrediction !== undefined ? 'text-blue-600' : 'text-gray-400'} font-mono">
+                                        ${botRecord.helpfulnessPrediction !== undefined ? botRecord.helpfulnessPrediction.toFixed(2) : 'N/A'}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">X API:</span>
+                                    <span class="${botRecord.xApiScore !== undefined ? (botRecord.xApiScore >= -0.5 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'} font-mono">
+                                        ${botRecord.xApiScore !== undefined ? botRecord.xApiScore.toFixed(2) : 'N/A'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-gray-200">
+                                <label class="text-xs text-gray-600 block mb-1">Would Nathan post this?</label>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value="${botRecord.nathanScore !== undefined ? Math.round(botRecord.nathanScore * 100) : 50}"
+                                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                    data-record-id="${botRecord.id}"
+                                    onchange="updateNathanScore('${botRecord.id}', this.value)"
+                                >
+                                <div class="flex justify-between text-xs mt-1">
+                                    <span class="text-red-600">No (0%)</span>
+                                    <span class="text-gray-600 font-mono" id="score-${botRecord.id}">${botRecord.nathanScore !== undefined ? Math.round(botRecord.nathanScore * 100) : 50}%</span>
+                                    <span class="text-green-600">Yes (100%)</span>
+                                </div>
+                            </div>
+                        </div>`;
+                    } else {
+                        rowsHTML += `<div class="cell bot-column">
+                            <div class="text-sm text-gray-400 italic">Not processed</div>
+                        </div>`;
+                    }
+                });
+
+                rowsHTML += '</div>';
+            });
+
+            table.innerHTML = headerHTML + rowsHTML;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function getTweetImages(tweetBodyJson) {
+            if (!tweetBodyJson) return '';
+            try {
+                const tweetBody = typeof tweetBodyJson === 'string' ? JSON.parse(tweetBodyJson) : tweetBodyJson;
+                if (!tweetBody.media || tweetBody.media.length === 0) return '';
+
+                const images = tweetBody.media
+                    .filter(m => m.type === 'photo' && m.url)
+                    .map(m => `<img src="${m.url}" class="rounded border border-gray-200" style="max-height: 100px; max-width: 150px;">`)
+                    .join('');
+
+                return images ? `<div class="mt-2 flex gap-2 flex-wrap">${images}</div>` : '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function linkifyUrls(text) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            return text.replace(urlRegex, '<a href="$1" target="_blank" class="text-blue-600 hover:underline">$1</a>');
+        }
+
+        async function updateNathanScore(recordId, value) {
+            const score = parseInt(value) / 100;
+            const scoreDisplay = document.getElementById(`score-${recordId}`);
+            if (scoreDisplay) {
+                scoreDisplay.textContent = `${value}%`;
+            }
+
+            // Find the bot column containing this slider
+            const slider = document.querySelector(`input[data-record-id="${recordId}"]`);
+            const botColumn = slider?.closest('.bot-column');
+
+            if (botColumn) {
+                // Check if this should be a bad miss (posted AND nathanScore < 0.5)
+                const wouldPostBadge = botColumn.querySelector('.bg-green-100');
+                const isBadMiss = wouldPostBadge && score < 0.5;
+
+                // Update or add/remove bad miss badge
+                let badMissBadge = botColumn.querySelector('.bg-red-100');
+                const badgesContainer = botColumn.querySelector('.flex.items-center.gap-2.mb-3');
+
+                if (isBadMiss && !badMissBadge) {
+                    // Add bad miss badge
+                    const badge = document.createElement('span');
+                    badge.className = 'px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold';
+                    badge.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>Bad Miss';
+                    badgesContainer?.insertBefore(badge, badgesContainer.firstChild);
+                } else if (!isBadMiss && badMissBadge) {
+                    // Remove bad miss badge
+                    badMissBadge.remove();
+                }
+            }
+
+            try {
+                const response = await fetch('/api/update-nathan-score', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        recordId,
+                        score
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update score');
+                }
+            } catch (error) {
+                console.error('Error updating Nathan score:', error);
+                alert('Failed to save rating: ' + error.message);
+            }
+        }
+
+        document.getElementById('loadBtn').addEventListener('click', loadComparison);
+
+        // Auto-load on page load
+        document.addEventListener('DOMContentLoaded', loadComparison);
+    </script>
+</body>
+</html>
