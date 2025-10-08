@@ -225,10 +225,10 @@ export async function processTweet(
         console.log(`[pipeline] X API score: ${xApiScore}`);
 
         // Check X API threshold
-        if (xApiScore < -1.5) {
+        if (xApiScore < -0.25) {
           allPassed = false;
           console.log(
-            `[pipeline] X API score too low (${xApiScore} < -1.5), note will not be posted`
+            `[pipeline] X API score too low (${xApiScore} < -0.25), note will not be posted`
           );
         }
       } else {
@@ -255,7 +255,7 @@ export async function processTweet(
         ? undefined
         : helpfulnessScore !== undefined && helpfulnessScore < 0.5
         ? `Helpfulness score too low (${helpfulnessScore.toFixed(2)})`
-        : xApiScore !== undefined && xApiScore < -1.5
+        : xApiScore !== undefined && xApiScore < -0.25
         ? `X API score too low (${xApiScore})`
         : "Failed score thresholds",
     };
