@@ -217,7 +217,7 @@ export async function processTweet(
 
       // 7. EVALUATE WITH X API
       console.log(`[pipeline] Evaluating with X API...`);
-      const xApiResult = await evaluateNoteWithXAPI(noteResult.note, post.id);
+      const xApiResult = await evaluateNoteWithXAPI(noteResult.note, post.id, noteResult.url);
       xApiScore = xApiResult.claimOpinionScore;
       xApiSuccess = xApiResult.success;
 

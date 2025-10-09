@@ -11,11 +11,13 @@ export interface XAPIEvaluationResult {
  * Evaluates a Community Note using X's official API
  * @param noteText The text of the community note
  * @param postId The ID of the post being annotated
+ * @param sourceUrl The citation URL for the note (optional)
  * @returns The claim_opinion_score from X API
  */
 export async function evaluateNoteWithXAPI(
   noteText: string,
-  postId: string
+  postId: string,
+  sourceUrl?: string
 ): Promise<XAPIEvaluationResult> {
   // Check for OAuth 1.0a credentials
   const consumer_key = process.env.X_API_KEY;
@@ -34,20 +36,24 @@ export async function evaluateNoteWithXAPI(
 
   try {
     const url = "https://api.x.com/2/evaluate_note";
-    const body = JSON.stringify({
+    const requestBody: any = {
       note_text: noteText,
       post_id: postId
-    });
+    };
+
+    // Add source_url if provided
+    if (sourceUrl) {
+      requestBody.source_url = sourceUrl;
+    }
+
+    const body = JSON.stringify(requestBody);
 
     // Get OAuth 1.0a headers
     const oauthHeaders = getOAuth1Headers(url, "POST", body);
 
     const response = await axios.post(
       url,
-      {
-        note_text: noteText,
-        post_id: postId
-      },
+      requestBody,
       {
         headers: {
           ...oauthHeaders,
