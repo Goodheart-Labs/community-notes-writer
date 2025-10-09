@@ -189,17 +189,8 @@
                                 <div class="mb-3">
                                     <div class="text-xs font-semibold text-gray-600 mb-1">Generated Note:</div>
                                     <div class="text-sm bg-blue-50 p-2 rounded border-l-2 border-blue-400">
-                                        ${linkifyUrls(escapeHtml(botRecord.finalNote))}
+                                        ${formatNoteWithUrl(botRecord.finalNote, extractNoteUrl(botRecord.fullResult))}
                                     </div>
-                                    ${extractNoteUrl(botRecord.fullResult) ? `
-                                        <div class="mt-2">
-                                            <a href="${extractNoteUrl(botRecord.fullResult)}" target="_blank" class="text-xs text-blue-600 hover:underline inline-flex items-center gap-1">
-                                                <i class="fas fa-link"></i>
-                                                ${extractNoteUrl(botRecord.fullResult)}
-                                                <i class="fas fa-external-link-alt text-xs"></i>
-                                            </a>
-                                        </div>
-                                    ` : ''}
                                 </div>
                             ` : '<div class="text-sm text-gray-400 italic mb-3">No note generated</div>'}
                             ${!posted && botRecord.skipReason ? `
@@ -316,6 +307,19 @@
             // Look for "URL: <url>" pattern in the Full Result
             const match = fullResult.match(/\nURL:\s*(https?:\/\/[^\s\n]+)/);
             return match ? match[1] : null;
+        }
+
+        function formatNoteWithUrl(noteText, url) {
+            // Escape the note text
+            const escapedNote = escapeHtml(noteText);
+
+            // If there's a URL, append it as a clickable link
+            if (url) {
+                return `${escapedNote} <a href="${url}" target="_blank" class="text-blue-600 hover:underline">${url}</a>`;
+            }
+
+            // Otherwise just return the escaped note
+            return escapedNote;
         }
 
         async function updateNathanScore(recordId, value) {
