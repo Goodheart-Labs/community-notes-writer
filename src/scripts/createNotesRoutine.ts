@@ -183,6 +183,8 @@ function createLogEntryWithScores(
     "Posted to X": postedToX,
     // Use the correct filter column names (if they exist)
     "Not sarcasm filter": result.verifiableFactResult?.score,
+    "URL Validity filter": result.scores?.urlValidity,
+    "URL Source filter": result.scores?.urlSource,
     "Positive claims only filter": result.scores?.positive,
     "Significant correction filter": result.scores?.disagreement,
     "Keywords extracted": result.keywords

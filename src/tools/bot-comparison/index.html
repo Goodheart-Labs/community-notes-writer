@@ -207,6 +207,18 @@
                                     </span>
                                 </div>
                                 <div class="flex justify-between">
+                                    <span class="text-gray-600">URL Validity:</span>
+                                    <span class="${botRecord.urlValidityFilter !== undefined ? (botRecord.urlValidityFilter > 0.5 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'} font-mono">
+                                        ${botRecord.urlValidityFilter !== undefined ? botRecord.urlValidityFilter.toFixed(2) : 'N/A'}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">URL Source:</span>
+                                    <span class="${botRecord.urlSourceFilter !== undefined ? (botRecord.urlSourceFilter > 0.5 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'} font-mono">
+                                        ${botRecord.urlSourceFilter !== undefined ? botRecord.urlSourceFilter.toFixed(2) : 'N/A'}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between">
                                     <span class="text-gray-600">Positive Claims:</span>
                                     <span class="${botRecord.positiveClaimsFilter !== undefined ? (botRecord.positiveClaimsFilter > 0.5 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'} font-mono">
                                         ${botRecord.positiveClaimsFilter !== undefined ? botRecord.positiveClaimsFilter.toFixed(2) : 'N/A'}
