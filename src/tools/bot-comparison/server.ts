@@ -62,8 +62,8 @@ app.get('/api/comparison', async (req: Request, res: Response) => {
           'Created',
           'Full Result',
           'Not sarcasm filter',
-          'URL Validity filter',
-          'URL Source filter',
+          // 'URL Validity filter',  // TODO: Add these fields to Airtable
+          // 'URL Source filter',     // TODO: Add these fields to Airtable
           'Positive claims only filter',
           'Significant correction filter',
           'Helpfulness Prediction',
@@ -85,8 +85,8 @@ app.get('/api/comparison', async (req: Request, res: Response) => {
             createdTime: record.get('Created') as string,
             fullResult: record.get('Full Result') as string,
             notSarcasmFilter: record.get('Not sarcasm filter') as number,
-            urlValidityFilter: record.get('URL Validity filter') as number,
-            urlSourceFilter: record.get('URL Source filter') as number,
+            urlValidityFilter: undefined, // record.get('URL Validity filter') as number,
+            urlSourceFilter: undefined, // record.get('URL Source filter') as number,
             positiveClaimsFilter: record.get('Positive claims only filter') as number,
             significantCorrectionFilter: record.get('Significant correction filter') as number,
             helpfulnessPrediction: record.get('Helpfulness Prediction') as number,
