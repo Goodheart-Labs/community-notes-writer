@@ -46,7 +46,17 @@ Scoring:
 
 IMPORTANT: Return ONLY a JSON object with:
 - score: a number between 0 and 1
-- reasoning: a single string (one sentence)`;
+- reasoning: a single string (one sentence)
+
+Examples:
+
+Note: 
+
+This claim is incorrect. The Supreme Court has consistently ruled that non-obscene adult pornography is protected by the First Amendment as free speech. In Stanley v. Georgia (1969), the Court established a constitutional right to possess and view pornography in private.
+
+Score: 1.0
+
+`;
 
   try {
     const { object } = await generateObject({
