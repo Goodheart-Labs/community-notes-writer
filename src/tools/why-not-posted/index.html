@@ -134,6 +134,12 @@
             const container = document.getElementById('sankeyContainer');
             container.classList.remove('hidden');
 
+            // Assign explicit y positions based on pipeline order
+            const yPositions = sankeyData.nodes.map((n, idx) => {
+                // Normalize y position from 0 to 1 based on index
+                return idx / (sankeyData.nodes.length - 1);
+            });
+
             const data = [{
                 type: "sankey",
                 node: {
@@ -144,6 +150,7 @@
                         width: 0.5
                     },
                     label: sankeyData.nodes.map(n => n.name),
+                    y: yPositions,
                     color: sankeyData.nodes.map(n => {
                         if (n.name === 'Start') return '#3b82f6';
                         if (n.name === 'Posted' || n.name === 'Passed All Tracked Filters') return '#10b981';
@@ -212,6 +219,12 @@
             // Populate step filter dropdown
             const uniqueSteps = new Set();
             uniqueSteps.add('all');
+
+            // Add success states
+            uniqueSteps.add('Posted to X');
+            uniqueSteps.add('Passed All Filters But Not Posted');
+
+            // Add failure states
             analyses.forEach(a => {
                 if (a.failedAt) uniqueSteps.add(a.failedAt);
             });
@@ -223,9 +236,17 @@
             // Filter function
             function filterAndRender() {
                 const selectedStep = stepFilter.value;
-                const filtered = selectedStep === 'all'
-                    ? analyses
-                    : analyses.filter(a => a.failedAt === selectedStep);
+                let filtered;
+
+                if (selectedStep === 'all') {
+                    filtered = analyses;
+                } else if (selectedStep === 'Posted to X') {
+                    filtered = analyses.filter(a => a.record.postedToX === true);
+                } else if (selectedStep === 'Passed All Filters But Not Posted') {
+                    filtered = analyses.filter(a => !a.failedAt && a.record.postedToX !== true);
+                } else {
+                    filtered = analyses.filter(a => a.failedAt === selectedStep);
+                }
 
                 filteredCount.textContent = `(${filtered.length} records)`;
 
@@ -261,6 +282,17 @@
                                 ${new Date(analysis.record.createdTime).toLocaleString()}
                             </span>
                         </div>
+
+                        <!-- Original Tweet Text -->
+                        ${analysis.record.tweetText || (analysis.record.tweetBody && analysis.record.tweetBody.text) ? `
+                            <div class="mb-4">
+                                <h4 class="font-semibold text-gray-700 mb-2 text-sm">Original Tweet</h4>
+                                <div class="bg-gray-50 p-3 rounded-lg text-sm text-gray-800 border-l-4 border-gray-400">
+                                    ${linkifyUrls(escapeHtml(analysis.record.tweetText || (analysis.record.tweetBody && analysis.record.tweetBody.text) || ''))}
+                                    ${formatTweetMedia(analysis.record.tweetBody)}
+                                </div>
+                            </div>
+                        ` : ''}
 
                         <!-- Note Text (if exists) -->
                         ${analysis.record.finalNote ? `
@@ -322,6 +354,39 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function linkifyUrls(text) {
+            if (!text) return '';
+            // Match URLs starting with http/https
+            const urlRegex = /(https?:\/\/[^\s<]+)/g;
+            return text.replace(urlRegex, (url) => {
+                // Remove trailing punctuation that might not be part of the URL
+                const cleanUrl = url.replace(/[.,;!?]+$/, '');
+                return `<a href="${cleanUrl}" target="_blank" class="text-blue-600 hover:text-blue-800 underline break-all">${cleanUrl}</a>`;
+            });
+        }
+
+        function formatTweetMedia(tweetBody) {
+            if (!tweetBody || !tweetBody.media || !Array.isArray(tweetBody.media)) {
+                return '';
+            }
+
+            const images = tweetBody.media
+                .filter(m => m.type === 'photo' || m.url)
+                .map(m => {
+                    const imageUrl = m.url || m.media_url_https || m.media_url;
+                    if (imageUrl) {
+                        return `<img src="${imageUrl}" alt="Tweet media" class="max-w-full h-auto rounded-lg mt-2 cursor-pointer hover:opacity-90" onclick="window.open('${imageUrl}', '_blank')">`;
+                    }
+                    return '';
+                })
+                .filter(img => img);
+
+            if (images.length > 0) {
+                return `<div class="flex flex-wrap gap-2 mt-3">${images.join('')}</div>`;
+            }
+            return '';
         }
 
         // Event listeners

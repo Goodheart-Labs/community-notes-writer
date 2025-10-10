@@ -107,7 +107,7 @@ export async function processTweet(
 
     // 4. WRITE NOTE (using existing implementation for now)
     console.log(`[pipeline] Writing note...`);
-    const noteResult = await writeNoteWithSearchFn(
+    let noteResult = await writeNoteWithSearchFn(
       {
         text: searchResult.text,
         searchResults: searchResult.searchResults,
@@ -131,7 +131,64 @@ export async function processTweet(
       };
     }
 
-    // 5. RUN SCORING FILTERS
+    // 5. EVALUATE WITH X API (moved earlier)
+    console.log(`[pipeline] Evaluating with X API...`);
+    let xApiResult = await evaluateNoteWithXAPI(noteResult.note, post.id, noteResult.url);
+    let xApiScore = xApiResult.claimOpinionScore;
+    let xApiSuccess = xApiResult.success;
+
+    if (xApiSuccess) {
+      console.log(`[pipeline] X API score: ${xApiScore}`);
+
+      // If score is below -0.5, rerun note generation once
+      if (xApiScore < -0.5) {
+        console.log(
+          `[pipeline] X API score too low (${xApiScore} < -0.5), regenerating note...`
+        );
+
+        noteResult = await writeNoteWithSearchFn(
+          {
+            text: searchResult.text,
+            searchResults: searchResult.searchResults,
+            citations,
+          },
+          { model: "anthropic/claude-sonnet-4" }
+        );
+        console.log(`[pipeline] Note regenerated`);
+
+        // Check status again
+        if (noteResult.status !== "CORRECTION WITH TRUSTWORTHY CITATION") {
+          console.log(`[pipeline] Skipping - regenerated note status: ${noteResult.status}`);
+          return {
+            post,
+            verifiableFactResult,
+            keywords,
+            searchContextResult: searchResult,
+            noteResult,
+            xApiScore,
+            xApiSuccess,
+            allScoresPassed: false,
+            skipReason: `Status after regeneration: ${noteResult.status}`,
+          };
+        }
+
+        // Re-evaluate with X API
+        console.log(`[pipeline] Re-evaluating with X API...`);
+        xApiResult = await evaluateNoteWithXAPI(noteResult.note, post.id, noteResult.url);
+        xApiScore = xApiResult.claimOpinionScore;
+        xApiSuccess = xApiResult.success;
+
+        if (xApiSuccess) {
+          console.log(`[pipeline] X API score after regeneration: ${xApiScore}`);
+        } else {
+          console.log(`[pipeline] X API re-evaluation failed: ${xApiResult.error}`);
+        }
+      }
+    } else {
+      console.log(`[pipeline] X API evaluation failed: ${xApiResult.error}`);
+    }
+
+    // 6. RUN SCORING FILTERS
     console.log(`[pipeline] Running scoring filters...`);
 
     // URL Check - now checks if the source actually supports the claims
@@ -184,12 +241,10 @@ export async function processTweet(
     // Only run helpfulness ratings if initial filters pass
     let helpfulnessScore: number | undefined;
     let helpfulnessReasoning: string | undefined;
-    let xApiScore: number | undefined;
-    let xApiSuccess: boolean | undefined;
     let allPassed = initialPassed;
 
     if (initialPassed) {
-      // 6. PREDICT HELPFULNESS
+      // 7. PREDICT HELPFULNESS
       console.log(`[pipeline] Predicting helpfulness...`);
       const helpfulnessResult = await predictHelpfulness(
         noteResult.note,
@@ -215,24 +270,12 @@ export async function processTweet(
         );
       }
 
-      // 7. EVALUATE WITH X API
-      console.log(`[pipeline] Evaluating with X API...`);
-      const xApiResult = await evaluateNoteWithXAPI(noteResult.note, post.id, noteResult.url);
-      xApiScore = xApiResult.claimOpinionScore;
-      xApiSuccess = xApiResult.success;
-
-      if (xApiSuccess) {
-        console.log(`[pipeline] X API score: ${xApiScore}`);
-
-        // Check X API threshold
-        if (xApiScore < -1.5) {
-          allPassed = false;
-          console.log(
-            `[pipeline] X API score too low (${xApiScore} < -1.5), note will not be posted`
-          );
-        }
-      } else {
-        console.log(`[pipeline] X API evaluation failed: ${xApiResult.error}`);
+      // Check X API threshold (already evaluated earlier)
+      if (xApiSuccess && xApiScore < -0.5) {
+        allPassed = false;
+        console.log(
+          `[pipeline] X API score too low (${xApiScore} < -0.5), note will not be posted`
+        );
       }
     }
 
@@ -255,7 +298,7 @@ export async function processTweet(
         ? undefined
         : helpfulnessScore !== undefined && helpfulnessScore < 0.5
         ? `Helpfulness score too low (${helpfulnessScore.toFixed(2)})`
-        : xApiScore !== undefined && xApiScore < -1.5
+        : xApiScore !== undefined && xApiScore < -0.5
         ? `X API score too low (${xApiScore})`
         : "Failed score thresholds",
     };

@@ -48,13 +48,19 @@ IMPORTANT: Return ONLY a JSON object with:
 - score: a number between 0 and 1
 - reasoning: a single string (one sentence)
 
-Examples:
+Exapmles:
 
 Note: 
 
 This claim is incorrect. The Supreme Court has consistently ruled that non-obscene adult pornography is protected by the First Amendment as free speech. In Stanley v. Georgia (1969), the Court established a constitutional right to possess and view pornography in private.
 
 Score: 1.0
+
+Note:
+
+The Israeli-Palestinian conflict is a modern political dispute that does not date back 3,000 years. The current phase of violence began with Hamas's October 7, 2023 attack on Israel, according to Defense News coverage of the ceasefire agreement.
+
+Score: .3
 
 `;
 

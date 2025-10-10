@@ -27,9 +27,12 @@ interface NoteRecord {
   botName: string;
   finalNote?: string;
   wouldBePosted?: number;
+  postedToX?: boolean;
   createdTime?: string;
   fullResult?: string;
   noteStatus?: string;
+  tweetText?: string;
+  tweetBody?: any;
   // Filter scores
   notSarcasmFilter?: number;
   urlFilter?: number;
@@ -280,7 +283,7 @@ function generateSankeyData(analyses: AnalysisResult[]): SankeyData {
     if (analysis.steps.every(s => s.passed)) {
       const lastStep = analysis.steps[analysis.steps.length - 1].step;
       // Check if actually posted or not
-      if (analysis.record.wouldBePosted === 1) {
+      if (analysis.record.postedToX) {
         const key = `${lastStep}→Posted`;
         flowCounts.set(key, (flowCounts.get(key) || 0) + 1);
       } else {
@@ -396,8 +399,11 @@ app.get('/api/why-not-posted', async (req: Request, res: Response) => {
           'Bot name',
           'Final note',
           'Would be posted',
+          'Posted to X',
           'Created',
           'Full Result',
+          'Initial post text',
+          'Initial tweet body',
           'Not sarcasm filter',
           'URL filter',
           'Character count filter',
@@ -409,14 +415,16 @@ app.get('/api/why-not-posted', async (req: Request, res: Response) => {
       })
       .eachPage((airtableRecords, fetchNextPage) => {
         airtableRecords.forEach((record) => {
-          records.push({
+          const noteRecord: NoteRecord = {
             id: record.id,
             url: record.get('URL') as string || '',
             botName: record.get('Bot name') as string || '',
             finalNote: record.get('Final note') as string,
             wouldBePosted: record.get('Would be posted') as number,
+            postedToX: record.get('Posted to X') as boolean,
             createdTime: record.get('Created') as string,
             fullResult: record.get('Full Result') as string,
+            tweetText: record.get('Initial post text') as string,
             notSarcasmFilter: record.get('Not sarcasm filter') as number,
             urlFilter: record.get('URL filter') as number,
             characterCountFilter: record.get('Character count filter') as number,
@@ -424,7 +432,21 @@ app.get('/api/why-not-posted', async (req: Request, res: Response) => {
             significantCorrectionFilter: record.get('Significant correction filter') as number,
             helpfulnessPrediction: record.get('Helpfulness Prediction') as number,
             xApiScore: record.get('X API Score') as number,
-          });
+          };
+
+          // Try to parse tweet body if it's a JSON string
+          const tweetBodyRaw = record.get('Initial tweet body');
+          if (tweetBodyRaw && typeof tweetBodyRaw === 'string') {
+            try {
+              noteRecord.tweetBody = JSON.parse(tweetBodyRaw);
+            } catch {
+              noteRecord.tweetBody = tweetBodyRaw;
+            }
+          } else {
+            noteRecord.tweetBody = tweetBodyRaw;
+          }
+
+          records.push(noteRecord);
         });
         fetchNextPage();
       });
