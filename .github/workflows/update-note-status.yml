@@ -1,8 +1,8 @@
 name: Update Note Status Tracking
 
 on:
-  schedule:
-    - cron: "0 */3 * * *" # Runs every 3 hours at the top of the hour
+  # schedule:
+  #   - cron: "0 */3 * * *" # Runs every 3 hours at the top of the hour
   workflow_dispatch: # Allow manual triggering
 
 jobs:
