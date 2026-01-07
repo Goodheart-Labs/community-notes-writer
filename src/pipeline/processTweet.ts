@@ -8,15 +8,72 @@ import { predictHelpfulness } from "./predictHelpfulness";
 import { evaluateNoteWithXAPI } from "./evaluateNoteXAPI";
 import { writeNoteWithSearchFn } from "./writeNoteWithSearchGoal";
 import { PipelineResult } from "../lib/types";
+import {
+  BotConfig,
+  DEFAULT_THRESHOLDS,
+  getBotThresholds,
+} from "../lib/botConfig";
+
+/**
+ * Default bot configuration (matches current production behavior)
+ */
+const DEFAULT_BOT_CONFIG: BotConfig = {
+  id: "default",
+  name: "Default",
+  description: "Default production configuration",
+  noteModel: "anthropic/claude-sonnet-4",
+  enabled: true,
+};
+
+/**
+ * Calculate a composite score for Elo comparisons
+ * Higher is better. Weights the different scores.
+ */
+function calculateCompositeScore(result: PipelineResult): number {
+  // If the note wasn't even generated or failed early, score is 0
+  if (!result.noteResult || result.noteResult.status !== "CORRECTION WITH TRUSTWORTHY CITATION") {
+    return 0;
+  }
+
+  // Base score for generating a valid note
+  let score = 0.2;
+
+  // Add score components (each weighted)
+  if (result.scores) {
+    score += result.scores.url * 0.15;
+    score += result.scores.positive * 0.15;
+    score += result.scores.disagreement * 0.15;
+  }
+
+  if (result.helpfulnessScore !== undefined) {
+    score += result.helpfulnessScore * 0.25;
+  }
+
+  // X API score is -1 to 1, normalize to 0-1
+  if (result.xApiScore !== undefined && result.xApiSuccess) {
+    const normalizedXApiScore = (result.xApiScore + 1) / 2;
+    score += normalizedXApiScore * 0.1;
+  }
+
+  // Bonus for passing all thresholds
+  if (result.allScoresPassed) {
+    score += 0.1;
+  }
+
+  return score;
+}
 
 export async function processTweet(
   post: any,
-  idx: number
+  idx: number,
+  botConfig?: BotConfig
 ): Promise<PipelineResult | null> {
+  const bot = botConfig || DEFAULT_BOT_CONFIG;
+  const thresholds = getBotThresholds(bot);
   console.log(
-    `[pipeline] Starting refactored pipeline for post #${idx + 1} (ID: ${
+    `[pipeline] Starting pipeline for post #${idx + 1} (ID: ${
       post.id
-    })`
+    }) with bot: ${bot.id}`
   );
 
   try {
@@ -49,17 +106,19 @@ export async function processTweet(
       )} - ${verifiableFactResult.reasoning}`
     );
 
-    if (verifiableFactResult.score <= 0.5) {
+    if (verifiableFactResult.score <= thresholds.verifiableFact) {
       console.log(
         `[pipeline] Post filtered for non-verifiable content (score: ${verifiableFactResult.score.toFixed(
           2
-        )})`
+        )} <= ${thresholds.verifiableFact})`
       );
       return {
         post,
+        botId: bot.id,
         verifiableFactResult,
         allScoresPassed: false,
         skipReason: `Verifiable fact filter: ${verifiableFactResult.reasoning}`,
+        compositeScore: 0,
       };
     }
 
@@ -92,6 +151,7 @@ export async function processTweet(
       );
       return {
         post,
+        botId: bot.id,
         verifiableFactResult,
         keywords,
         searchContextResult: searchResult,
@@ -102,18 +162,19 @@ export async function processTweet(
         },
         allScoresPassed: false,
         skipReason: "No citations found",
+        compositeScore: 0,
       };
     }
 
-    // 4. WRITE NOTE (using existing implementation for now)
-    console.log(`[pipeline] Writing note...`);
+    // 4. WRITE NOTE (using bot's configured model)
+    console.log(`[pipeline] Writing note with model: ${bot.noteModel}`);
     const noteResult = await writeNoteWithSearchFn(
       {
         text: searchResult.text,
         searchResults: searchResult.searchResults,
         citations,
       },
-      { model: "anthropic/claude-sonnet-4" }
+      { model: bot.noteModel }
     );
     console.log(`[pipeline] Note generated`);
 
@@ -122,12 +183,14 @@ export async function processTweet(
       console.log(`[pipeline] Skipping - status: ${noteResult.status}`);
       return {
         post,
+        botId: bot.id,
         verifiableFactResult,
         keywords,
         searchContextResult: searchResult,
         noteResult,
         allScoresPassed: false,
         skipReason: `Status: ${noteResult.status}`,
+        compositeScore: 0,
       };
     }
 
@@ -169,9 +232,11 @@ export async function processTweet(
       },
     };
 
-    // Check initial thresholds
+    // Check initial thresholds using bot's configured thresholds
     const initialPassed =
-      scores.url > 0.5 && scores.positive > 0.5 && scores.disagreement > 0.5;
+      scores.url > thresholds.url &&
+      scores.positive > thresholds.positive &&
+      scores.disagreement > thresholds.disagreement;
 
     console.log(
       `[pipeline] Scores - URL: ${scores.url.toFixed(
@@ -206,12 +271,12 @@ export async function processTweet(
       );
 
       // Check helpfulness threshold
-      if (helpfulnessScore < 0.5) {
+      if (helpfulnessScore < thresholds.helpfulness) {
         allPassed = false;
         console.log(
           `[pipeline] Helpfulness score too low (${helpfulnessScore.toFixed(
             2
-          )} < 0.5), note will not be posted`
+          )} < ${thresholds.helpfulness}), note will not be posted`
         );
       }
 
@@ -225,10 +290,10 @@ export async function processTweet(
         console.log(`[pipeline] X API score: ${xApiScore}`);
 
         // Check X API threshold
-        if (xApiScore < -0.25) {
+        if (xApiScore < thresholds.xApiScore) {
           allPassed = false;
           console.log(
-            `[pipeline] X API score too low (${xApiScore} < -0.25), note will not be posted`
+            `[pipeline] X API score too low (${xApiScore} < ${thresholds.xApiScore}), note will not be posted`
           );
         }
       } else {
@@ -238,8 +303,9 @@ export async function processTweet(
 
     console.log(`[pipeline] All filters passed: ${allPassed}`);
 
-    return {
+    const result: PipelineResult = {
       post,
+      botId: bot.id,
       verifiableFactResult,
       keywords,
       searchContextResult: searchResult,
@@ -253,14 +319,19 @@ export async function processTweet(
       allScoresPassed: allPassed,
       skipReason: allPassed
         ? undefined
-        : helpfulnessScore !== undefined && helpfulnessScore < 0.5
+        : helpfulnessScore !== undefined && helpfulnessScore < thresholds.helpfulness
         ? `Helpfulness score too low (${helpfulnessScore.toFixed(2)})`
-        : xApiScore !== undefined && xApiScore < -0.25
+        : xApiScore !== undefined && xApiScore < thresholds.xApiScore
         ? `X API score too low (${xApiScore})`
         : "Failed score thresholds",
     };
+
+    // Calculate composite score for Elo comparisons
+    result.compositeScore = calculateCompositeScore(result);
+
+    return result;
   } catch (err) {
-    console.error(`[pipeline] Error for post #${idx + 1}:`, err);
+    console.error(`[pipeline] Error for post #${idx + 1} (bot: ${bot.id}):`, err);
     return null;
   }
 }
