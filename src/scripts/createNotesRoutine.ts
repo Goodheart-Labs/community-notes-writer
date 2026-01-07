@@ -7,10 +7,11 @@ import {
   RerunQueueLogger,
 } from "../pipeline/considerForRerun";
 import { PipelineResult } from "../lib/types";
-import { selectRandomBot, getBotProbabilities } from "../lib/botConfig";
+import { selectRandomBot, getBotProbabilities, getEnabledBots, BotConfig } from "../lib/botConfig";
 
 const maxPosts = parseInt(process.env.MAX_POSTS || "10");
 const concurrencyLimit = 3;
+const MAX_BOT_RETRIES = 3;
 
 // Soft timeout (8 minutes) - stop adding new tasks
 const SOFT_TIMEOUT_MS = 8 * 60 * 1000;
@@ -241,13 +242,39 @@ async function main() {
       }
 
       queue.add(async () => {
-        // Select a random bot for this tweet
-        const selectedBot = selectRandomBot();
-        console.log(`[main] Tweet ${post.id} assigned to bot: ${selectedBot.id}`);
-        botUsage[selectedBot.id] = (botUsage[selectedBot.id] || 0) + 1;
+        // Try bots until one succeeds or we run out of retries
+        let result: PipelineResult | null = null;
+        let selectedBot: BotConfig | null = null;
+        const triedBots = new Set<string>();
+        const enabledBots = getEnabledBots();
 
-        const result = await processTweet(post, idx, selectedBot);
-        if (!result) return;
+        for (let attempt = 0; attempt < MAX_BOT_RETRIES && attempt < enabledBots.length; attempt++) {
+          // Select a random bot, excluding already tried ones
+          let bot = selectRandomBot();
+          let retryCount = 0;
+          while (triedBots.has(bot.id) && retryCount < 10) {
+            bot = selectRandomBot();
+            retryCount++;
+          }
+
+          if (triedBots.has(bot.id)) {
+            // All bots tried, give up
+            break;
+          }
+
+          triedBots.add(bot.id);
+          selectedBot = bot;
+          console.log(`[main] Tweet ${post.id} assigned to bot: ${bot.id}${attempt > 0 ? ` (retry ${attempt})` : ""}`);
+          botUsage[bot.id] = (botUsage[bot.id] || 0) + 1;
+
+          result = await processTweet(post, idx, bot);
+          if (result) {
+            break; // Success, stop retrying
+          }
+          console.log(`[main] Bot ${bot.id} failed for tweet ${post.id}, trying another...`);
+        }
+
+        if (!result || !selectedBot) return;
 
         let postedToX = false;
 
@@ -286,7 +313,7 @@ async function main() {
         // Create log entry with scores
         const logEntry = createLogEntryWithScores(
           result,
-          selectedBot.id,
+          selectedBot!.id,
           postedToX
         );
         logEntries.push(logEntry);
