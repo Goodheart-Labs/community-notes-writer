@@ -9,11 +9,7 @@ import { predictHelpfulness } from "./predictHelpfulness";
 import { evaluateNoteWithXAPI } from "./evaluateNoteXAPI";
 import { writeNoteWithSearchFn } from "./writeNoteWithSearchGoal";
 import { PipelineResult } from "../lib/types";
-import {
-  BotConfig,
-  DEFAULT_THRESHOLDS,
-  getBotThresholds,
-} from "../lib/botConfig";
+import { BotConfig, getBotThresholds } from "../lib/botConfig";
 
 /**
  * Default bot configuration (matches current production behavior)
@@ -27,44 +23,6 @@ const DEFAULT_BOT_CONFIG: BotConfig = {
   weight: 100,
   searchStrategy: "default",
 };
-
-/**
- * Calculate a composite score for Elo comparisons
- * Higher is better. Weights the different scores.
- */
-function calculateCompositeScore(result: PipelineResult): number {
-  // If the note wasn't even generated or failed early, score is 0
-  if (!result.noteResult || result.noteResult.status !== "CORRECTION WITH TRUSTWORTHY CITATION") {
-    return 0;
-  }
-
-  // Base score for generating a valid note
-  let score = 0.2;
-
-  // Add score components (each weighted)
-  if (result.scores) {
-    score += result.scores.url * 0.15;
-    score += result.scores.positive * 0.15;
-    score += result.scores.disagreement * 0.15;
-  }
-
-  if (result.helpfulnessScore !== undefined) {
-    score += result.helpfulnessScore * 0.25;
-  }
-
-  // X API score is -1 to 1, normalize to 0-1
-  if (result.xApiScore !== undefined && result.xApiSuccess) {
-    const normalizedXApiScore = (result.xApiScore + 1) / 2;
-    score += normalizedXApiScore * 0.1;
-  }
-
-  // Bonus for passing all thresholds
-  if (result.allScoresPassed) {
-    score += 0.1;
-  }
-
-  return score;
-}
 
 export async function processTweet(
   post: any,
@@ -121,7 +79,6 @@ export async function processTweet(
         verifiableFactResult,
         allScoresPassed: false,
         skipReason: `Verifiable fact filter: ${verifiableFactResult.reasoning}`,
-        compositeScore: 0,
       };
     }
 
@@ -183,7 +140,6 @@ export async function processTweet(
         },
         allScoresPassed: false,
         skipReason: "No citations found",
-        compositeScore: 0,
       };
     }
 
@@ -211,7 +167,6 @@ export async function processTweet(
         noteResult,
         allScoresPassed: false,
         skipReason: `Status: ${noteResult.status}`,
-        compositeScore: 0,
       };
     }
 
@@ -346,9 +301,6 @@ export async function processTweet(
         ? `X API score too low (${xApiScore})`
         : "Failed score thresholds",
     };
-
-    // Calculate composite score for Elo comparisons
-    result.compositeScore = calculateCompositeScore(result);
 
     return result;
   } catch (err) {

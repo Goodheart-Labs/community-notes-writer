@@ -2,7 +2,7 @@ import type { VerifiableFactResult } from "../pipeline/checkVerifiableFacts";
 
 export interface PipelineResult {
   post: any;
-  /** Bot ID that generated this result (for multi-bot mode) */
+  /** Bot ID that generated this result */
   botId?: string;
   verifiableFactResult?: VerifiableFactResult;
   keywords?: any;
@@ -24,6 +24,4 @@ export interface PipelineResult {
   xApiSuccess?: boolean;
   allScoresPassed: boolean;
   skipReason?: string;
-  /** Composite score for Elo comparisons (higher is better) */
-  compositeScore?: number;
 }

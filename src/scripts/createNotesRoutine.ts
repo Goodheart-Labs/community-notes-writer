@@ -2,13 +2,12 @@ import { fetchEligiblePosts } from "../api/fetchEligiblePosts";
 import { AirtableLogger } from "../api/airtableLogger";
 import { processTweet } from "../pipeline/processTweet";
 import PQueue from "p-queue";
-import { execSync } from "child_process";
 import {
   considerForRerun,
   RerunQueueLogger,
 } from "../pipeline/considerForRerun";
 import { PipelineResult } from "../lib/types";
-import { selectRandomBot, getBotProbabilities, BotConfig } from "../lib/botConfig";
+import { selectRandomBot, getBotProbabilities } from "../lib/botConfig";
 
 const maxPosts = parseInt(process.env.MAX_POSTS || "10");
 const concurrencyLimit = 3;
@@ -23,9 +22,7 @@ let shouldStopProcessing = false;
 
 function createLogEntryWithScores(
   result: PipelineResult,
-  branchName: string,
   botId: string,
-  commit?: string,
   postedToX: boolean = false
 ): any {
   const url = `https://twitter.com/i/status/${result.post.id}`;
@@ -136,62 +133,32 @@ function createLogEntryWithScores(
 
   return {
     URL: url,
-    "Bot name": `${branchName}/${botId}`,
-    "Initial post text": tweetText, // The actual tweet text
-    "Initial tweet body": JSON.stringify(result.post), // The full JSON object
+    "Bot name": botId,
+    "Initial post text": tweetText,
+    "Initial tweet body": JSON.stringify(result.post),
     "Full Result": fullResult,
     "Final note": result.noteResult?.note || "",
     "Would be posted": result.allScoresPassed ? 1 : 0,
     "Posted to X": postedToX,
-    // Use the correct filter column names (if they exist)
     "Not sarcasm filter": result.verifiableFactResult?.score,
     "Positive claims only filter": result.scores?.positive,
     "Significant correction filter": result.scores?.disagreement,
     "Keywords extracted": result.keywords
       ? result.keywords.keywords.join(", ")
       : "",
-    // Filter reasoning is now included in Full Result, not as separate field
     "Helpfulness Prediction": result.helpfulnessScore,
     "X API Score": result.xApiScore,
-    // Character count is computed in Airtable, don't write to it
   };
 }
 
 async function main() {
   try {
-    // Get current branch
-    let currentBranch = "refactor";
-    try {
-      if (process.env.GITHUB_BRANCH_NAME) {
-        currentBranch = process.env.GITHUB_BRANCH_NAME.trim().toLowerCase();
-      } else {
-        currentBranch = execSync("git rev-parse --abbrev-ref HEAD", {
-          encoding: "utf8",
-        })
-          .trim()
-          .toLowerCase();
-      }
-    } catch (error) {
-      console.warn("[main] Could not determine branch");
-    }
-
-    const shouldSubmitNotes = currentBranch === "main";
-    console.log(
-      `[main] Branch: ${currentBranch}, Submit notes: ${shouldSubmitNotes}`
-    );
-
     // Log bot selection probabilities
     const botProbs = getBotProbabilities();
     console.log(`[main] Bot selection probabilities:`);
     botProbs.forEach((b) => {
       console.log(`  - ${b.id}: ${b.probability.toFixed(1)}%`);
     });
-
-    if (!shouldSubmitNotes) {
-      console.log(
-        `[main] SIMULATION MODE - notes will not be submitted to X.com`
-      );
-    }
 
     // Set up timeouts
     const softTimeout = setTimeout(() => {
@@ -208,10 +175,8 @@ async function main() {
     const airtableLogger = new AirtableLogger();
     const logEntries: any[] = [];
 
-    // Get existing URLs
-    const existingUrls = await airtableLogger.getExistingUrlsForBot(
-      currentBranch
-    );
+    // Get existing URLs (check all bots)
+    const existingUrls = await airtableLogger.getExistingUrls();
     const skipPostIds = new Set<string>();
     existingUrls.forEach((url) => {
       const match = url.match(/status\/(\d+)$/);
@@ -286,46 +251,42 @@ async function main() {
 
         let postedToX = false;
 
-        // Submit to Twitter if all checks pass and we're on main
-        if (shouldSubmitNotes) {
-          if (result.allScoresPassed) {
-            try {
-              const { submitNote } = await import("../api/submitNote");
-              const noteText =
-                result.noteResult.note + " " + result.noteResult.url;
-              const info = {
-                classification: "misinformed_or_potentially_misleading",
-                misleading_tags: ["disputed_claim_as_fact"],
-                text: noteText,
-                trustworthy_sources: true,
-              };
-              const response = await submitNote(post.id, info);
-              console.log(
-                `[main] Successfully submitted note for post ${post.id}:`,
-                response
-              );
-              postedToX = true;
-              submitted++;
-            } catch (err: any) {
-              console.error(
-                `[main] Failed to submit note for post ${post.id}:`,
-                err.response?.data || err
-              );
-            }
-          } else {
-            // If all scores didn't pass we will consider whether to
-            // allow the note to be revived in 90 minutes based on
-            // the recency of the subject of the note
-            await considerForRerun(result);
+        // Submit to Twitter if all checks pass
+        if (result.allScoresPassed) {
+          try {
+            const { submitNote } = await import("../api/submitNote");
+            const noteText =
+              result.noteResult.note + " " + result.noteResult.url;
+            const info = {
+              classification: "misinformed_or_potentially_misleading",
+              misleading_tags: ["disputed_claim_as_fact"],
+              text: noteText,
+              trustworthy_sources: true,
+            };
+            const response = await submitNote(post.id, info);
+            console.log(
+              `[main] Successfully submitted note for post ${post.id}:`,
+              response
+            );
+            postedToX = true;
+            submitted++;
+          } catch (err: any) {
+            console.error(
+              `[main] Failed to submit note for post ${post.id}:`,
+              err.response?.data || err
+            );
           }
+        } else {
+          // If all scores didn't pass we will consider whether to
+          // allow the note to be revived in 90 minutes based on
+          // the recency of the subject of the note
+          await considerForRerun(result);
         }
 
-        // Create log entry with scores (include bot ID)
+        // Create log entry with scores
         const logEntry = createLogEntryWithScores(
           result,
-          currentBranch,
           selectedBot.id,
-          process.env.GITHUB_SHA,
           postedToX
         );
         logEntries.push(logEntry);
