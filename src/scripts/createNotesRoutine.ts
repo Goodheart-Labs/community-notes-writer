@@ -8,6 +8,7 @@ import {
   RerunQueueLogger,
 } from "../pipeline/considerForRerun";
 import { PipelineResult } from "../lib/types";
+import { selectRandomBot, getBotProbabilities, BotConfig } from "../lib/botConfig";
 
 const maxPosts = parseInt(process.env.MAX_POSTS || "10");
 const concurrencyLimit = 3;
@@ -23,6 +24,7 @@ let shouldStopProcessing = false;
 function createLogEntryWithScores(
   result: PipelineResult,
   branchName: string,
+  botId: string,
   commit?: string,
   postedToX: boolean = false
 ): any {
@@ -30,7 +32,8 @@ function createLogEntryWithScores(
   const tweetText = result.post.text || "";
 
   // Build the full result text with scores
-  let fullResult = `VERIFIABLE FACT SCORE: ${
+  let fullResult = `BOT: ${botId}\n\n`;
+  fullResult += `VERIFIABLE FACT SCORE: ${
     result.verifiableFactResult?.score?.toFixed(2) || "N/A"
   }\n\n`;
 
@@ -133,7 +136,7 @@ function createLogEntryWithScores(
 
   return {
     URL: url,
-    "Bot name": branchName,
+    "Bot name": `${branchName}/${botId}`,
     "Initial post text": tweetText, // The actual tweet text
     "Initial tweet body": JSON.stringify(result.post), // The full JSON object
     "Full Result": fullResult,
@@ -176,6 +179,13 @@ async function main() {
     console.log(
       `[main] Branch: ${currentBranch}, Submit notes: ${shouldSubmitNotes}`
     );
+
+    // Log bot selection probabilities
+    const botProbs = getBotProbabilities();
+    console.log(`[main] Bot selection probabilities:`);
+    botProbs.forEach((b) => {
+      console.log(`  - ${b.id}: ${b.probability.toFixed(1)}%`);
+    });
 
     if (!shouldSubmitNotes) {
       console.log(
@@ -256,6 +266,9 @@ async function main() {
     const queue = new PQueue({ concurrency: concurrencyLimit });
     let submitted = 0;
 
+    // Track bot usage for summary
+    const botUsage: Record<string, number> = {};
+
     for (const [idx, post] of posts.entries()) {
       if (shouldStopProcessing) {
         console.log(`[main] Stopping - ${posts.length - idx} posts remaining`);
@@ -263,7 +276,12 @@ async function main() {
       }
 
       queue.add(async () => {
-        const result = await processTweet(post, idx);
+        // Select a random bot for this tweet
+        const selectedBot = selectRandomBot();
+        console.log(`[main] Tweet ${post.id} assigned to bot: ${selectedBot.id}`);
+        botUsage[selectedBot.id] = (botUsage[selectedBot.id] || 0) + 1;
+
+        const result = await processTweet(post, idx, selectedBot);
         if (!result) return;
 
         let postedToX = false;
@@ -302,10 +320,11 @@ async function main() {
           }
         }
 
-        // Create log entry with scores
+        // Create log entry with scores (include bot ID)
         const logEntry = createLogEntryWithScores(
           result,
           currentBranch,
+          selectedBot.id,
           process.env.GITHUB_SHA,
           postedToX
         );
@@ -325,6 +344,12 @@ async function main() {
         console.error("[main] Failed to log to Airtable:", err);
       }
     }
+
+    // Log bot usage summary
+    console.log(`[main] Bot usage summary:`);
+    Object.entries(botUsage).forEach(([botId, count]) => {
+      console.log(`  - ${botId}: ${count} tweets`);
+    });
 
     console.log(
       `[main] Completed - processed ${posts.length} posts, submitted ${submitted} notes`

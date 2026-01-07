@@ -2,6 +2,7 @@ import { getOriginalTweetContent } from "../utils/retweetUtils";
 import { checkVerifiableFacts } from "./checkVerifiableFacts";
 import { extractKeywords } from "./extractKeywords";
 import { searchWithKeywords } from "./searchWithKeywords";
+import { multiSourceSearch } from "./multiSourceSearch";
 import { checkUrlAndSource } from "./urlSourceChecker";
 import { runScoringFilters } from "./scoringFilters";
 import { predictHelpfulness } from "./predictHelpfulness";
@@ -23,6 +24,8 @@ const DEFAULT_BOT_CONFIG: BotConfig = {
   description: "Default production configuration",
   noteModel: "anthropic/claude-sonnet-4",
   enabled: true,
+  weight: 100,
+  searchStrategy: "default",
 };
 
 /**
@@ -127,22 +130,40 @@ export async function processTweet(
     const keywords = await extractKeywords(originalContent.text, quoteContext);
     console.log(`[pipeline] Keywords: ${keywords.keywords.join(", ")}`);
 
-    // 3. SEARCH WITH KEYWORDS + DATE
-    console.log(`[pipeline] Searching with keywords...`);
-    const todayDate = new Date().toISOString().split("T")[0];
+    // 3. SEARCH (using bot's search strategy)
+    const todayDate = new Date().toISOString().split("T")[0]!;
+    let searchResult: { text: string; searchResults: string; citations?: string[] };
+    let citations: string[];
 
-    const searchResult = await searchWithKeywords(
-      {
+    if (bot.searchStrategy === "multi-source") {
+      console.log(`[pipeline] Using multi-source search strategy...`);
+      const multiResult = await multiSourceSearch({
         keywords,
-        date: todayDate!,
+        date: todayDate,
         quoteContext,
         originalText: originalContent.text,
-      },
-      { model: "perplexity/sonar" as any }
-    );
-    console.log(`[pipeline] Search complete`);
-
-    const citations = searchResult.citations || [];
+      });
+      searchResult = {
+        text: multiResult.text,
+        searchResults: multiResult.searchResults,
+        citations: multiResult.citations,
+      };
+      citations = multiResult.citations;
+      console.log(`[pipeline] Multi-source search complete (topic: "${multiResult.topic}")`);
+    } else {
+      console.log(`[pipeline] Using default Perplexity search...`);
+      searchResult = await searchWithKeywords(
+        {
+          keywords,
+          date: todayDate,
+          quoteContext,
+          originalText: originalContent.text,
+        },
+        { model: "perplexity/sonar" as any }
+      );
+      citations = searchResult.citations || [];
+      console.log(`[pipeline] Search complete`);
+    }
 
     // If there are no citations, skip the rest of the pipeline
     if (citations.length === 0) {
