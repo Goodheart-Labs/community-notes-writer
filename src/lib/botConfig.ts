@@ -81,7 +81,7 @@ export const BOT_CONFIGS: BotConfig[] = [
     description: "Primary bot using Claude Opus 4.5 for highest quality notes",
     noteModel: "anthropic/claude-opus-4-5-20251101",
     enabled: true,
-    weight: 60, // 60% of traffic
+    weight: 80, // 80% of traffic
     searchStrategy: "default",
   },
   {
@@ -90,7 +90,7 @@ export const BOT_CONFIGS: BotConfig[] = [
     description: "Cost-effective bot using Gemini 2.0 Flash - fast and cheap",
     noteModel: "google/gemini-2.0-flash-001",
     enabled: true,
-    weight: 20, // 20% of traffic
+    weight: 10, // 10% of traffic
     searchStrategy: "default",
   },
   {
@@ -100,7 +100,7 @@ export const BOT_CONFIGS: BotConfig[] = [
       "Extracts topic first, then searches Perplexity + Google + Exa + X for comprehensive context",
     noteModel: "anthropic/claude-opus-4-5-20251101",
     enabled: true,
-    weight: 20, // 20% of traffic
+    weight: 10, // 10% of traffic
     searchStrategy: "multi-source",
   },
 ];
