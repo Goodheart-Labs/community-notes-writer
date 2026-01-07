@@ -126,33 +126,37 @@ Find recent news, reports, or official statements about this topic.`,
 }
 
 /**
- * Search using Google Custom Search API
+ * Search using Serper.dev (Google search wrapper)
  */
 async function searchGoogle(topic: string): Promise<SearchSourceResult> {
-  const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
-  const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
+  const apiKey = process.env.SERPER_API_KEY;
 
-  if (!apiKey || !searchEngineId) {
+  if (!apiKey) {
     return {
       source: "google",
       results: "",
       citations: [],
       success: false,
-      error: "Google Search API not configured",
+      error: "Serper API not configured (SERPER_API_KEY)",
     };
   }
 
   try {
-    const url = new URL("https://www.googleapis.com/customsearch/v1");
-    url.searchParams.set("key", apiKey);
-    url.searchParams.set("cx", searchEngineId);
-    url.searchParams.set("q", topic);
-    url.searchParams.set("num", "5");
+    const response = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: {
+        "X-API-KEY": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        q: topic,
+        num: 5,
+      }),
+    });
 
-    const response = await fetch(url.toString());
     const data = await response.json();
 
-    if (!data.items || data.items.length === 0) {
+    if (!data.organic || data.organic.length === 0) {
       return {
         source: "google",
         results: "No results found",
@@ -161,14 +165,14 @@ async function searchGoogle(topic: string): Promise<SearchSourceResult> {
       };
     }
 
-    const results = data.items
+    const results = data.organic
       .map(
         (item: any, idx: number) =>
           `[${idx + 1}] ${item.title}\n${item.snippet}\nSource: ${item.link}`
       )
       .join("\n\n");
 
-    const citations = data.items.map((item: any) => item.link);
+    const citations = data.organic.map((item: any) => item.link);
 
     return {
       source: "google",
