@@ -16,6 +16,7 @@ export interface FilterScore {
 export interface AllFilterScores {
   positive: FilterScore;
   disagreement: FilterScore;
+  partisan?: FilterScore;
 }
 
 const scoreSchema = z.object({
@@ -125,26 +126,94 @@ IMPORTANT: Return ONLY a JSON object with:
   }
 }
 
+// Partisan political filter - filters posts discussing both parties
+export async function checkPartisan(postText: string): Promise<FilterScore> {
+  const prompt = `Evaluate if this post discusses or compares both major US political parties (Democrats and Republicans).
+
+Original post: "${postText}"
+
+Consider:
+- Does it mention both Democrats AND Republicans?
+- Does it compare the two parties?
+- Does it discuss both parties in any way?
+- Notes that discuss both parties very rarely get approved on Community Notes
+
+Scoring:
+- 0.0: Explicitly discusses or compares both parties
+- 0.3: Mentions both parties even if not comparing
+- 0.5: Ambiguous or indirect reference to both
+- 0.7: Only mentions one party or neither
+- 1.0: Clearly only about one party or non-partisan
+
+IMPORTANT: Return ONLY a JSON object with:
+- score: a number between 0 and 1
+- reasoning: a single string (one sentence)`;
+
+  try {
+    const { object } = await generateObject({
+      model: openrouter("anthropic/claude-3.5-sonnet"),
+      schema: scoreSchema,
+      prompt,
+      temperature: 0.2,
+      mode: 'json',
+    });
+
+    return {
+      name: "Partisan political filter",
+      score: object.score,
+      passed: object.score > 0.5,
+      reasoning: object.reasoning,
+    };
+  } catch (error) {
+    console.error("[scoringFilters] Error in partisan filter:", error);
+    return {
+      name: "Partisan political filter",
+      score: 0.5,
+      passed: true,
+      reasoning: "Error in filter, defaulting to neutral",
+    };
+  }
+}
+
+export interface ScoringFiltersOptions {
+  includePartisan?: boolean;
+}
+
 // Run all scoring filters
 export async function runScoringFilters(
   noteText: string,
-  postText: string
+  postText: string,
+  options: ScoringFiltersOptions = {}
 ): Promise<AllFilterScores> {
   console.log("[scoringFilters] Running scoring filters...");
 
-  // Run filters in parallel for speed
-  const [positive, disagreement] = await Promise.all([
+  // Build filter promises based on options
+  const filterPromises: Promise<FilterScore>[] = [
     checkPositiveClaims(noteText),
     checkSubstantiveDisagreement(noteText, postText),
-  ]);
+  ];
+
+  if (options.includePartisan) {
+    filterPromises.push(checkPartisan(postText));
+  }
+
+  // Run filters in parallel for speed
+  const results = await Promise.all(filterPromises);
+  const positive = results[0]!;
+  const disagreement = results[1]!;
+  const partisan = options.includePartisan ? results[2] : undefined;
 
   // Log results
   console.log(`[Filter: ${positive.name}] Score: ${positive.score.toFixed(2)} - ${positive.passed ? 'PASS' : 'FAIL'}`);
   console.log(`[Filter: ${disagreement.name}] Score: ${disagreement.score.toFixed(2)} - ${disagreement.passed ? 'PASS' : 'FAIL'}`);
+  if (partisan) {
+    console.log(`[Filter: ${partisan.name}] Score: ${partisan.score.toFixed(2)} - ${partisan.passed ? 'PASS' : 'FAIL'}`);
+  }
 
   return {
     positive,
     disagreement,
+    partisan,
   };
 }
 

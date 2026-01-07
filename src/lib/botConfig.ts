@@ -27,6 +27,7 @@ export interface BotConfig {
     url?: number; // default: 0.5
     positive?: number; // default: 0.5
     disagreement?: number; // default: 0.5
+    partisan?: number; // default: 0.5 (only used if usePartisanFilter is true)
     helpfulness?: number; // default: 0.5
     xApiScore?: number; // default: -0.25
   };
@@ -43,6 +44,18 @@ export interface BotConfig {
    * - "multi-source": Extract topic first, then search Perplexity + Google + Exa + X
    */
   searchStrategy: "default" | "multi-source";
+
+  /**
+   * Enable partisan filter - filters out posts discussing both US political parties
+   * Posts that mention both Democrats and Republicans rarely get approved on Community Notes
+   */
+  usePartisanFilter?: boolean;
+
+  /**
+   * Enable early X API evaluation with note regeneration
+   * If X API score is below -0.5, regenerate the note once
+   */
+  useEarlyXApiCheck?: boolean;
 }
 
 /**
@@ -53,6 +66,7 @@ export const DEFAULT_THRESHOLDS = {
   url: 0.5,
   positive: 0.5,
   disagreement: 0.5,
+  partisan: 0.5,
   helpfulness: 0.5,
   xApiScore: -0.25,
 };
@@ -81,7 +95,7 @@ export const BOT_CONFIGS: BotConfig[] = [
     description: "Primary bot using Claude Opus 4.5 for highest quality notes",
     noteModel: "anthropic/claude-opus-4-5-20251101",
     enabled: true,
-    weight: 80, // 80% of traffic
+    weight: 78, // ~78% of traffic
     searchStrategy: "default",
   },
   {
@@ -90,7 +104,7 @@ export const BOT_CONFIGS: BotConfig[] = [
     description: "Cost-effective bot using Gemini 2.0 Flash - fast and cheap",
     noteModel: "google/gemini-2.0-flash-001",
     enabled: true,
-    weight: 10, // 10% of traffic
+    weight: 10, // ~10% of traffic
     searchStrategy: "default",
   },
   {
@@ -100,8 +114,33 @@ export const BOT_CONFIGS: BotConfig[] = [
       "Extracts topic first, then searches Perplexity + Google + Exa + X for comprehensive context",
     noteModel: "anthropic/claude-opus-4-5-20251101",
     enabled: true,
-    weight: 10, // 10% of traffic
+    weight: 10, // ~10% of traffic
     searchStrategy: "multi-source",
+  },
+  {
+    id: "partisan-filter",
+    name: "Partisan Filter",
+    description:
+      "Filters out posts that discuss both US political parties (rarely approved on Community Notes)",
+    noteModel: "anthropic/claude-opus-4-5-20251101",
+    enabled: true,
+    weight: 1, // ~1% of traffic
+    searchStrategy: "default",
+    usePartisanFilter: true,
+  },
+  {
+    id: "early-x-api",
+    name: "Early X API Check",
+    description:
+      "Runs X API evaluation earlier and regenerates note if score is too low",
+    noteModel: "anthropic/claude-opus-4-5-20251101",
+    enabled: true,
+    weight: 1, // ~1% of traffic
+    searchStrategy: "default",
+    useEarlyXApiCheck: true,
+    thresholds: {
+      xApiScore: -0.5, // Stricter threshold for this bot
+    },
   },
 ];
 

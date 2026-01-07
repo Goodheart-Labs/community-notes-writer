@@ -12,11 +12,13 @@ export interface PipelineResult {
     url: number;
     positive: number;
     disagreement: number;
+    partisan?: number;
   };
   filterDetails?: {
     url: { score: number; reasoning: string };
     positive: { score: number; reasoning: string };
     disagreement: { score: number; reasoning: string };
+    partisan?: { score: number; reasoning: string };
   };
   helpfulnessScore?: number;
   helpfulnessReasoning?: string;

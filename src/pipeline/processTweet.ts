@@ -145,7 +145,7 @@ export async function processTweet(
 
     // 4. WRITE NOTE (using bot's configured model)
     console.log(`[pipeline] Writing note with model: ${bot.noteModel}`);
-    const noteResult = await writeNoteWithSearchFn(
+    let noteResult = await writeNoteWithSearchFn(
       {
         text: searchResult.text,
         searchResults: searchResult.searchResults,
@@ -170,6 +170,85 @@ export async function processTweet(
       };
     }
 
+    // 4b. EARLY X API CHECK (optional - regenerate note if score too low)
+    let earlyXApiScore: number | undefined;
+    let earlyXApiSuccess: boolean | undefined;
+
+    if (bot.useEarlyXApiCheck) {
+      console.log(`[pipeline] Running early X API evaluation...`);
+      const earlyXApiResult = await evaluateNoteWithXAPI(
+        noteResult.note,
+        post.id,
+        noteResult.url
+      );
+      earlyXApiScore = earlyXApiResult.claimOpinionScore;
+      earlyXApiSuccess = earlyXApiResult.success;
+
+      if (earlyXApiSuccess) {
+        console.log(`[pipeline] Early X API score: ${earlyXApiScore}`);
+
+        // If score is below -0.5, regenerate the note once
+        if (earlyXApiScore < -0.5) {
+          console.log(
+            `[pipeline] X API score too low (${earlyXApiScore} < -0.5), regenerating note...`
+          );
+
+          noteResult = await writeNoteWithSearchFn(
+            {
+              text: searchResult.text,
+              searchResults: searchResult.searchResults,
+              citations,
+            },
+            { model: "anthropic/claude-sonnet-4" }
+          );
+          console.log(`[pipeline] Note regenerated`);
+
+          // Check status again
+          if (noteResult.status !== "CORRECTION WITH TRUSTWORTHY CITATION") {
+            console.log(
+              `[pipeline] Skipping - regenerated note status: ${noteResult.status}`
+            );
+            return {
+              post,
+              botId: bot.id,
+              verifiableFactResult,
+              keywords,
+              searchContextResult: searchResult,
+              noteResult,
+              xApiScore: earlyXApiScore,
+              xApiSuccess: earlyXApiSuccess,
+              allScoresPassed: false,
+              skipReason: `Status after regeneration: ${noteResult.status}`,
+            };
+          }
+
+          // Re-evaluate with X API
+          console.log(`[pipeline] Re-evaluating with X API...`);
+          const reEvalResult = await evaluateNoteWithXAPI(
+            noteResult.note,
+            post.id,
+            noteResult.url
+          );
+          earlyXApiScore = reEvalResult.claimOpinionScore;
+          earlyXApiSuccess = reEvalResult.success;
+
+          if (earlyXApiSuccess) {
+            console.log(
+              `[pipeline] X API score after regeneration: ${earlyXApiScore}`
+            );
+          } else {
+            console.log(
+              `[pipeline] X API re-evaluation failed: ${reEvalResult.error}`
+            );
+          }
+        }
+      } else {
+        console.log(
+          `[pipeline] Early X API evaluation failed: ${earlyXApiResult.error}`
+        );
+      }
+    }
+
     // 5. RUN SCORING FILTERS
     console.log(`[pipeline] Running scoring filters...`);
 
@@ -179,19 +258,30 @@ export async function processTweet(
       `[pipeline] URL source support score: ${urlScore.score.toFixed(2)}`
     );
 
-    // Positive and Disagreement filters
+    // Positive, Disagreement, and optionally Partisan filters
     const filterScores = await runScoringFilters(
       noteResult.note,
-      originalContent.text
+      originalContent.text,
+      { includePartisan: bot.usePartisanFilter }
     );
 
-    const scores = {
+    const scores: {
+      url: number;
+      positive: number;
+      disagreement: number;
+      partisan?: number;
+    } = {
       url: urlScore.score,
       positive: filterScores.positive.score,
       disagreement: filterScores.disagreement.score,
     };
 
-    const filterDetails = {
+    const filterDetails: {
+      url: { score: number; reasoning: string };
+      positive: { score: number; reasoning: string };
+      disagreement: { score: number; reasoning: string };
+      partisan?: { score: number; reasoning: string };
+    } = {
       url: {
         score: urlScore.score,
         reasoning: `URL source support: ${
@@ -208,18 +298,42 @@ export async function processTweet(
       },
     };
 
+    // Add partisan score if filter was run
+    if (filterScores.partisan) {
+      scores.partisan = filterScores.partisan.score;
+      filterDetails.partisan = {
+        score: filterScores.partisan.score,
+        reasoning: filterScores.partisan.reasoning,
+      };
+    }
+
     // Check initial thresholds using bot's configured thresholds
-    const initialPassed =
+    let initialPassed =
       scores.url > thresholds.url &&
       scores.positive > thresholds.positive &&
       scores.disagreement > thresholds.disagreement;
 
+    // Also check partisan threshold if filter was run
+    if (bot.usePartisanFilter && filterScores.partisan) {
+      if (filterScores.partisan.score <= thresholds.partisan) {
+        initialPassed = false;
+        console.log(
+          `[pipeline] Partisan filter failed (${filterScores.partisan.score.toFixed(
+            2
+          )} <= ${thresholds.partisan})`
+        );
+      }
+    }
+
+    const partisanLog = scores.partisan !== undefined
+      ? `, Partisan: ${scores.partisan.toFixed(2)}`
+      : "";
     console.log(
       `[pipeline] Scores - URL: ${scores.url.toFixed(
         2
       )}, Positive: ${scores.positive.toFixed(
         2
-      )}, Disagreement: ${scores.disagreement.toFixed(2)}`
+      )}, Disagreement: ${scores.disagreement.toFixed(2)}${partisanLog}`
     );
 
     // Only run helpfulness ratings if initial filters pass
@@ -257,23 +371,30 @@ export async function processTweet(
       }
 
       // 7. EVALUATE WITH X API
-      console.log(`[pipeline] Evaluating with X API...`);
-      const xApiResult = await evaluateNoteWithXAPI(noteResult.note, post.id);
-      xApiScore = xApiResult.claimOpinionScore;
-      xApiSuccess = xApiResult.success;
-
-      if (xApiSuccess) {
-        console.log(`[pipeline] X API score: ${xApiScore}`);
-
-        // Check X API threshold
-        if (xApiScore < thresholds.xApiScore) {
-          allPassed = false;
-          console.log(
-            `[pipeline] X API score too low (${xApiScore} < ${thresholds.xApiScore}), note will not be posted`
-          );
-        }
+      // If we used early X API check, use those scores instead of re-evaluating
+      if (bot.useEarlyXApiCheck && earlyXApiScore !== undefined) {
+        xApiScore = earlyXApiScore;
+        xApiSuccess = earlyXApiSuccess;
+        console.log(`[pipeline] Using early X API score: ${xApiScore}`);
       } else {
-        console.log(`[pipeline] X API evaluation failed: ${xApiResult.error}`);
+        console.log(`[pipeline] Evaluating with X API...`);
+        const xApiResult = await evaluateNoteWithXAPI(noteResult.note, post.id);
+        xApiScore = xApiResult.claimOpinionScore;
+        xApiSuccess = xApiResult.success;
+
+        if (xApiSuccess) {
+          console.log(`[pipeline] X API score: ${xApiScore}`);
+        } else {
+          console.log(`[pipeline] X API evaluation failed: ${xApiResult.error}`);
+        }
+      }
+
+      // Check X API threshold
+      if (xApiSuccess && xApiScore !== undefined && xApiScore < thresholds.xApiScore) {
+        allPassed = false;
+        console.log(
+          `[pipeline] X API score too low (${xApiScore} < ${thresholds.xApiScore}), note will not be posted`
+        );
       }
     }
 
